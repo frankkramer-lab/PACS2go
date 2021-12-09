@@ -2,6 +2,8 @@ version: '3.1'  # Secrets are only available since this version of Docker Compos
 services:
   orthanc:
     image: jodogne/orthanc:latest
+    volumes:
+      - ./tmp/orthanc-db/:/var/lib/orthanc/db/
     command: /run/secrets/  # Path to the configuration files (stored as secrets)
     ports:
       - 4242:4242
@@ -9,7 +11,7 @@ services:
     secrets:
       - orthanc.json
     environment:
-      - ORTHANC_NAME=HelloWorld
+      - ORTHANC_NAME=PACS2go
 secrets:
   orthanc.json:
     file: orthanc.json
