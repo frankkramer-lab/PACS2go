@@ -9,5 +9,8 @@
         "StorageDirectory": "/var/lib/orthanc/db",
         "IndexDirectory": "/var/lib/orthanc/db",
         "HttpPort": 8042,
-        "DicomPort": 4242
+        "DicomPort": 4242,
+        "Plugins": [
+                "/usr/local/share/orthanc/plugins"
+              ]
 }

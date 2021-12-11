@@ -15,19 +15,20 @@ window.config = {
                 displayProgress: true,
                 includeActiveDisplaySet: true,
         },
-
+        
         // connection to orthanc
         // https://github.com/OHIF/Viewers/blob/master/platform/viewer/public/config/docker_nginx-orthanc.js
         servers: {
                 dicomWeb: [
                         {
                                 name: 'ORTHANC',
-                                wadoUriRoot: 'http://localhost:80/pacs/wado',
-                                qidoRoot: 'http://localhost:80/pacs/dicom-web',
-                                wadoRoot: 'http://localhost:80/pacs/dicom-web',
+                                wadoUriRoot: '/pacs/wado',
+                                qidoRoot: '/pacs',
+                                wadoRoot: '/pacs',
                                 qidoSupportsIncludeField: false,
                                 imageRendering: 'wadors',
                                 thumbnailRendering: 'wadors',
+                                enableStudyLazyLoad: true,
                         },
                 ],
         },

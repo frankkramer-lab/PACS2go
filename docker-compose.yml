@@ -16,7 +16,7 @@ services:
       - ./config/viewer.js:/usr/share/nginx/html/app-config.js:ro
 
   orthanc:
-    image: jodogne/orthanc:1.9.7
+    image: jodogne/orthanc-plugins:1.9.7
     container_name: orthanc
     volumes:
       # persistent data
@@ -26,5 +26,4 @@ services:
     command: /etc/orthanc/orthanc.json # Path to the configuration files 
     environment:
       - ORTHANC_NAME=PACS2go
-      #dicom web enabled
       - DW_ENABLED=true
