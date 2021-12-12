@@ -11,6 +11,17 @@
         "HttpPort": 8042,
         "DicomPort": 4242,
         "Plugins": [
-                "/usr/local/share/orthanc/plugins"
-              ]
+                "/usr/local/share/orthanc/plugins/libOrthancDicomWeb.so",
+                "/usr/local/share/orthanc/plugins/libStoneWebViewer.so"
+        ],
+        "DicomWeb": {
+                "Enable": true,
+                "Root": "/dicom-web/", 
+                "EnableWado": true, 
+                "WadoRoot": "/wado", 
+                "Ssl": false, 
+                "QidoCaseSensitive": true, 
+                "StudiesMetadata": "Full", 
+                "SeriesMetadata": "Full"
+        }
 }
