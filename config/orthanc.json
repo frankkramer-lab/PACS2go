@@ -1,0 +1,27 @@
+{
+        "Name": "${ORTHANC_NAME}",
+        "RemoteAccessAllowed": true,
+        "AuthenticationEnabled": true,
+        "RegisteredUsers": {
+                "tamara": "12345",
+                "test": "test"
+        },
+        "StorageDirectory": "/var/lib/orthanc/db",
+        "IndexDirectory": "/var/lib/orthanc/db",
+        "HttpPort": 8042,
+        "DicomPort": 4242,
+        "Plugins": [
+                "/usr/local/share/orthanc/plugins/libOrthancDicomWeb.so",
+                "/usr/local/share/orthanc/plugins/libStoneWebViewer.so"
+        ],
+        "DicomWeb": {
+                "Enable": true,
+                "Root": "/dicom-web/", 
+                "EnableWado": true, 
+                "WadoRoot": "/wado", 
+                "Ssl": false, 
+                "QidoCaseSensitive": true, 
+                "StudiesMetadata": "Full", 
+                "SeriesMetadata": "Full"
+        }
+}
