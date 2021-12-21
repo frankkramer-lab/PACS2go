@@ -1,0 +1,9 @@
+{
+        "Name" : "${ORTHANC_NAME}",
+        "RemoteAccessAllowed" : true,   
+        "RegisteredUsers" : {
+                "tamara" : "12345"
+         },
+        "StorageDirectory" : "/var/lib/orthanc/db",
+        "IndexDirectory" : "/var/lib/orthanc/db"
+}
