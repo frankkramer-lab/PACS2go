@@ -24,7 +24,7 @@ def convertDirectory(directory,destination=''):
 
     # destination folder
     if destination=='':
-        destination = directory + '\\converted' 
+        destination = os.path.join(directory, 'converted')
         if not os.path.exists(destination):
             os.mkdir(destination)
 
@@ -50,7 +50,7 @@ def convertFile(filename,destination=''):
     if destination=='':
         real_path = os.path.realpath(filename)
         dir_path = os.path.dirname(real_path)
-        destination = dir_path + '\\converted' 
+        destination = os.path.join(dir_path,'converted') 
         if not os.path.exists(destination):
             os.mkdir(destination)
 
@@ -64,7 +64,7 @@ def image2dicom(filename,i,uids,destination=''):
     INPUT_FILE = filename
 
     # Name for output DICOM
-    dicomized_filename =  f'{destination}\\{str(uuid.uuid4())}.dcm'
+    dicomized_filename =  os.path.join(destination,f'{str(uuid.uuid4())}.dcm')
     # print(dicomized_filename)
 
     # Load image with Pillow
@@ -135,5 +135,6 @@ def image2dicom(filename,i,uids,destination=''):
 
     ds.save_as(dicomized_filename, write_like_original=False)
 
-# convertDirectory(r'c:\Users\Tamara\Downloads\Osteosarcoma-UT\Training-Set-1\set1')
-# convertFile(r'c:\Users\Tamara\Downloads\Osteosarcoma-UT\Training-Set-1\set2\Case-3-A14-37149-17859.jpg', r'c:\Users\Tamara\Downloads')
+convertDirectory(r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set3')
+
+# TODO: one convert for both and check if Directory or File
