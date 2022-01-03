@@ -12,7 +12,7 @@ def convert(path, destination=''):
     if os.path.isdir(path):
         convertDirectory(path, destination)
     elif os.path.isfile(path):
-        convertDirectory(path, destination)
+        convertFile(path, destination)
     else:
         print("invalid path")
 
@@ -41,9 +41,8 @@ def convertDirectory(directory, destination=''):
         f = os.path.join(directory, filename)
 
         # checking if it is a file
-
-        if os.path.isfile(f) and f.endswith(".jpg"):
-            image2dicom(f, uids, i, destination)
+        if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
+            image2dicom(f, uids, destination, i)
             i += 1
 
 
@@ -69,7 +68,7 @@ def convertFile(filename, destination=''):
 
 # converts a non-dicom image file to dicom
 # based on: https://github.com/jwitos/JPG-to-DICOM/blob/master/jpeg-to-dicom.py
-def image2dicom(filename, uids, i=0, destination=''):
+def image2dicom(filename, uids, destination='', i=0):
     # Your input file here
     INPUT_FILE = filename
 
@@ -152,4 +151,4 @@ def image2dicom(filename, uids, i=0, destination=''):
     ds.save_as(dicomized_filename, write_like_original=False)
 
 
-# convert(r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set1')
+# convert(path=r'/home/main/Desktop/images/bmp')
