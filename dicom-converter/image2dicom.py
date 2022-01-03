@@ -5,6 +5,7 @@ from PIL import Image
 import numpy
 import uuid
 import os
+from datetime import date
 
 
 def convert(path, destination=''):
@@ -26,8 +27,9 @@ def convertDirectory(directory, destination=''):
     SOPInstanceUID = generate_uid()
     StudyInstanceUID = generate_uid()
     SeriesInstanceUID = generate_uid()
+    PatientID = str(uuid.uuid4())
 
-    uids = [SOPClassUID, SOPInstanceUID, StudyInstanceUID, SeriesInstanceUID]
+    uids = [SOPClassUID, SOPInstanceUID, StudyInstanceUID, SeriesInstanceUID, PatientID]
 
     # destination folder
     if destination == '':
@@ -51,7 +53,8 @@ def convertFile(filename, destination=''):
     SOPInstanceUID = generate_uid()
     StudyInstanceUID = generate_uid()
     SeriesInstanceUID = generate_uid()
-    uids = [SOPClassUID, SOPInstanceUID, StudyInstanceUID, SeriesInstanceUID]
+    PatientID = str(uuid.uuid4())
+    uids = [SOPClassUID, SOPInstanceUID, StudyInstanceUID, SeriesInstanceUID, PatientID]
 
     # destination folder
     if destination == '':
@@ -127,13 +130,18 @@ def image2dicom(filename, uids, i=0, destination=''):
     ds.SeriesInstanceUID = str(uids[3]) + '.' + str(i)
 
     ds.PatientName = 'Unbekannt'
-    ds.PatientID = ''
+    ds.PatientID = uids[4]
     ds.PatientBirthDate = ''
     ds.PatientSex = ''
+    ds.PatientIdentityRemoved = 'YES'
 
     # sets Modality tag to 'Other'
     ds.Modality = 'OT'
-    ds.StudyDate = '19000101'
+
+    # sets study date and time to current timestamp (time of conversion)
+    now = date.today()
+    ds.StudyDate = now.strftime("%Y%m%d")
+
 
     # sets pixeldata
     ds.PixelData = np_frame.tobytes()
@@ -144,5 +152,4 @@ def image2dicom(filename, uids, i=0, destination=''):
     ds.save_as(dicomized_filename, write_like_original=False)
 
 
-convert(
-    r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set4')
+# convert(r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set1')
