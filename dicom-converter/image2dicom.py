@@ -23,16 +23,21 @@ def convert(path, destination=''):
         uids = [SOPClassUID, SOPInstanceUID,
                 StudyInstanceUID, SeriesInstanceUID, PatientID]
 
+        # destination folder
+        if destination == '':
+            if os.path.isfile(path):
+                dir_path = os.path.dirname(path) # path string without file
+                destination = os.path.join(dir_path, 'converted2dicom')
+            else:
+                destination = os.path.join(path, 'converted2dicom')
+            
+            if not os.path.exists(destination):
+                os.mkdir(destination)
+
         # converts a whole directory of image files to dicom
         # directory is interpreted as one dicom study + every file is interpreted as a series
         if os.path.isdir(path):
             i = 1
-            # destination folder
-            if destination == '':
-                destination = os.path.join(path, 'converted2dicom')
-                if not os.path.exists(destination):
-                    os.mkdir(destination)
-
             for filename in os.listdir(path):
                 f = os.path.join(path, filename)
 
@@ -44,14 +49,8 @@ def convert(path, destination=''):
 
         # converts a single non dicom file to dicom
         elif os.path.isfile(path):
-             # destination folder
-            if destination == '':
-                dir_path = os.path.dirname(path) # path string without file
-                destination = os.path.join(dir_path, 'converted2dicom')
-                if not os.path.exists(destination):
-                    os.mkdir(destination)
-
             image2dicom(path, uids, destination) # i is set to default
+        
     else:
         print("invalid path")
 
@@ -137,4 +136,4 @@ def image2dicom(filename, uids, destination='', i=0):
     ds.save_as(dicomized_filename, write_like_original=False)
 
 
-# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set11/P9-B6-19328-19600.jpg')
+# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set11/P9-B6-23023-20652.jpg')
