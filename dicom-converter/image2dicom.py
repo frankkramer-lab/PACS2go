@@ -1,3 +1,4 @@
+from numpy.lib.type_check import real_if_close
 import pydicom
 from pydicom.dataset import Dataset
 from pydicom.uid import generate_uid
@@ -8,62 +9,51 @@ import os
 from datetime import date
 
 
+# Conversion function for both directories and single files
 def convert(path, destination=''):
-    if os.path.isdir(path):
-        convertDirectory(path, destination)
-    elif os.path.isfile(path):
-        convertFile(path, destination)
+    # check if path string is legit
+    if os.path.isdir(path) or os.path.isfile(path):
+        # to make sure that all files (within one directory) have the same context, otherwise they can't be viewed or accessed together
+        SOPClassUID = generate_uid()
+        SOPInstanceUID = generate_uid()
+        StudyInstanceUID = generate_uid()
+        SeriesInstanceUID = generate_uid()
+        PatientID = str(uuid.uuid4())
+
+        uids = [SOPClassUID, SOPInstanceUID,
+                StudyInstanceUID, SeriesInstanceUID, PatientID]
+
+        # converts a whole directory of image files to dicom
+        # directory is interpreted as one dicom study + every file is interpreted as a series
+        if os.path.isdir(path):
+            i = 1
+            # destination folder
+            if destination == '':
+                destination = os.path.join(path, 'converted2dicom')
+                if not os.path.exists(destination):
+                    os.mkdir(destination)
+
+            for filename in os.listdir(path):
+                f = os.path.join(path, filename)
+
+                # checking if it is a file 
+                # extra check for endings since folders often contain additional study data in csv or different format
+                if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
+                    image2dicom(f, uids, destination, i)
+                    i += 1
+
+        # converts a single non dicom file to dicom
+        elif os.path.isfile(path):
+             # destination folder
+            if destination == '':
+                dir_path = os.path.dirname(path) # path string without file
+                destination = os.path.join(dir_path, 'converted2dicom')
+                if not os.path.exists(destination):
+                    os.mkdir(destination)
+
+            image2dicom(path, uids, destination) # i is set to default
     else:
         print("invalid path")
-
-
-# converts a whole directory of jpg files to dicom
-# directory is interpreted as one dicom series + every file in it is an instance of said series
-def convertDirectory(directory, destination=''):
-    i = 1
-
-    # to make sure that all files within one directory have the same context (otherwise they can't be viewed or accessed together)
-    SOPClassUID = generate_uid()
-    SOPInstanceUID = generate_uid()
-    StudyInstanceUID = generate_uid()
-    SeriesInstanceUID = generate_uid()
-    PatientID = str(uuid.uuid4())
-
-    uids = [SOPClassUID, SOPInstanceUID, StudyInstanceUID, SeriesInstanceUID, PatientID]
-
-    # destination folder
-    if destination == '':
-        destination = os.path.join(directory, 'converted')
-        if not os.path.exists(destination):
-            os.mkdir(destination)
-
-    for filename in os.listdir(directory):
-        f = os.path.join(directory, filename)
-
-        # checking if it is a file
-        if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
-            image2dicom(f, uids, destination, i)
-            i += 1
-
-
-# converts a single non dicom file
-def convertFile(filename, destination=''):
-    SOPClassUID = generate_uid()
-    SOPInstanceUID = generate_uid()
-    StudyInstanceUID = generate_uid()
-    SeriesInstanceUID = generate_uid()
-    PatientID = str(uuid.uuid4())
-    uids = [SOPClassUID, SOPInstanceUID, StudyInstanceUID, SeriesInstanceUID, PatientID]
-
-    # destination folder
-    if destination == '':
-        real_path = os.path.realpath(filename)
-        dir_path = os.path.dirname(real_path)
-        destination = os.path.join(dir_path, 'converted')
-        if not os.path.exists(destination):
-            os.mkdir(destination)
-
-    image2dicom(filename, uids, destination)
 
 
 # converts a non-dicom image file to dicom
@@ -74,20 +64,17 @@ def image2dicom(filename, uids, destination='', i=0):
 
     # Name for output DICOM
     dicomized_filename = os.path.join(destination, f'{str(uuid.uuid4())}.dcm')
-    # print(dicomized_filename)
 
     # Load image with Pillow
     img = Image.open(INPUT_FILE)
     width, height = img.size
-    print("File format is {} and size: {}, {}, mode: {}".format(
-        img.format, width, height, img.mode))
+    print(f"File format is {img.format} and size: {width}, {height}, mode: {img.mode}")
 
-    # Convert PNG and BMP files TODO: test
+    # Convert PNG and BMP files
     if img.format == 'PNG' or img.format == 'BMP':
         img = img.convert('RGB')
 
-    # TODO: test different files
-    # so far: tested for monochrome and rgb jpegs
+    # translate grayscale or rgb image to numpy array
     if img.mode == 'L':
         np_frame = numpy.asarray(img)
     elif img.mode == 'RGBA' or img.mode == 'RGB':
@@ -124,7 +111,7 @@ def image2dicom(filename, uids, destination='', i=0):
     ds.SOPClassUID = uids[0]
     ds.SOPInstanceUID = str(uids[1]) + '.' + str(i)
     ds.StudyInstanceUID = uids[2]
-    # images from one folder show up as seperate series within a study 
+    # images from one folder show up as seperate series within a study
     # (remove part after first '+' to move everything into 1 series)
     ds.SeriesInstanceUID = str(uids[3]) + '.' + str(i)
 
@@ -137,10 +124,9 @@ def image2dicom(filename, uids, destination='', i=0):
     # sets Modality tag to 'Other'
     ds.Modality = 'OT'
 
-    # sets study date and time to current timestamp (time of conversion)
+    # sets study date to current timestamp (date of conversion)
     now = date.today()
     ds.StudyDate = now.strftime("%Y%m%d")
-
 
     # sets pixeldata
     ds.PixelData = np_frame.tobytes()
@@ -151,4 +137,4 @@ def image2dicom(filename, uids, destination='', i=0):
     ds.save_as(dicomized_filename, write_like_original=False)
 
 
-# convert(path=r'/home/main/Desktop/images/bmp')
+# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set11/P9-B6-19328-19600.jpg')
