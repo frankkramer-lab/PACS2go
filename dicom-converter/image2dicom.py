@@ -44,43 +44,47 @@ def convert(path, destination=''):
                 # checking if it is a file 
                 # extra check for endings since folders often contain additional study data in csv or different format
                 if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
-                    image2dicom(f, uids, destination, i)
+                    pilfile2dicom(f, destination, uids, i)
                     i += 1
 
         # converts a single non dicom file to dicom
         elif os.path.isfile(path):
-            image2dicom(path, uids, destination) # i is set to default
+            if path.endswith(".jpg") or path.endswith(".bmp") or path.endswith(".png"):
+                pilfile2dicom(path, destination, uids) # i is set to default
         
     else:
         print("invalid path")
 
 
-# converts a non-dicom image file to dicom
+def pilfile2dicom(filename,destination, uids, series_index=0):
+    
+        # Load image with Pillow
+        img = Image.open(filename)
+        height, width = img.size
+
+        print(f"File format is {img.format} and size: {height,width}, mode: {img.mode}")
+
+        # Convert PNG and BMP files
+        if img.format == 'PNG' or img.format == 'BMP':
+            img = img.convert('RGB')
+
+        # translate grayscale or rgb image to numpy array
+        if img.mode == 'L':
+            np_frame = numpy.asarray(img)
+        elif img.mode == 'RGBA' or img.mode == 'RGB':
+            np_frame = numpy.array(img.getdata(), dtype=numpy.uint8)
+        else:
+            # todo: better error handling
+            print("Unknown image mode")
+        shape = [height, width, np_frame.shape[1]]
+        
+        image2dicom(np_frame,shape,uids,destination,series_index)
+        
+            
+
+# converts and saves a non-dicom image file to dicom
 # based on: https://github.com/jwitos/JPG-to-DICOM/blob/master/jpeg-to-dicom.py
-def image2dicom(filename, uids, destination='', i=0):
-    # Your input file here
-    INPUT_FILE = filename
-
-    # Name for output DICOM
-    dicomized_filename = os.path.join(destination, f'{str(uuid.uuid4())}.dcm')
-
-    # Load image with Pillow
-    img = Image.open(INPUT_FILE)
-    width, height = img.size
-    print(f"File format is {img.format} and size: {width}, {height}, mode: {img.mode}")
-
-    # Convert PNG and BMP files
-    if img.format == 'PNG' or img.format == 'BMP':
-        img = img.convert('RGB')
-
-    # translate grayscale or rgb image to numpy array
-    if img.mode == 'L':
-        np_frame = numpy.asarray(img)
-    elif img.mode == 'RGBA' or img.mode == 'RGB':
-        np_frame = numpy.array(img.getdata(), dtype=numpy.uint8)
-    else:
-        print("Unknown image mode")
-        return
+def image2dicom(array, arr_shape, uids, destination, series_index, instance_index=0):
 
     # Create DICOM from scratch
     ds = Dataset()
@@ -90,9 +94,9 @@ def image2dicom(filename, uids, destination='', i=0):
     ds.file_meta.MediaStorageSOPInstanceUID = "1.2.276.0.7230010.3.1.4.0.42382.1638878078.817218"
     ds.file_meta.ImplementationClassUID = "1.2.3.4"
 
-    ds.Rows = img.height
-    ds.Columns = img.width
-    if np_frame.shape[1] == 3:
+    ds.Rows = arr_shape[0]
+    ds.Columns = arr_shape[1]
+    if arr_shape[2] == 3:
         ds.SamplesPerPixel = 3
         ds.PhotometricInterpretation = "RGB"
     else:
@@ -108,11 +112,13 @@ def image2dicom(filename, uids, destination='', i=0):
     ds.NumberOfFrames = 1
 
     ds.SOPClassUID = uids[0]
-    ds.SOPInstanceUID = str(uids[1]) + '.' + str(i)
+    ds.SOPInstanceUID = str(uids[1]) + '.' + str(series_index)
     ds.StudyInstanceUID = uids[2]
     # images from one folder show up as seperate series within a study
     # (remove part after first '+' to move everything into 1 series)
-    ds.SeriesInstanceUID = str(uids[3]) + '.' + str(i)
+    ds.SeriesInstanceUID = str(uids[3]) + '.' + str(series_index)
+
+    ds.InstanceNumber = instance_index
 
     ds.PatientName = 'Unbekannt'
     ds.PatientID = uids[4]
@@ -128,12 +134,16 @@ def image2dicom(filename, uids, destination='', i=0):
     ds.StudyDate = now.strftime("%Y%m%d")
 
     # sets pixeldata
-    ds.PixelData = np_frame.tobytes()
+    ds.PixelData = array.tobytes()
 
     ds.is_little_endian = True
     ds.is_implicit_VR = False
 
+    # Name for output DICOM
+    dicomized_filename = os.path.join(destination, f'{str(uuid.uuid4())}.dcm')
+
     ds.save_as(dicomized_filename, write_like_original=False)
 
 
-# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set11/P9-B6-23023-20652.jpg')
+
+convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set11')
