@@ -1,4 +1,3 @@
-from numpy.lib.type_check import real_if_close
 import pydicom
 from pydicom.dataset import Dataset
 from pydicom.uid import generate_uid

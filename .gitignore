@@ -1,3 +1,5 @@
 # ignore local data
 /orthanc-db/
 /.vscode/
+/test_data
+
