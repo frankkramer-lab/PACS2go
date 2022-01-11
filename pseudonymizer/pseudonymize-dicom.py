@@ -30,8 +30,16 @@ def get_vulnerable_data(path):
         if ds.PatientIdentityRemoved == 'YES':
             raise Exception("Identity has already been removed")
     identity = {}
-    identity_attributes = ['PatientID', 'PatientName', 'PatientSex', 'PatientAddress', 'PatientAge', 'PatientBirthDate', 'PatientSize', 'PatientWeight', 'EthnicGroup', 'CountryOfResidence',
-                           'RegionOfResidence', 'PatientTelephoneNumbers', 'InstitutionName', 'InstitutionAddress', 'ReferringPhysicianAddress', 'RequestingPhysician', 'ReferringPhysicianName', 'ConsultingPhysicianName', 'PerformingPhysicianName']
+    # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/
+    # TODO: fix all names to fit with pydicom !
+    identity_attributes = ['PatientID', 'StudyDate', 'SeriesDate', 'AquisitionDate', 'ContentDate', 'OverlayDate', 'CurveDate',
+                           'AcquisitionDatetime', 'StudyTime', 'SeriesTime', 'AcquisitionTime', 'ContentTime', 'OverlayTime', 'CurveTime', 'AccessionNumber',
+                           'InstitutionName', 'InstitutionAddress', 'ReferringPhysiciansName', 'ReferringPhysiciansAddress', 'ReferringPhysiciansTelephoneNumber',
+                           'ReferringPhysicianIDSequence', 'InstitutionalDepartmentName', 'PhysicianOfRecord', 'PhysicianOfRecordIDSequence', 'PerformingPhysiciansName',
+                           'PerformingPhysicianIDSequence', 'NameOfPhysicianReadingStudy', 'PhysicianReadingStudyIDSequence', 'OperatorsName', 'PatientName', 
+                           'IssuerOfPatientID', 'PatientsBirthDate', 'PatientsBirthTime', 'PatientsSex', 'OtherPatientIDs', 'OtherPatientNames', 'PatientsBirthName', 
+                           'PatientsAge', 'PatientsAddress', 'PatientsMothersBirthName', 'CountryOfResidence', 'RegionOfResidence', 'PatientsTelephoneNumbers', 
+                           'StudyID', 'CurrentPatientLocation', 'PatientsInstitutionResidence', 'DateTime', 'Date', 'Time', 'PersonName']
 
     for attr in identity_attributes:
         if hasattr(ds, attr):
@@ -54,12 +62,21 @@ def create_pseudonym(identity):
 
 def pseudonymize_file(path, destination, pseudonym, identity_headers):
     ds = pydicom.dcmread(path)
+    # remove or replace conform to DICOM supplement 142
     for attr in identity_headers:
-        if attr == 'PatientID':
-            ds[attr].value = str(pseudonym)
-        elif hasattr(ds, attr):
-            ds[attr].value = ''
-        print(ds[attr])
+        if hasattr(ds, attr):
+            if (attr == 'PatientID' or attr == 'PatientName'):
+                ds[attr].value = str(pseudonym)
+            elif attr == 'PatientSex':
+                ds[attr].value = 'O'  # other
+            elif attr.__contains__('Date'):
+                ds[attr].value = '19000101'
+            elif attr.__contains__('Time'):
+                ds[attr].value = '000000'
+            else:
+                delattr(ds, attr)
+    ds.PatientIdentityRemoved = 'YES'
+    print(ds)
 
 
 pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
