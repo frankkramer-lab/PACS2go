@@ -4,6 +4,7 @@ import os
 import uuid
 import datetime
 from pyorthanc import Orthanc
+import tempfile
 
 
 # pseudonymization function for both directories and single files, destination argument is optional
@@ -38,19 +39,21 @@ def pseudonymize(path, destination='', upload=False):
                         identity = get_vulnerable_data(f)
                         pseudonym = create_pseudonym(identity, destination)
                     ds = pseudonymize_file(f, uids,
-                                      pseudonym, identity.keys(), i)
-                    dicom_filename = save_dicom_file(ds, path, destination)
+                                           pseudonym, identity.keys(), i)
                     if upload:
-                        upload_to_orthanc(dicom_filename)
+                        upload_to_orthanc(ds, path)
+                    else:
+                        save_dicom_file(ds, path, destination)
                     i += 1
 
         if os.path.isfile(path):
             identity = get_vulnerable_data(path)
             pseudonym = create_pseudonym(identity, destination)
             ds = pseudonymize_file(path, uids, pseudonym, identity.keys())
-            dicom_filename = save_dicom_file(ds, path, destination)
             if upload:
-                upload_to_orthanc(dicom_filename)
+                upload_to_orthanc(ds, path)
+            else:
+                save_dicom_file(ds, path, destination)
         print("Done! Note that pixel data may still be identifying and that vendor tags (uneven group tag number) may contain identifying information about the institution")
     else:
         raise Exception("invalid path")
@@ -59,9 +62,9 @@ def pseudonymize(path, destination='', upload=False):
 # extracts and returns identifying data (as a dictionary)
 def get_vulnerable_data(path):
     ds = pydicom.dcmread(path)
-    """ if hasattr(ds, 'PatientIdentityRemoved'):
+    if hasattr(ds, 'PatientIdentityRemoved'):
         if ds.PatientIdentityRemoved == 'YES':
-            raise Exception("Identity has already been removed") """
+            raise Exception("Identity has already been removed")
     # identity dict which will contain tag names and values
     identity = {}
     # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/ + InstanceCreationDate/Time + AdditionalPatientHistory + EthnicGroup
@@ -132,15 +135,18 @@ def save_dicom_file(ds, path, destination):
     dicomized_filename = os.path.join(
         destination, f'pseudonymized_{os.path.basename(path)}')
     ds.save_as(dicomized_filename)
-    return dicomized_filename
 
-def upload_to_orthanc(dicom_file):
-    orthanc = Orthanc('http://localhost/pacs')
-    orthanc.setup_credentials('test', 'test')
 
-    with open(dicom_file, 'rb') as file_handler:
-        orthanc.post_instances(file_handler.read())
+def upload_to_orthanc(ds, path):
+    with tempfile.TemporaryDirectory(dir="/home/main/Desktop/pacs2go/pacs2go") as tmpdirname:
+        dicomized_filename = os.path.join(
+            tmpdirname, f'pseudonymized_{os.path.basename(path)}')
+        ds.save_as(dicomized_filename)
+        orthanc = Orthanc('http://localhost/pacs')
+        orthanc.setup_credentials('test', 'test')
 
+        with open(dicomized_filename, 'rb') as file_handler:
+            orthanc.post_instances(file_handler.read())
 
 # pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm', upload=True)
 # pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload = True)
