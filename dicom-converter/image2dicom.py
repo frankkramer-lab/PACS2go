@@ -9,7 +9,7 @@ from datetime import date
 import nibabel as nib
 
 
-# Conversion function for both directories and single files
+# Conversion function for both directories and single files, destination argument is optional
 def convert(path, destination=''):
     # check if path string is legit
     if os.path.isdir(path) or os.path.isfile(path):
@@ -40,7 +40,6 @@ def convert(path, destination=''):
             i = 1
             for filename in os.listdir(path):
                 f = os.path.join(path, filename)
-
                 # checking if it is a file
                 # extra check for endings since folders often contain additional study data in csv or different format
                 if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
@@ -55,11 +54,12 @@ def convert(path, destination=''):
             if path.endswith(".jpg") or path.endswith(".bmp") or path.endswith(".png"):
                 pilfile2dicom(path, destination, uids)  # i is set to default
             elif path.endswith(".nii"):
-                nifti2dicom(path, destination, uids)
+                nifti2dicom(path, destination, uids)  # i is set to default
     else:
-        print("invalid path")
+        raise Exception("invalid path")
 
 
+# jpeg/bmp/png conversion to dicom
 def pilfile2dicom(filename, destination, uids, series_index=0):
     # Load image with Pillow
     img = Image.open(filename)
@@ -75,14 +75,13 @@ def pilfile2dicom(filename, destination, uids, series_index=0):
     elif img.mode == 'RGBA' or img.mode == 'RGB':
         np_frame = numpy.array(img.getdata(), dtype=numpy.uint16)
     else:
-        print("Unknown image mode")
-        return
+        raise Exception("Unknown image mode")
     shape = [height, width, np_frame.shape[1]]
 
     image2dicom(np_frame, shape, destination, uids, series_index)
 
 
-# based on: https://pycad.co/nifti2dicom/
+# nifti conversion to dicom, based on: https://pycad.co/nifti2dicom/
 def nifti2dicom(filename, destination, uids, series_index=0):
     nifti_file = nib.load(filename)
     nifti_array = nifti_file.get_fdata()
@@ -123,7 +122,8 @@ def image2dicom(array, arr_shape, destination, uids, series_index, instance_inde
     ds.NumberOfFrames = 1
 
     ds.SOPClassUID = uids[0]
-    ds.SOPInstanceUID = str(uids[1]) + '.' + str(series_index) + str(instance_index)
+    ds.SOPInstanceUID = str(uids[1]) + '.' + \
+        str(series_index) + str(instance_index)
     ds.StudyInstanceUID = uids[2]
     # images from one directory show up as seperate series within a study
     # (remove part after first '+' to move everything into 1 series)

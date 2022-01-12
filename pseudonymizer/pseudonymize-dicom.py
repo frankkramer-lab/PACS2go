@@ -5,6 +5,7 @@ import uuid
 import datetime
 
 
+# pseudonymization function for both directories and single files, destination argument is optional
 def pseudonymize(path, destination=''):
     if os.path.isdir(path) or os.path.isfile(path):
         # create new uids (original and pseudonymized version should not have the same uids -> OHIF and ORTHANC problems)
@@ -25,37 +26,39 @@ def pseudonymize(path, destination=''):
                 destination = os.path.join(path, 'pseudonymized')
             if not os.path.exists(destination):
                 os.mkdir(destination)
-            
+
         if os.path.isdir(path):
-                i = 1
-                for filename in os.listdir(path):
-                        f = os.path.join(path, filename)
-                        if os.path.isfile(f) and f.endswith(".dcm"):
-                            if i==1:
-                                # look at the first file to get identity (assuming all files in a directory come from one study)
-                                identity = get_vulnerable_data(f)
-                                pseudonym = create_pseudonym(identity,destination)
-                            pseudonymize_file(f, destination, uids, pseudonym, identity.keys(),i)
-                            i += 1
+            i = 1
+            for filename in os.listdir(path):
+                f = os.path.join(path, filename)
+                if os.path.isfile(f) and f.endswith(".dcm"):
+                    if i == 1:
+                        # look at the first file to get identity (assuming all files in a directory come from one study)
+                        identity = get_vulnerable_data(f)
+                        pseudonym = create_pseudonym(identity, destination)
+                    pseudonymize_file(f, destination, uids,
+                                      pseudonym, identity.keys(), i)
+                    i += 1
 
         if os.path.isfile(path):
             identity = get_vulnerable_data(path)
-            pseudonym = create_pseudonym(identity,destination)
+            pseudonym = create_pseudonym(identity, destination)
             pseudonymize_file(path, destination, uids,
                               pseudonym, identity.keys())
+        print("Done! Note that pixel data may still be identifying and that vendor tags (uneven group tag number) may contain identifying information about the institution")
     else:
         raise Exception("invalid path")
 
 
+# extracts and returns identifying data (as a dictionary)
 def get_vulnerable_data(path):
     ds = pydicom.dcmread(path)
-    """ if hasattr(ds, 'PatientIdentityRemoved'):
+    if hasattr(ds, 'PatientIdentityRemoved'):
         if ds.PatientIdentityRemoved == 'YES':
-            raise Exception("Identity has already been removed") """
+            raise Exception("Identity has already been removed")
     # identity dict which will contain tag names and values
     identity = {}
-    # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/
-    # + InstanceCreationDate/Time + AdditionalPatientHistory + EthnicGroup
+    # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/ + InstanceCreationDate/Time + AdditionalPatientHistory + EthnicGroup
     # correct spelling for pydicom found in: https://github.com/pydicom/pydicom/blob/master/pydicom/_dicom_dict.py
     identity_attributes = ['PatientID', 'InstanceCreationDate', 'InstanceCreationTime', 'StudyDate', 'SeriesDate', 'AquisitionDate',
                            'ContentDate', 'OverlayDate', 'CurveDate', 'AcquisitionDatetime', 'StudyTime', 'SeriesTime', 'AcquisitionTime',
@@ -76,6 +79,7 @@ def get_vulnerable_data(path):
     return identity
 
 
+# saves identity (+ mapping to its pseudonym) in a csv file, returns pseudonym
 def create_pseudonym(identity, destination):
     pseudonym = uuid.uuid4()
     csv_path = os.path.join(destination, f"{pseudonym}.csv")
@@ -88,6 +92,7 @@ def create_pseudonym(identity, destination):
     return pseudonym
 
 
+# removes the identity from a dicom file and replaces it with the pseudonym
 def pseudonymize_file(path, destination, uids, pseudonym, identity_headers, instance_index=0):
     ds = pydicom.dcmread(path)
     # remove or replace conform to DICOM supplement 142
@@ -102,16 +107,20 @@ def pseudonymize_file(path, destination, uids, pseudonym, identity_headers, inst
             elif attr.__contains__('Time'):
                 ds[attr].value = '000000'
             else:
+                # remove attribute from dicom file
                 delattr(ds, attr)
+
     ds.PatientIdentityRemoved = 'YES'
+
+    # new uids for pseudonymized version
     ds.SOPClassUID = uids[0]
     ds.SOPInstanceUID = str(uids[1]) + '.' + str(instance_index)
     ds.StudyInstanceUID = uids[2]
     ds.SeriesInstanceUID = str(uids[3])
 
-    print("pixal data may be identifying and vendor tags (uneven number) may contain identifying information")
-
-    dicomized_filename = os.path.join(destination, f'{instance_index}.dcm')
+    # save pseudonymized dicom file
+    dicomized_filename = os.path.join(
+        destination, f'pseudonymized_{os.path.basename(path)}')
     ds.save_as(dicomized_filename)
 
 
