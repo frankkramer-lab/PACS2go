@@ -36,15 +36,16 @@ def pseudonymize(path, destination=''):
                         # look at the first file to get identity (assuming all files in a directory come from one study)
                         identity = get_vulnerable_data(f)
                         pseudonym = create_pseudonym(identity, destination)
-                    pseudonymize_file(f, destination, uids,
+                    ds = pseudonymize_file(f, uids,
                                       pseudonym, identity.keys(), i)
+                    save_dicom_file(ds, path, destination)
                     i += 1
 
         if os.path.isfile(path):
             identity = get_vulnerable_data(path)
             pseudonym = create_pseudonym(identity, destination)
-            pseudonymize_file(path, destination, uids,
-                              pseudonym, identity.keys())
+            ds = pseudonymize_file(path, uids, pseudonym, identity.keys())
+            save_dicom_file(ds, path, destination)
         print("Done! Note that pixel data may still be identifying and that vendor tags (uneven group tag number) may contain identifying information about the institution")
     else:
         raise Exception("invalid path")
@@ -93,7 +94,7 @@ def create_pseudonym(identity, destination):
 
 
 # removes the identity from a dicom file and replaces it with the pseudonym
-def pseudonymize_file(path, destination, uids, pseudonym, identity_headers, instance_index=0):
+def pseudonymize_file(path, uids, pseudonym, identity_headers, instance_index=0):
     ds = pydicom.dcmread(path)
     # remove or replace conform to DICOM supplement 142
     for attr in identity_headers:
@@ -118,11 +119,15 @@ def pseudonymize_file(path, destination, uids, pseudonym, identity_headers, inst
     ds.StudyInstanceUID = uids[2]
     ds.SeriesInstanceUID = str(uids[3])
 
+    return ds
+
+
+def save_dicom_file(ds, path, destination):
     # save pseudonymized dicom file
     dicomized_filename = os.path.join(
         destination, f'pseudonymized_{os.path.basename(path)}')
     ds.save_as(dicomized_filename)
 
 
-# pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
+pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
 # pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS')
