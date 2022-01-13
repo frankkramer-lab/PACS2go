@@ -3,7 +3,9 @@ from pydicom.uid import generate_uid
 import os
 import uuid
 import datetime
-from tools.helpers import upload_to_orthanc
+import sys
+sys.path.insert(0, '/home/main/Desktop/pacs2go/pacs2go/tools')
+from helpers import upload_to_orthanc
 
 
 # pseudonymization function for both directories and single files, destination argument is optional

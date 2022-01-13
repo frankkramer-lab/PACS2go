@@ -7,10 +7,13 @@ import uuid
 import os
 from datetime import date
 import nibabel as nib
+import sys
+sys.path.insert(0, '/home/main/Desktop/pacs2go/pacs2go/tools')
+from helpers import upload_to_orthanc
 
 
 # Conversion function for both directories and single files, destination argument is optional
-def convert(path, destination=''):
+def convert(path, destination='', upload=False):
     # check if path string is legit
     if os.path.isdir(path) or os.path.isfile(path):
         # to make sure that all files (within one directory) have the same context, otherwise they can't be viewed or accessed together
@@ -43,24 +46,24 @@ def convert(path, destination=''):
                 # checking if it is a file
                 # extra check for endings since folders often contain additional study data in csv or different format
                 if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
-                    pilfile2dicom(f, destination, uids, i)
+                    pilfile2dicom(f, destination, upload, uids, i)
                     i += 1
                 elif os.path.isfile(f) and f.endswith(".nii"):
-                    nifti2dicom(f, destination, uids, i)
+                    nifti2dicom(f, destination, upload, uids, i)
             print("done")
 
         # converts a single non dicom file to dicom
         elif os.path.isfile(path):
             if path.endswith(".jpg") or path.endswith(".bmp") or path.endswith(".png"):
-                pilfile2dicom(path, destination, uids)  # i is set to default
+                pilfile2dicom(path, destination, upload, uids)  # i is set to default
             elif path.endswith(".nii"):
-                nifti2dicom(path, destination, uids)  # i is set to default
+                nifti2dicom(path, destination, upload, uids)  # i is set to default
     else:
         raise Exception("invalid path")
 
 
 # jpeg/bmp/png conversion to dicom
-def pilfile2dicom(filename, destination, uids, series_index=0):
+def pilfile2dicom(filename, destination, upload, uids, series_index=0):
     # Load image with Pillow
     img = Image.open(filename)
     height, width = img.size
@@ -73,29 +76,38 @@ def pilfile2dicom(filename, destination, uids, series_index=0):
     if img.mode == 'L':
         np_frame = numpy.asarray(img)
     elif img.mode == 'RGBA' or img.mode == 'RGB':
-        np_frame = numpy.array(img.getdata(), dtype=numpy.uint16)
+        np_frame = numpy.array(img.getdata(), dtype=numpy.uint8)
     else:
         raise Exception("Unknown image mode")
     shape = [height, width, np_frame.shape[1]]
 
-    image2dicom(np_frame, shape, destination, uids, series_index)
+    ds = image2dicom(np_frame, shape, uids, series_index)
+    if upload:
+        upload_to_orthanc(ds, filename)
+    else:
+        save_dicom_file(ds, filename, destination)
 
 
 # nifti conversion to dicom, based on: https://pycad.co/nifti2dicom/
-def nifti2dicom(filename, destination, uids, series_index=0):
+def nifti2dicom(filename, destination, upload, uids, series_index=0):
     nifti_file = nib.load(filename)
     nifti_array = nifti_file.get_fdata()
     slices_count = nifti_array.shape[2]
     shape = [nifti_array.shape[0], nifti_array.shape[1], nifti_array.shape[3]]
     # converts and saves each slice of the nifti file (slice=instance, file=series/study)
     for slice in range(slices_count):
-        array = nifti_array[:, :, slice].astype('uint16')
-        image2dicom(array, shape, destination, uids, series_index, slice)
+        array = nifti_array[:, :, slice].astype('uint8')
+        ds = image2dicom(array, shape, uids, series_index, slice)
+        if upload:
+            upload_to_orthanc(ds, filename)
+        else:
+            save_dicom_file(ds, filename, destination)
+
 
 
 # converts and saves a non-dicom image file to dicom
 # based on: https://github.com/jwitos/JPG-to-DICOM/blob/master/jpeg-to-dicom.py
-def image2dicom(array, arr_shape, destination, uids, series_index, instance_index=0):
+def image2dicom(array, arr_shape, uids, series_index, instance_index=0):
     # Create DICOM from scratch
     ds = Dataset()
     ds.file_meta = Dataset()
@@ -114,9 +126,9 @@ def image2dicom(array, arr_shape, destination, uids, series_index, instance_inde
         # for inverted grayscale try "MONOCHROME"
         ds.PhotometricInterpretation = "MONOCHROME2"
 
-    ds.BitsStored = 16
-    ds.BitsAllocated = 16
-    ds.HighBit = 15
+    ds.BitsStored = 8
+    ds.BitsAllocated = 8
+    ds.HighBit = 7
     ds.PixelRepresentation = 0
     ds.PlanarConfiguration = 0
     ds.NumberOfFrames = 1
@@ -151,11 +163,15 @@ def image2dicom(array, arr_shape, destination, uids, series_index, instance_inde
     ds.is_little_endian = True
     ds.is_implicit_VR = False
 
-    # Name for output DICOM
-    dicomized_filename = os.path.join(destination, f'{str(uuid.uuid4())}.dcm')
-
-    ds.save_as(dicomized_filename, write_like_original=False)
+    return ds
 
 
-# convert(path=r'/home/main/Desktop/images/nifti/1010_brain_mr_02.nii')
-# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set2')
+def save_dicom_file(ds, path, destination):
+    # save converted file
+    dicomized_filename = os.path.join(
+        destination, f'converted_{str(uuid.uuid4())}.dcm')
+    ds.save_as(dicomized_filename)
+
+
+# convert(path=r'/home/main/Desktop/images/nifti/1010_brain_mr_02.nii', upload=True)
+# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set10/Case-48-P5-C25-41901-28675.jpg', upload=True)
