@@ -96,8 +96,8 @@ def nifti2dicom(filename, destination, upload, uids, series_index=0):
     shape = [nifti_array.shape[0], nifti_array.shape[1], nifti_array.shape[3]]
     # converts and saves each slice of the nifti file (slice=instance, file=series/study)
     for slice in range(slices_count):
-        array = nifti_array[:, :, slice].astype('uint8')
-        ds = image2dicom(array, shape, uids, series_index, slice)
+        array = nifti_array[:, :, slice].astype('uint16')
+        ds = image2dicom(array, shape, uids, series_index, slice, nifti=True)
         if upload:
             upload_to_orthanc(ds, filename)
         else:
@@ -107,7 +107,7 @@ def nifti2dicom(filename, destination, upload, uids, series_index=0):
 
 # converts and saves a non-dicom image file to dicom
 # based on: https://github.com/jwitos/JPG-to-DICOM/blob/master/jpeg-to-dicom.py
-def image2dicom(array, arr_shape, uids, series_index, instance_index=0):
+def image2dicom(array, arr_shape, uids, series_index, instance_index=0, nifti=False):
     # Create DICOM from scratch
     ds = Dataset()
     ds.file_meta = Dataset()
@@ -126,9 +126,16 @@ def image2dicom(array, arr_shape, uids, series_index, instance_index=0):
         # for inverted grayscale try "MONOCHROME"
         ds.PhotometricInterpretation = "MONOCHROME2"
 
-    ds.BitsStored = 8
-    ds.BitsAllocated = 8
-    ds.HighBit = 7
+    if nifti:
+        # nifti needs uint16 for display
+        ds.BitsStored = 16
+        ds.BitsAllocated = 16
+        ds.HighBit = 15
+    else:
+        # pathology images need uint8
+        ds.BitsStored = 8
+        ds.BitsAllocated = 8
+        ds.HighBit = 7
     ds.PixelRepresentation = 0
     ds.PlanarConfiguration = 0
     ds.NumberOfFrames = 1
