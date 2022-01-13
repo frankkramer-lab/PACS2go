@@ -14,6 +14,8 @@ services:
       - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       # OHIF Viewer configuration to reach DICOMWeb endpoints
       - ./config/viewer.js:/usr/share/nginx/html/app-config.js:ro
+      # university logo
+      - ./config/assets/unia-logo.png:/usr/share/nginx/html/assets/unia-logo.png
 
   orthanc:
     image: jodogne/orthanc-plugins:1.9.7
