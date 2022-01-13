@@ -3,8 +3,7 @@ from pydicom.uid import generate_uid
 import os
 import uuid
 import datetime
-from pyorthanc import Orthanc
-import tempfile
+from tools.helpers import upload_to_orthanc
 
 
 # pseudonymization function for both directories and single files, destination argument is optional
@@ -136,17 +135,6 @@ def save_dicom_file(ds, path, destination):
         destination, f'pseudonymized_{os.path.basename(path)}')
     ds.save_as(dicomized_filename)
 
-
-def upload_to_orthanc(ds, path):
-    with tempfile.TemporaryDirectory(dir="/home/main/Desktop/pacs2go/pacs2go") as tmpdirname:
-        dicomized_filename = os.path.join(
-            tmpdirname, f'pseudonymized_{os.path.basename(path)}')
-        ds.save_as(dicomized_filename)
-        orthanc = Orthanc('http://localhost/pacs')
-        orthanc.setup_credentials('test', 'test')
-
-        with open(dicomized_filename, 'rb') as file_handler:
-            orthanc.post_instances(file_handler.read())
 
 # pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm', upload=True)
 # pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload = True)

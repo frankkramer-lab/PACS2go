@@ -4,7 +4,8 @@
         "AuthenticationEnabled": true,
         "RegisteredUsers": {
                 "tamara": "12345",
-                "test": "test"
+                "test": "test",
+                "uploader": "pacs2go"
         },
         "StorageDirectory": "/var/lib/orthanc/db",
         "IndexDirectory": "/var/lib/orthanc/db",
