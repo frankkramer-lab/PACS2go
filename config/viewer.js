@@ -15,7 +15,7 @@ window.config = {
                 displayProgress: true,
                 includeActiveDisplaySet: true,
         },
-        
+
         // connection to orthanc
         // https://github.com/OHIF/Viewers/blob/master/platform/viewer/public/config/docker_nginx-orthanc.js
         servers: {
@@ -34,6 +34,25 @@ window.config = {
                 ],
         },
 
+
+        whiteLabeling: {
+                createLogoComponentFn: function (React) {
+                        return React.createElement('a', {
+                                target: '_self',
+                                rel: 'noopener noreferrer',
+                                className: 'header-brand',
+                                href: 'https://www.uni-augsburg.de/de/fakultaet/fai/informatik/prof/misit/',
+                                style: {
+                                        display: 'block',
+                                        textIndent: '-9999px',
+                                        background: 'url(../assets/unia-logo.png)',
+                                        backgroundSize: '100% 100%',
+                                        backgroundRepeat: 'no-repeat',
+                                        width: '400px',
+                                },
+                        });
+                },
+        },
 
         // hotkeys for the viewer
         hotkeys: [
