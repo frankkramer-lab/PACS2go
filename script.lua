@@ -1,9 +1,8 @@
 function IncomingHttpRequestFilter(method, uri, ip, username, httpHeaders)
     -- Only allow GET requests for non-admin users (or 'uploader'-> used for pacs2go tools' direct upload)
-    print(uri)
-    if method == 'GET' then
+    if method == 'GET' or string.find(uri,"/tools/find") ~= nil then -- extra: allow 'do lookup' in ORTHANC
         return true
-    elseif username == 'admin' or username == 'uploader' or username == 'tamara' then
+    elseif username == 'admin' or username == 'uploader' then
         return true
     else
         print("no access")
