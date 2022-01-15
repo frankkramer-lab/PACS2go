@@ -25,6 +25,7 @@ services:
       - ./orthanc-db/:/var/lib/orthanc/db
       # config
       - ./config/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - ./script.lua:/etc/orthanc/script.lua
     command: /etc/orthanc/orthanc.json # Path to the configuration files 
     environment:
       - ORTHANC_NAME=PACS2go
