@@ -3,6 +3,7 @@
         "RemoteAccessAllowed": true,
         "AuthenticationEnabled": true,
         "RegisteredUsers": {
+                "admin": "admin",
                 "tamara": "12345",
                 "test": "test",
                 "uploader": "pacs2go"
@@ -15,6 +16,7 @@
                 "/usr/local/share/orthanc/plugins/libOrthancDicomWeb.so",
                 "/usr/local/share/orthanc/plugins/libStoneWebViewer.so"
         ],
+        "LuaScripts" : ["/etc/orthanc/script.lua"],
         "DicomWeb": {
                 "Enable": true,
                 "Root": "/dicom-web/", 

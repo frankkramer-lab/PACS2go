@@ -68,17 +68,17 @@ def get_vulnerable_data(path):
             raise Exception("Identity has already been removed")
     # identity dict which will contain tag names and values
     identity = {}
-    # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/ + InstanceCreationDate/Time + AdditionalPatientHistory + EthnicGroup
-    # correct spelling for pydicom found in: https://github.com/pydicom/pydicom/blob/master/pydicom/_dicom_dict.py
-    identity_attributes = ['PatientID', 'InstanceCreationDate', 'InstanceCreationTime', 'StudyDate', 'SeriesDate', 'AquisitionDate',
-                           'ContentDate', 'OverlayDate', 'CurveDate', 'AcquisitionDatetime', 'StudyTime', 'SeriesTime', 'AcquisitionTime',
+    # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/ + InstanceCreationDate/Time + AdditionalPatientHistory + EthnicGroup + PatientWeight
+    # correct attribute spellings for pydicom found in: https://github.com/pydicom/pydicom/blob/master/pydicom/_dicom_dict.py
+    identity_attributes = ['PatientID', 'InstanceCreationDate', 'InstanceCreationTime', 'StudyDate', 'SeriesDate', 'AcquisitionDate',
+                           'ContentDate', 'OverlayDate', 'CurveDate', 'StudyTime', 'SeriesTime', 'AcquisitionTime',
                            'ContentTime', 'OverlayTime', 'CurveTime', 'AccessionNumber', 'InstitutionName', 'InstitutionAddress',
                            'ReferringPhysicianName', 'ReferringPhysicianAddress', 'ReferringPhysicianTelephoneNumbers',
                            'ReferringPhysicianIdentificationSequence', 'InstitutionalDepartmentName', 'PhysiciansOfRecord',
                            'PhysiciansOfRecordIdentificationSequence', 'PerformingPhysiciansName', 'PerformingPhysicianIdentificationSequence',
                            'NameOfPhysiciansReadingStudy', 'PhysiciansReadingStudyIdentificationSequence', 'OperatorsName', 'PatientName',
                            'IssuerOfPatientID', 'PatientBirthDate', 'PatientBirthTime', 'PatientSex', 'OtherPatientIDs', 'OtherPatientNames',
-                           'PatientBirthName', 'PatientAge', 'EthnicGroup', 'AdditionalPatientHistory', 'PatientAddress', 'PatientMotherBirthName',
+                           'PatientBirthName', 'PatientAge','PatientWeight', 'EthnicGroup', 'AdditionalPatientHistory', 'PatientAddress', 'PatientMotherBirthName',
                            'CountryOfResidence', 'RegionOfResidence', 'PatientTelephoneNumbers', 'StudyID', 'CurrentPatientLocation',
                            'PatientInstitutionResidence', 'DateTime', 'Date', 'Time', 'PersonName']
     for attr in identity_attributes:
