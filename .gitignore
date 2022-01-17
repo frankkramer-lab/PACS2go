@@ -2,4 +2,4 @@
 /orthanc-db/
 /.vscode/
 /test_data
-
+/tools/__pycache__
