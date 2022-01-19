@@ -1,0 +1,5 @@
+nibabel==3.2.1
+Pillow==5.1.0
+pydicom==2.2.2
+pyorthanc==0.2.14
+Flask==2.0.2
