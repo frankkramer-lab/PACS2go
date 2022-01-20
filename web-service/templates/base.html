@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+        <title>pacs2go</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+        <!-- CSS only -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body style="background: linear-gradient(88deg, rgb(19,42,75), #b15c5c), #ffffff;padding: 2px;">
+        <nav class="navbar navbar-light navbar-expand-md navigation-clean"
+                style="background: rgba(255,255,255,0.31);height: 60px;">
+                <div class="container"><a class="navbar-brand" href="#"
+                                style="color: var(--bs-dark);">PACS2go</a><button data-bs-toggle="collapse"
+                                class="navbar-toggler" data-bs-target="#navcol-1"><span class="visually-hidden">Toggle
+                                        navigation</span><span class="navbar-toggler-icon"></span></button>
+                        <div class="collapse navbar-collapse" id="navcol-1">
+                                <ul class="navbar-nav ms-auto">
+                                        <li class="nav-item"><a class="nav-link active"
+                                                        href="http://vm204-misit.informatik.uni-augsburg.de/web/"
+                                                        style="color: var(--bs-dark);">Start</a></li>
+                                        <li class="nav-item"><a class="nav-link"
+                                                        href="http://vm204-misit.informatik.uni-augsburg.de/"
+                                                        style="color: var(--bs-dark);">Viewer</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="http://vm204-misit.informatik.uni-augsburg.de/pacs-admin/"
+                                                        style="color: var(--bs-dark);">ORTHANC</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="#"
+                                                        style="color: var(--bs-dark);">Pseudonymizer</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="#"
+                                                        style="color: var(--bs-dark);">Converter</a></li>
+                                </ul>
+                        </div>
+                </div>
+        </nav>
+        <div class="container">
+                <div class="row">
+                        <div class="col-md-12">
+                                <h1 class="display-3"
+                                        style="padding: 30px;font-size: 50px;color: var(--bs-white);padding-bottom: 20px;padding-top: 40px;">
+                                        PACS2go</h1>
+                        </div>
+                </div>
+        </div>
+
+        {% block content %}
+        {% endblock %}
+
+        <!-- Bootstrap Javascripts -->  
+         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

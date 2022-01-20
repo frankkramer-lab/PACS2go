@@ -38,4 +38,11 @@ services:
     ports:
       - 8000:80
     volumes:
-      - ./web-service:/code
+      - ./web-service:/app
+    environment:
+      FLASK_ENV: development
+    # run the application
+    command: gunicorn --bind 0.0.0.0:8000 wsgi:app
+
+
+ 
