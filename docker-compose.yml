@@ -30,3 +30,12 @@ services:
     environment:
       - ORTHANC_NAME=PACS2go
       - DW_ENABLED=true
+      
+  web:
+    # https://mdsa3d.github.io/Tutorial-flask_gunicorn_nginx_docker-compose/
+    container_name: web
+    build: ./web-service
+    ports:
+      - 8000:80
+    volumes:
+      - ./web-service:/code
