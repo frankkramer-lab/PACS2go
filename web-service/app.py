@@ -5,7 +5,15 @@ app = Flask(__name__)
 
 @app.route("/")
 def startpage():
-    return render_template('startpage.html')
+    title = "PACS2go"
+    return render_template('startpage.html', title=title)
 
+@app.route("/pseudonymizer")
 def pseudonymization():
-    return render_template('')
+    title = "Pseudonymizer"
+    return render_template('pseudonymizer.html', title=title)
+
+@app.route("/converter")
+def converter():
+    title = "DICOM converter"
+    return render_template('pseudonymizer.html', title=title)
