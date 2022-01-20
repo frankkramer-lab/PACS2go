@@ -4,7 +4,7 @@ import os
 import uuid
 import datetime
 import sys
-sys.path.insert(0, '/home/main/Desktop/pacs2go/pacs2go/tools')
+sys.path.insert(0, './tools')
 from helpers import upload_to_orthanc
 
 
