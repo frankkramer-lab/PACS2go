@@ -31,7 +31,7 @@ def pseudonymize(path, destination='', upload=False):
             if not os.path.exists(destination):
                 os.mkdir(destination)
 
-        zipped_file = "data.zip"
+        zipped_file = os.path.join(destination,"data.zip")
         if os.path.isdir(path):
             i = 1
             for filename in os.listdir(path):
