@@ -34,6 +34,7 @@ def pseudonymize_file():
                 if 'p-and-u' in request.form:
                     # user gets zipped pseudonym
                     zip = pseudonymize(path,destination=tmpdirname, upload=True)
+                    flash('Upload was successful.')
                     return send_file(zip)
         else:
             flash('ERROR: File needs to be in DICOM format. If you want to pseudonymize this file use our DICOM converter.')

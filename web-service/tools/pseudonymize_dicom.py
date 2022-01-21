@@ -30,7 +30,7 @@ def pseudonymize(path, destination='', upload=False):
             if not os.path.exists(destination):
                 os.mkdir(destination)
 
-        zipped_file = os.path.join(destination,"data.zip")
+        zipped_file = os.path.join(destination, "data.zip")
         if os.path.isdir(path):
             i = 1
             for filename in os.listdir(path):
@@ -44,9 +44,9 @@ def pseudonymize(path, destination='', upload=False):
                     ds = pseudonymize_file(f, uids,
                                            pseudonym, identity.keys(), i)
                     if upload:
-                        upload_to_orthanc(ds, path)
                         with ZipFile(zipped_file, 'w') as zip:
                             zip.write(csvfile)
+                        upload_to_orthanc(ds, path)
                     else:
                         dicom = save_dicom_file(ds, path, destination)
                         with ZipFile(zipped_file, 'w') as zip:
@@ -59,14 +59,14 @@ def pseudonymize(path, destination='', upload=False):
             pseudonym, csvfile = create_pseudonym(identity, destination)
             ds = pseudonymize_file(path, uids, pseudonym, identity.keys())
             if upload:
-                upload_to_orthanc(ds, path)
                 with ZipFile(zipped_file, 'w') as zip:
-                            zip.write(csvfile)
+                    zip.write(csvfile)
+                upload_to_orthanc(ds, path)
             else:
                 dicom = save_dicom_file(ds, path, destination)
                 with ZipFile(zipped_file, 'w') as zip:
-                            zip.write(dicom)
-                            zip.write(csvfile)
+                    zip.write(dicom)
+                    zip.write(csvfile)
         print("Done! Note that pixel data may still be identifying and that vendor tags (uneven group tag number) may contain identifying information about the institution")
         return zipped_file
     else:
@@ -88,7 +88,7 @@ def get_vulnerable_data(path):
                            'PhysiciansOfRecordIdentificationSequence', 'PerformingPhysiciansName', 'PerformingPhysicianIdentificationSequence',
                            'NameOfPhysiciansReadingStudy', 'PhysiciansReadingStudyIdentificationSequence', 'OperatorsName', 'PatientName',
                            'IssuerOfPatientID', 'PatientBirthDate', 'PatientBirthTime', 'PatientSex', 'OtherPatientIDs', 'OtherPatientNames',
-                           'PatientBirthName', 'PatientAge','PatientWeight', 'EthnicGroup', 'AdditionalPatientHistory', 'PatientAddress', 'PatientMotherBirthName',
+                           'PatientBirthName', 'PatientAge', 'PatientWeight', 'EthnicGroup', 'AdditionalPatientHistory', 'PatientAddress', 'PatientMotherBirthName',
                            'CountryOfResidence', 'RegionOfResidence', 'PatientTelephoneNumbers', 'StudyID', 'CurrentPatientLocation',
                            'PatientInstitutionResidence', 'DateTime', 'Date', 'Time', 'PersonName']
     for attr in identity_attributes:

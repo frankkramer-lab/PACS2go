@@ -5,11 +5,11 @@ import os
 def upload_to_orthanc(ds, path):
     # temp directory -> files are only uploaded to orthanc not stored locally
     with TemporaryDirectory() as tmpdirname:
-        dicomized_filename = os.path.join(tmpdirname, f'pseudonymized_{os.path.basename(path)}')
+        dicomized_filename = os.path.join(tmpdirname, f'pseudonymized.dcm')
         ds.save_as(dicomized_filename)
 
         # https://github.com/gacou54/pyorthanc -> documentation 
-        orthanc = Orthanc('http://vm204-misit.informatik.uni-augsburg.de/pacs')
+        orthanc = Orthanc('http://orthanc:8042')
         orthanc.setup_credentials('uploader', 'pacs2go')
 
         with open(dicomized_filename, 'rb') as file_handler:
