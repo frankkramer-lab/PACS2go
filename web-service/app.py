@@ -1,6 +1,6 @@
 from this import d
 from flask import Flask, render_template, request, redirect, send_file
-from tools.pseudonymizer.pseudonymize_dicom import pseudonymize
+from tools.pseudonymize_dicom import pseudonymize
 from tempfile import TemporaryDirectory
 import os
 
@@ -30,6 +30,7 @@ def pseudonymize_file():
             # user gets zipped pseudonym and pseudonymized file
             zip = pseudonymize(path,destination=tmpdirname)
             return send_file(zip)
+        
 
 
 @app.route("/converter")

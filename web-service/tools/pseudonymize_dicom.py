@@ -5,7 +5,6 @@ import uuid
 import datetime
 import sys
 from zipfile import ZipFile
-sys.path.insert(0, './tools')
 from helpers import upload_to_orthanc
 
 

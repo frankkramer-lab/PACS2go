@@ -4,9 +4,8 @@ import os
 
 def upload_to_orthanc(ds, path):
     # temp directory -> files are only uploaded to orthanc not stored locally
-    with TemporaryDirectory(dir="/") as tmpdirname:
-        dicomized_filename = os.path.join(
-            tmpdirname, f'pseudonymized_{os.path.basename(path)}')
+    with TemporaryDirectory() as tmpdirname:
+        dicomized_filename = os.path.join(tmpdirname, f'pseudonymized_{os.path.basename(path)}')
         ds.save_as(dicomized_filename)
 
         # https://github.com/gacou54/pyorthanc -> documentation 
