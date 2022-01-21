@@ -5,7 +5,7 @@ import uuid
 import datetime
 import sys
 from zipfile import ZipFile
-from helpers import upload_to_orthanc
+from tools.helpers import upload_to_orthanc
 
 
 # pseudonymization function for both directories and single files, destination argument is optional

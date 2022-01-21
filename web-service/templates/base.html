@@ -24,7 +24,8 @@
                                         <li class="nav-item"><a class="nav-link"
                                                         href="http://vm204-misit.informatik.uni-augsburg.de/"
                                                         style="color: var(--bs-dark);">Viewer</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="http://vm204-misit.informatik.uni-augsburg.de/pacs-admin/"
+                                        <li class="nav-item"><a class="nav-link"
+                                                        href="http://vm204-misit.informatik.uni-augsburg.de/pacs-admin/"
                                                         style="color: var(--bs-dark);">ORTHANC</a></li>
                                         <li class="nav-item"><a class="nav-link" href="pseudonymizer"
                                                         style="color: var(--bs-dark);">Pseudonymizer</a></li>
@@ -34,6 +35,7 @@
                         </div>
                 </div>
         </nav>
+
         <div class="container">
                 <div class="row">
                         <div class="col-md-12">
@@ -47,8 +49,18 @@
         {% block content %}
         {% endblock %}
 
-        <!-- Bootstrap Javascripts -->  
-         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+        <div class="container" style="padding: 30px;color: var(--bs-red);">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                {% for message in messages %}
+                {{ message }}
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+        </div>
+        
+        <!-- Bootstrap Javascripts -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
