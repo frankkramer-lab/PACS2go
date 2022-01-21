@@ -4,6 +4,7 @@ import os
 import uuid
 import datetime
 import sys
+from zipfile import ZipFile
 sys.path.insert(0, './tools')
 from helpers import upload_to_orthanc
 
@@ -30,6 +31,7 @@ def pseudonymize(path, destination='', upload=False):
             if not os.path.exists(destination):
                 os.mkdir(destination)
 
+        zipped_file = "data.zip"
         if os.path.isdir(path):
             i = 1
             for filename in os.listdir(path):
@@ -38,24 +40,36 @@ def pseudonymize(path, destination='', upload=False):
                     if i == 1:
                         # look at the first file to get identity (assuming all files in a directory come from one study)
                         identity = get_vulnerable_data(f)
-                        pseudonym = create_pseudonym(identity, destination)
+                        pseudonym, csvfile = create_pseudonym(
+                            identity, destination)
                     ds = pseudonymize_file(f, uids,
                                            pseudonym, identity.keys(), i)
                     if upload:
                         upload_to_orthanc(ds, path)
+                        with ZipFile(zipped_file, 'w') as zip:
+                            zip.write(csvfile)
                     else:
-                        save_dicom_file(ds, path, destination)
+                        dicom = save_dicom_file(ds, path, destination)
+                        with ZipFile(zipped_file, 'w') as zip:
+                            zip.write(dicom)
+                            zip.write(csvfile)
                     i += 1
 
         if os.path.isfile(path):
             identity = get_vulnerable_data(path)
-            pseudonym = create_pseudonym(identity, destination)
+            pseudonym, csvfile = create_pseudonym(identity, destination)
             ds = pseudonymize_file(path, uids, pseudonym, identity.keys())
             if upload:
                 upload_to_orthanc(ds, path)
+                with ZipFile(zipped_file, 'w') as zip:
+                            zip.write(csvfile)
             else:
-                save_dicom_file(ds, path, destination)
+                dicom = save_dicom_file(ds, path, destination)
+                with ZipFile(zipped_file, 'w') as zip:
+                            zip.write(dicom)
+                            zip.write(csvfile)
         print("Done! Note that pixel data may still be identifying and that vendor tags (uneven group tag number) may contain identifying information about the institution")
+        return zipped_file
     else:
         raise Exception("invalid path")
 
@@ -63,9 +77,6 @@ def pseudonymize(path, destination='', upload=False):
 # extracts and returns identifying data (as a dictionary)
 def get_vulnerable_data(path):
     ds = pydicom.dcmread(path)
-    if hasattr(ds, 'PatientIdentityRemoved'):
-        if ds.PatientIdentityRemoved == 'YES':
-            raise Exception("Identity has already been removed")
     # identity dict which will contain tag names and values
     identity = {}
     # attributes according to: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4636522/ + InstanceCreationDate/Time + AdditionalPatientHistory + EthnicGroup + PatientWeight
@@ -99,7 +110,8 @@ def create_pseudonym(identity, destination):
             f"Pseudonymization Timestamp, {datetime.datetime.now()} \n")
         for key in identity.keys():
             csvfile.write(f"{key}, {identity[key]} \n")
-    return pseudonym
+
+    return pseudonym, csv_path
 
 
 # removes the identity from a dicom file and replaces it with the pseudonym
@@ -136,6 +148,7 @@ def save_dicom_file(ds, path, destination):
     dicomized_filename = os.path.join(
         destination, f'pseudonymized_{os.path.basename(path)}')
     ds.save_as(dicomized_filename)
+    return dicomized_filename
 
 
 # pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm', upload=True)
