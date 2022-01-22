@@ -52,21 +52,32 @@ def convert(path, destination='', upload=False, from_web_request=False):
                     # extra check for endings since folders often contain additional study data in csv or different format
                     if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
                         dicom = pilfile2dicom(f, destination, upload, from_web_request, uids, i)
-                        zip.write(dicom)
+                        if not upload:
+                            zip.write(dicom)
                         i += 1
                     elif os.path.isfile(f) and f.endswith(".nii"):
-                        nifti2dicom(f, destination, upload, from_web_request, uids, i)
+                        # array of dicom file names
+                        dicom_files = nifti2dicom(f, destination, upload, from_web_request, uids, i)
+                        for file in dicom_files:
+                            if not upload:
+                                zip.write(file)
             print("done")
 
         # converts a single non dicom file to dicom
         elif os.path.isfile(path):
+            print(path, flush=True)
             if path.endswith(".jpg") or path.endswith(".bmp") or path.endswith(".png"):
                 with ZipFile(zipped_file, 'w') as zip:
                     dicom = pilfile2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
-                    if dicom!=None:
+                    if not upload:
                         zip.write(dicom)
             elif path.endswith(".nii"):
-                dicom = nifti2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
+                dicom_files = nifti2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
+                with ZipFile(zipped_file, 'w') as zip:
+                    for file in dicom_files:
+                        if not upload:
+                            zip.write(file)
+        # return zip is necessary for web-service
         return zipped_file
     else:
         raise Exception("invalid path")
@@ -95,7 +106,7 @@ def pilfile2dicom(filename, destination, upload, from_web_request, uids, series_
     if upload:
         upload_to_orthanc(ds, filename, from_web_request)
     else:
-        return save_dicom_file(ds, filename, destination)
+        return save_dicom_file(ds, destination)
     return
 
 
@@ -104,7 +115,13 @@ def nifti2dicom(filename, destination, upload, from_web_request, uids, series_in
     nifti_file = nib.load(filename)
     nifti_array = nifti_file.get_fdata()
     slices_count = nifti_array.shape[2]
+    print(nifti_array, flush=True)
     shape = [nifti_array.shape[0], nifti_array.shape[1], nifti_array.shape[3]]
+
+    
+    # list of dicom file names (each slice) for web-service zipping
+    dicom_files = []
+
     # converts and saves each slice of the nifti file (slice=instance, file=series/study)
     for slice in range(slices_count):
         array = nifti_array[:, :, slice].astype('uint16')
@@ -112,8 +129,8 @@ def nifti2dicom(filename, destination, upload, from_web_request, uids, series_in
         if upload:
             upload_to_orthanc(ds, filename, from_web_request)
         else:
-            save_dicom_file(ds, filename, destination)
-    return
+            dicom_files.append(save_dicom_file(ds, destination))
+    return dicom_files
 
 
 
@@ -185,7 +202,7 @@ def image2dicom(array, arr_shape, uids, series_index, instance_index=0, nifti=Fa
     return ds
 
 
-def save_dicom_file(ds, path, destination):
+def save_dicom_file(ds, destination):
     # save converted file
     dicomized_filename = os.path.join(
         destination, f'converted_{str(uuid.uuid4())}.dcm')
