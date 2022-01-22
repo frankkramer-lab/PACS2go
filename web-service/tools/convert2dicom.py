@@ -7,13 +7,14 @@ import uuid
 import os
 from datetime import date
 import nibabel as nib
+from zipfile import ZipFile
 import sys
-sys.path.insert(0, '/home/main/Desktop/pacs2go/pacs2go/tools')
+sys.path.append('./tools')
 from helpers import upload_to_orthanc
 
 
 # Conversion function for both directories and single files, destination argument is optional
-def convert(path, destination='', upload=False):
+def convert(path, destination='', upload=False, from_web_request=False):
     # check if path string is legit
     if os.path.isdir(path) or os.path.isfile(path):
         # to make sure that all files (within one directory) have the same context, otherwise they can't be viewed or accessed together
@@ -37,33 +38,42 @@ def convert(path, destination='', upload=False):
             if not os.path.exists(destination):
                 os.mkdir(destination)
 
+        
+        zipped_file = os.path.join(destination, "data.zip")
+
         # converts a whole directory of image files to dicom
         # directory is interpreted as one dicom study + every file is interpreted as a series
         if os.path.isdir(path):
             i = 1
-            for filename in os.listdir(path):
-                f = os.path.join(path, filename)
-                # checking if it is a file
-                # extra check for endings since folders often contain additional study data in csv or different format
-                if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
-                    pilfile2dicom(f, destination, upload, uids, i)
-                    i += 1
-                elif os.path.isfile(f) and f.endswith(".nii"):
-                    nifti2dicom(f, destination, upload, uids, i)
+            with ZipFile(zipped_file, 'w') as zip:
+                for filename in os.listdir(path):
+                    f = os.path.join(path, filename)
+                    # checking if it is a file
+                    # extra check for endings since folders often contain additional study data in csv or different format
+                    if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
+                        dicom = pilfile2dicom(f, destination, upload, from_web_request, uids, i)
+                        zip.write(dicom)
+                        i += 1
+                    elif os.path.isfile(f) and f.endswith(".nii"):
+                        nifti2dicom(f, destination, upload, from_web_request, uids, i)
             print("done")
 
         # converts a single non dicom file to dicom
         elif os.path.isfile(path):
             if path.endswith(".jpg") or path.endswith(".bmp") or path.endswith(".png"):
-                pilfile2dicom(path, destination, upload, uids)  # i is set to default
+                with ZipFile(zipped_file, 'w') as zip:
+                    dicom = pilfile2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
+                    if dicom!=None:
+                        zip.write(dicom)
             elif path.endswith(".nii"):
-                nifti2dicom(path, destination, upload, uids)  # i is set to default
+                dicom = nifti2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
+        return zipped_file
     else:
         raise Exception("invalid path")
 
 
 # jpeg/bmp/png conversion to dicom
-def pilfile2dicom(filename, destination, upload, uids, series_index=0):
+def pilfile2dicom(filename, destination, upload, from_web_request, uids, series_index=0):
     # Load image with Pillow
     img = Image.open(filename)
     height, width = img.size
@@ -83,13 +93,14 @@ def pilfile2dicom(filename, destination, upload, uids, series_index=0):
 
     ds = image2dicom(np_frame, shape, uids, series_index)
     if upload:
-        upload_to_orthanc(ds, filename)
+        upload_to_orthanc(ds, filename, from_web_request)
     else:
-        save_dicom_file(ds, filename, destination)
+        return save_dicom_file(ds, filename, destination)
+    return
 
 
 # nifti conversion to dicom, based on: https://pycad.co/nifti2dicom/
-def nifti2dicom(filename, destination, upload, uids, series_index=0):
+def nifti2dicom(filename, destination, upload, from_web_request, uids, series_index=0):
     nifti_file = nib.load(filename)
     nifti_array = nifti_file.get_fdata()
     slices_count = nifti_array.shape[2]
@@ -99,9 +110,10 @@ def nifti2dicom(filename, destination, upload, uids, series_index=0):
         array = nifti_array[:, :, slice].astype('uint16')
         ds = image2dicom(array, shape, uids, series_index, slice, nifti=True)
         if upload:
-            upload_to_orthanc(ds, filename)
+            upload_to_orthanc(ds, filename, from_web_request)
         else:
             save_dicom_file(ds, filename, destination)
+    return
 
 
 
@@ -178,6 +190,7 @@ def save_dicom_file(ds, path, destination):
     dicomized_filename = os.path.join(
         destination, f'converted_{str(uuid.uuid4())}.dcm')
     ds.save_as(dicomized_filename)
+    return dicomized_filename
 
 
 # convert(path=r'/home/main/Desktop/images/nifti/1010_brain_mr_02.nii', upload=True)

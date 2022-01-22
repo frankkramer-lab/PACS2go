@@ -49,7 +49,7 @@ def pseudonymize(path, destination='', upload=False, from_web_request=False):
                         if upload:
                             upload_to_orthanc(ds, path, from_web_request)
                         else:
-                            dicom = save_dicom_file(ds, path, destination)
+                            dicom = save_dicom_file(ds, f, destination)
                             zip.write(dicom)
                         i += 1
 
