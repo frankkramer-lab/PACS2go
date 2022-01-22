@@ -34,26 +34,24 @@ def pseudonymize(path, destination='', upload=False, from_web_request=False):
         zipped_file = os.path.join(destination, "data.zip")
         if os.path.isdir(path):
             i = 1
-            for filename in os.listdir(path):
-                f = os.path.join(path, filename)
-                if os.path.isfile(f) and f.endswith(".dcm"):
-                    if i == 1:
-                        # look at the first file to get identity (assuming all files in a directory come from one study)
-                        identity = get_vulnerable_data(f)
-                        pseudonym, csvfile = create_pseudonym(
-                            identity, destination)
-                    ds = pseudonymize_file(f, uids,
-                                           pseudonym, identity.keys(), i)
-                    if upload:
-                        with ZipFile(zipped_file, 'w') as zip:
+            with ZipFile(zipped_file, 'w') as zip:
+                for filename in os.listdir(path):
+                    f = os.path.join(path, filename)
+                    if os.path.isfile(f) and f.endswith(".dcm"):
+                        if i == 1:
+                            # look at the first file to get identity (assuming all files in a directory come from one study)
+                            identity = get_vulnerable_data(f)
+                            pseudonym, csvfile = create_pseudonym(
+                                identity, destination)
                             zip.write(csvfile)
-                        upload_to_orthanc(ds, path, from_web_request)
-                    else:
-                        dicom = save_dicom_file(ds, path, destination)
-                        with ZipFile(zipped_file, 'w') as zip:
+                        ds = pseudonymize_file(f, uids,
+                                            pseudonym, identity.keys(), i)
+                        if upload:
+                            upload_to_orthanc(ds, path, from_web_request)
+                        else:
+                            dicom = save_dicom_file(ds, path, destination)
                             zip.write(dicom)
-                            zip.write(csvfile)
-                    i += 1
+                        i += 1
 
         if os.path.isfile(path):
             identity = get_vulnerable_data(path)
