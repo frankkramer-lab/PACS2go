@@ -3,13 +3,12 @@ from pydicom.uid import generate_uid
 import os
 import uuid
 import datetime
-import sys
 from zipfile import ZipFile
-from tools.helpers import upload_to_orthanc
+from helpers import upload_to_orthanc
 
 
 # pseudonymization function for both directories and single files, destination argument is optional
-def pseudonymize(path, destination='', upload=False):
+def pseudonymize(path, destination='', upload=False, from_web_request=False):
     if os.path.isdir(path) or os.path.isfile(path):
         # create new uids (original and pseudonymized version should not have the same uids -> OHIF and ORTHANC problems)
         SOPClassUID = generate_uid()
@@ -46,7 +45,7 @@ def pseudonymize(path, destination='', upload=False):
                     if upload:
                         with ZipFile(zipped_file, 'w') as zip:
                             zip.write(csvfile)
-                        upload_to_orthanc(ds, path)
+                        upload_to_orthanc(ds, path, from_web_request)
                     else:
                         dicom = save_dicom_file(ds, path, destination)
                         with ZipFile(zipped_file, 'w') as zip:
@@ -61,7 +60,7 @@ def pseudonymize(path, destination='', upload=False):
             if upload:
                 with ZipFile(zipped_file, 'w') as zip:
                     zip.write(csvfile)
-                upload_to_orthanc(ds, path)
+                upload_to_orthanc(ds, path, from_web_request)
             else:
                 dicom = save_dicom_file(ds, path, destination)
                 with ZipFile(zipped_file, 'w') as zip:
@@ -150,5 +149,5 @@ def save_dicom_file(ds, path, destination):
     return dicomized_filename
 
 
-# pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm', upload=True)
-# pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload = True)
+# pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
+# pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload=True)

@@ -1,5 +1,4 @@
-from this import d
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for
+from flask import Flask, render_template, request, send_file, flash
 from tools.pseudonymize_dicom import pseudonymize
 from tempfile import TemporaryDirectory
 import os
@@ -27,17 +26,20 @@ def pseudonymize_file():
             with TemporaryDirectory(dir="/") as tmpdirname:
                 path = os.path.join(tmpdirname, f.filename)
                 f.save(path)
+                # normal mode
                 if 'p' in request.form:
                     # user gets zipped pseudonym and pseudonymized file
                     zip = pseudonymize(path,destination=tmpdirname)
                     return send_file(zip)
+                # automized upload mode
                 if 'p-and-u' in request.form:
                     # user gets zipped pseudonym
-                    zip = pseudonymize(path,destination=tmpdirname, upload=True)
+                    zip = pseudonymize(path,destination=tmpdirname, upload=True, from_web_request=True)
                     flash('Upload was successful.')
                     return send_file(zip)
         else:
-            flash('ERROR: File needs to be in DICOM format. If you want to pseudonymize this file use our DICOM converter.')
+            # if no file or wrong format, re-render page and display message to user
+            flash('ERROR: No file or wrong format. File needs to be in DICOM format. \n If you want to pseudonymize this file use our DICOM converter.')
             return render_template('pseudonymizer.html', title="Pseudonymizer")
 
         
