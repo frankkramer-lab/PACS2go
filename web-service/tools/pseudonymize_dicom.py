@@ -149,5 +149,9 @@ def save_dicom_file(ds, path, destination):
     return dicomized_filename
 
 
+# how to use pseudonymize_dicom:
+
+# single dcm file, no upload:
 # pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
+# directory with dcm files, with upload to ORTHANC
 # pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload=True)

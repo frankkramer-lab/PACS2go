@@ -8,9 +8,11 @@ import os
 from datetime import date
 import nibabel as nib
 from zipfile import ZipFile
+import gzip
 import sys
 sys.path.append('./tools')
 from helpers import upload_to_orthanc
+
 
 
 # Conversion function for both directories and single files, destination argument is optional
@@ -55,7 +57,7 @@ def convert(path, destination='', upload=False, from_web_request=False):
                         if not upload:
                             zip.write(dicom)
                         i += 1
-                    elif os.path.isfile(f) and f.endswith(".nii"):
+                    elif os.path.isfile(f) and (f.endswith(".nii") or path.endswith (".nii.gz")):
                         # array of dicom file names
                         dicom_files = nifti2dicom(f, destination, upload, from_web_request, uids, i)
                         for file in dicom_files:
@@ -71,7 +73,7 @@ def convert(path, destination='', upload=False, from_web_request=False):
                     dicom = pilfile2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
                     if not upload:
                         zip.write(dicom)
-            elif path.endswith(".nii"):
+            elif path.endswith(".nii") or path.endswith (".nii.gz"):
                 dicom_files = nifti2dicom(path, destination, upload, from_web_request, uids)  # i is set to default
                 with ZipFile(zipped_file, 'w') as zip:
                     for file in dicom_files:
@@ -115,9 +117,8 @@ def nifti2dicom(filename, destination, upload, from_web_request, uids, series_in
     nifti_file = nib.load(filename)
     nifti_array = nifti_file.get_fdata()
     slices_count = nifti_array.shape[2]
-    print(nifti_array, flush=True)
-    shape = [nifti_array.shape[0], nifti_array.shape[1], nifti_array.shape[3]]
-
+    # shape[3] should always be 1 since nifti files are never RGB
+    shape = [nifti_array.shape[0], nifti_array.shape[1], 1]
     
     # list of dicom file names (each slice) for web-service zipping
     dicom_files = []
@@ -210,5 +211,9 @@ def save_dicom_file(ds, destination):
     return dicomized_filename
 
 
-# convert(path=r'/home/main/Desktop/images/nifti/1010_brain_mr_02.nii', upload=True)
-# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set10/Case-48-P5-C25-41901-28675.jpg', upload=True)
+# how to use convert2dicom:
+
+# single nifti .nii file, no upload
+# convert(path=r'/home/main/Desktop/images/nifti/1010_brain_mr_02.nii')
+# directory of jpeg files, with upload to ORTHANC
+# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set10', upload=True)
