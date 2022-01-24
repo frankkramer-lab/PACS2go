@@ -89,7 +89,7 @@ def convert(path, destination='', upload=False, from_web_request=False):
 def pilfile2dicom(filename, destination, upload, from_web_request, uids, series_index=0):
     # Load image with Pillow
     img = Image.open(filename)
-    height, width = img.size
+    width, height = img.size
 
     # Convert PNG and BMP files
     if img.format == 'PNG' or img.format == 'BMP':
