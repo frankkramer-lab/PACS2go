@@ -1,3 +1,4 @@
+from tempfile import TemporaryDirectory
 from helpers import upload_to_orthanc
 import pydicom
 from pydicom.dataset import Dataset
@@ -32,56 +33,41 @@ def convert(path, destination='', upload=False, from_web_request=False):
         if destination == '':
             if os.path.isfile(path):
                 dir_path = os.path.dirname(path)  # path string without file
-                destination = os.path.join(dir_path, 'converted2dicom')
+                destination = os.path.join(dir_path)
             else:
-                destination = os.path.join(path, 'converted2dicom')
+                destination = path
 
-            if not os.path.exists(destination):
-                os.mkdir(destination)
-
-        zipped_file = os.path.join(destination, "data.zip")
+        # create zipped_file location -> for no upload (save to destination) mode, data will be zipped
+        zipped_file = os.path.join(destination, "converted2dicom.zip")
 
         # converts a whole directory of image files to dicom
         # directory is interpreted as one dicom study + every file is interpreted as a series
         if os.path.isdir(path):
             i = 1
-            with ZipFile(zipped_file, 'w') as zip:
-                for filename in os.listdir(path):
-                    f = os.path.join(path, filename)
-                    # checking if it is a file
-                    # extra check for endings since folders often contain additional study data in csv or different format
-                    if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
-                        dicom = pilfile2dicom(
-                            f, destination, upload, from_web_request, uids, i)
-                        if not upload:
-                            zip.write(dicom)
-                        i += 1
-                    elif os.path.isfile(f) and (f.endswith(".nii") or path.endswith(".nii.gz")):
-                        # array of dicom file names
-                        dicom_files = nifti2dicom(
-                            f, destination, upload, from_web_request, uids, i)
-                        for file in dicom_files:
-                            if not upload:
-                                zip.write(file)
-            print("done")
+            for filename in os.listdir(path):
+                f = os.path.join(path, filename)
+                # checking if it is a file
+                # extra check for endings since folders often contain additional study data in csv or different format
+                if os.path.isfile(f) and (f.endswith(".jpg") or f.endswith(".bmp") or f.endswith(".png")):
+                    pilfile2dicom(f, zipped_file, upload,
+                                  from_web_request, uids, i)
+                    i += 1
+                elif os.path.isfile(f) and (f.endswith(".nii") or path.endswith(".nii.gz")):
+                    # zipped_file needs renaming for every file, otherwise slices from different series end up in one directory
+                    zipped_file = os.path.join(destination, f"converted2dicom_{i}.zip")
+                    nifti2dicom(f, zipped_file, upload, from_web_request, uids, i)
+                    i += 1
 
         # converts a single non dicom file to dicom
         elif os.path.isfile(path):
             if path.endswith(".jpg") or path.endswith(".bmp") or path.endswith(".png"):
-                with ZipFile(zipped_file, 'w') as zip:
-                    # i is set to default
-                    dicom = pilfile2dicom(
-                        path, destination, upload, from_web_request, uids)
-                    if not upload:
-                        zip.write(dicom)
+                # i is set to default
+                pilfile2dicom(path, zipped_file, upload,
+                              from_web_request, uids)
             elif path.endswith(".nii") or path.endswith(".nii.gz"):
-                dicom_files = nifti2dicom(
-                    path, destination, upload, from_web_request, uids)  # i is set to default
-                with ZipFile(zipped_file, 'w') as zip:
-                    for file in dicom_files:
-                        if not upload:
-                            zip.write(file)
-        # return zip is necessary for web-service
+                nifti2dicom(path, zipped_file, upload,
+                            from_web_request, uids)  # i is set to default
+        # return the zip file is necessary for web-service, otherwise zip and data are already saved in the destination
         return zipped_file
     else:
         raise Exception("invalid path")
@@ -109,12 +95,13 @@ def pilfile2dicom(filename, destination, upload, from_web_request, uids, series_
     # get height, width and number of channels (rgb or grayscale) and pixel depth (always 8bit per channel)
     image_properties = [height, width, np_frame.shape[1], 8]
 
+    # convert image data to dicom format
     ds = image2dicom(np_frame, image_properties, uids, series_index)
     if upload:
         upload_to_orthanc(ds, filename, from_web_request)
     else:
-        return save_dicom_file(ds, destination)
-    return
+        # write dicom data to destination
+        save_dicom_file(ds, destination)
 
 
 # nifti conversion to dicom, based on: https://pycad.co/nifti2dicom/
@@ -126,19 +113,17 @@ def nifti2dicom(filename, destination, upload, from_web_request, uids, series_in
     # number of channels is set to 1 since nifti files are usually grayscale (CT images), pixel depth of nifti files is usually 16 bit
     image_properties = [nifti_array.shape[0], nifti_array.shape[1], 1, 16]
 
-    # list of dicom file names (each slice) for zipping
-    dicom_files = []
-
     # converts and saves/uploads each slice of the nifti file (slice=instance, file=series)
     for slice in range(slices_count):
         # pixel depth of nifti files is usually 16bit
         array = nifti_array[:, :, slice].astype('uint16')
+        # convert slice data to dicom format
         ds = image2dicom(array, image_properties, uids, series_index, slice)
         if upload:
             upload_to_orthanc(ds, filename, from_web_request)
         else:
-            dicom_files.append(save_dicom_file(ds, destination))
-    return dicom_files
+            # save dicom data to destination
+            save_dicom_file(ds, destination)
 
 
 # converts and saves a non-dicom image file to dicom
@@ -204,17 +189,30 @@ def image2dicom(array, image_properties, uids, series_index, instance_index=0):
     return ds
 
 
-def save_dicom_file(ds, destination):
-    # save converted file
-    dicomized_filename = os.path.join(
-        destination, f'converted_{str(uuid.uuid4())}.dcm')
-    ds.save_as(dicomized_filename)
-    return dicomized_filename
+def save_dicom_file(ds, zipped_file):
+    with TemporaryDirectory() as tmpdirname:
+        # save dicom file in temporary directory before writing it to the zip file
+        dicomized_filename = os.path.join(
+            tmpdirname, f'converted_{str(uuid.uuid4())}.dcm')
+        ds.save_as(dicomized_filename)
+        # get file out of temporary directory
+        for (root, dirs, files) in os.walk(tmpdirname):
+            for file in files:
+                # save/write converted file to zip
+                with ZipFile(zipped_file, 'a') as zip:
+                    file_path = os.path.join(root, file)
+                    zip.write(file_path, os.path.relpath(
+                        file_path, tmpdirname))
 
 
 # how to use convert2dicom:
 
 # single nifti .nii file, no upload
-convert(path=r'/home/main/Desktop/images/nifti/1010_brain_mr_02.nii')
+# convert(path=r'/home/main/Desktop/images/nifti/test2.nii')
+# single jpg file, no upload
+# convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-2/set8/Case-48-P5-C17-7752-15521.jpg')
+
 # directory of jpeg files, with upload to ORTHANC
 # convert(path=r'/home/main/Desktop/images/Osteosarcoma-UT/Training-Set-1/set10', upload=True)
+# directory of nifti filse, no upload
+# convert(path=r'/home/main/Desktop/images/nifti')
