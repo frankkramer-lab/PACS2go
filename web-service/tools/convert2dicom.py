@@ -36,6 +36,10 @@ def convert(path, destination='', upload=False, from_web_request=False):
                 destination = os.path.join(dir_path)
             else:
                 destination = path
+        else:
+            if not os.path.isdir(destination):
+                raise Exception("invalid destination path")
+
 
         # create zipped_file location -> for no upload (save to destination) mode, data will be zipped
         zipped_file = os.path.join(destination, "converted2dicom.zip")
