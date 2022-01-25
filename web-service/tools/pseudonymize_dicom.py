@@ -1,12 +1,15 @@
+from helpers import upload_to_orthanc
+from tempfile import TemporaryDirectory
+from importlib_metadata import zipp
 import pydicom
 from pydicom.uid import generate_uid
 import os
 import uuid
 import datetime
 from zipfile import ZipFile
+# import project functionality
 import sys
 sys.path.append('./tools')
-from helpers import upload_to_orthanc
 
 
 # pseudonymization function for both directories and single files, destination argument is optional
@@ -24,48 +27,41 @@ def pseudonymize(path, destination='', upload=False, from_web_request=False):
 
         if destination == '':
             if os.path.isfile(path):
-                dir_path = os.path.dirname(path)  # path string without file
-                destination = os.path.join(dir_path, 'pseudonymized')
+                destination = os.path.dirname(path)  # path string without file
             else:
-                destination = os.path.join(path, 'pseudonymized')
-            if not os.path.exists(destination):
-                os.mkdir(destination)
+                destination = path
+        else:
+            if not os.path.isdir(destination):
+                raise Exception("invalid destination path")
 
-        zipped_file = os.path.join(destination, "data.zip")
+        zipped_file = os.path.join(destination, "pseudonymized.zip")
+
         if os.path.isdir(path):
             i = 1
-            with ZipFile(zipped_file, 'w') as zip:
-                for filename in os.listdir(path):
-                    f = os.path.join(path, filename)
-                    if os.path.isfile(f) and f.endswith(".dcm"):
-                        if i == 1:
-                            # look at the first file to get identity (assuming all files in a directory come from one study)
-                            identity = get_vulnerable_data(f)
-                            pseudonym, csvfile = create_pseudonym(
-                                identity, destination)
-                            zip.write(csvfile)
-                        ds = pseudonymize_file(f, uids,
-                                            pseudonym, identity.keys(), i)
-                        if upload:
-                            upload_to_orthanc(ds, path, from_web_request)
-                        else:
-                            dicom = save_dicom_file(ds, f, destination)
-                            zip.write(dicom)
-                        i += 1
+            for filename in os.listdir(path):
+                f = os.path.join(path, filename)
+                if os.path.isfile(f) and f.endswith(".dcm"):
+                    if i == 1:
+                        # look at the 1st file of the directory to extract the identity (assuming all files in a directory come from one study)
+                        identity = get_vulnerable_data(f)
+                        pseudonym = create_pseudonym(
+                            identity, zipped_file)
+                    ds = pseudonymize_file(
+                        f, uids, pseudonym, identity.keys(), i)
+                    if upload:
+                        upload_to_orthanc(ds, path, from_web_request)
+                    else:
+                        save_dicom_file(ds, f, zipped_file)
+                    i += 1
 
         if os.path.isfile(path):
             identity = get_vulnerable_data(path)
-            pseudonym, csvfile = create_pseudonym(identity, destination)
+            pseudonym = create_pseudonym(identity, zipped_file)
             ds = pseudonymize_file(path, uids, pseudonym, identity.keys())
             if upload:
-                with ZipFile(zipped_file, 'w') as zip:
-                    zip.write(csvfile)
                 upload_to_orthanc(ds, path, from_web_request)
             else:
-                dicom = save_dicom_file(ds, path, destination)
-                with ZipFile(zipped_file, 'w') as zip:
-                    zip.write(dicom)
-                    zip.write(csvfile)
+                save_dicom_file(ds, path, zipped_file)
         print("Done! Note that pixel data may still be identifying and that vendor tags (uneven group tag number) may contain identifying information about the institution")
         return zipped_file
     else:
@@ -99,17 +95,25 @@ def get_vulnerable_data(path):
 
 
 # saves identity (+ mapping to its pseudonym) in a csv file, returns pseudonym
-def create_pseudonym(identity, destination):
+def create_pseudonym(identity, zipped_file):
     pseudonym = uuid.uuid4()
-    csv_path = os.path.join(destination, f"{pseudonym}.csv")
-    with open(csv_path, 'w') as csvfile:
-        csvfile.write(f"Pseudo-ID, {pseudonym} \n")
-        csvfile.write(
-            f"Pseudonymization Timestamp, {datetime.datetime.now()} \n")
-        for key in identity.keys():
-            csvfile.write(f"{key}, {identity[key]} \n")
+    with TemporaryDirectory() as tmpdirname:
+        # write csv file to temporary directory
+        csv_name = f"{pseudonym}.csv"
+        csv_path = os.path.join(tmpdirname, csv_name)
+        # write pseudonym and identifiying information to csv
+        with open(csv_path, 'w') as csvfile:
+            csvfile.write(f"Pseudo-ID, {pseudonym} \n")
+            csvfile.write(
+                f"Pseudonymization Timestamp, {datetime.datetime.now()} \n")
+            for key in identity.keys():
+                csvfile.write(f"{key}, {identity[key]} \n")
 
-    return pseudonym, csv_path
+        # write csv to zip file
+        with ZipFile(zipped_file, 'w') as zip:
+            zip.write(csv_path, os.path.relpath(csv_path, tmpdirname))
+
+    return pseudonym
 
 
 # removes the identity from a dicom file and replaces it with the pseudonym
@@ -141,17 +145,21 @@ def pseudonymize_file(path, uids, pseudonym, identity_headers, instance_index=0)
     return ds
 
 
-def save_dicom_file(ds, path, destination):
+def save_dicom_file(ds, path, zipped_file):
     # save pseudonymized dicom file
-    dicomized_filename = os.path.join(
-        destination, f'pseudonymized_{os.path.basename(path)}')
-    ds.save_as(dicomized_filename)
-    return dicomized_filename
+    with TemporaryDirectory() as tmpdirname:
+        # save dicom file in temporary directory before writing it to the zip file
+        dicomized_filename = os.path.join(
+            tmpdirname, f'pseudonymized_{os.path.basename(path)}')
+        ds.save_as(dicomized_filename)
+        # save/write converted file to zip
+        with ZipFile(zipped_file, 'a') as zip:
+            zip.write(dicomized_filename, os.path.relpath(dicomized_filename, tmpdirname))
 
 
 # how to use pseudonymize_dicom:
 
 # single dcm file, no upload:
-# pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
+pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
 # directory with dcm files, with upload to ORTHANC
 # pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload=True)

@@ -1,5 +1,5 @@
-from tempfile import TemporaryDirectory
 from helpers import upload_to_orthanc
+from tempfile import TemporaryDirectory
 import pydicom
 from pydicom.dataset import Dataset
 from pydicom.uid import generate_uid
@@ -10,7 +10,7 @@ import os
 from datetime import date
 import nibabel as nib
 from zipfile import ZipFile
-import gzip
+# import project functionality
 import sys
 sys.path.append('./tools')
 
@@ -32,14 +32,12 @@ def convert(path, destination='', upload=False, from_web_request=False):
         # destination folder
         if destination == '':
             if os.path.isfile(path):
-                dir_path = os.path.dirname(path)  # path string without file
-                destination = os.path.join(dir_path)
+                destination = os.path.dirname(path)  # path string without file
             else:
                 destination = path
         else:
             if not os.path.isdir(destination):
                 raise Exception("invalid destination path")
-
 
         # create zipped_file location -> for no upload (save to destination) mode, data will be zipped
         zipped_file = os.path.join(destination, "converted2dicom.zip")
@@ -58,8 +56,10 @@ def convert(path, destination='', upload=False, from_web_request=False):
                     i += 1
                 elif os.path.isfile(f) and (f.endswith(".nii") or path.endswith(".nii.gz")):
                     # zipped_file needs renaming for every file, otherwise slices from different series end up in one directory
-                    zipped_file = os.path.join(destination, f"converted2dicom_{i}.zip")
-                    nifti2dicom(f, zipped_file, upload, from_web_request, uids, i)
+                    zipped_file = os.path.join(
+                        destination, f"converted2dicom_{i}.zip")
+                    nifti2dicom(f, zipped_file, upload,
+                                from_web_request, uids, i)
                     i += 1
 
         # converts a single non dicom file to dicom
@@ -199,14 +199,9 @@ def save_dicom_file(ds, zipped_file):
         dicomized_filename = os.path.join(
             tmpdirname, f'converted_{str(uuid.uuid4())}.dcm')
         ds.save_as(dicomized_filename)
-        # get file out of temporary directory
-        for (root, dirs, files) in os.walk(tmpdirname):
-            for file in files:
-                # save/write converted file to zip
-                with ZipFile(zipped_file, 'a') as zip:
-                    file_path = os.path.join(root, file)
-                    zip.write(file_path, os.path.relpath(
-                        file_path, tmpdirname))
+        # save/write converted file to zip
+        with ZipFile(zipped_file, 'a') as zip:
+            zip.write(dicomized_filename, os.path.relpath(dicomized_filename, tmpdirname))
 
 
 # how to use convert2dicom:
