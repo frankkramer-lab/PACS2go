@@ -7,16 +7,18 @@ import zipfile
 
 
 app = Flask(__name__)
-app.secret_key = 'random string'
+app.secret_key = 'V$($ZTT9' # necessary for flash(), otherwise RunTimeError
 
 @app.route("/")
 def startpage():
+    # render start/home page
     title = "PACS2go"
     return render_template('startpage.html', title=title)
 
 
 @app.route("/pseudonymizer")
 def pseudonymization():
+    # render pseudonymizer template
     title = "Pseudonymizer"
     return render_template('pseudonymizer.html', title=title)
 
@@ -72,6 +74,7 @@ def pseudonymize_file():
 
 @app.route("/converter")
 def converter():
+    # render converter template
     title = "DICOM converter"
     return render_template('dicom-converter.html', title=title)
 
@@ -82,6 +85,7 @@ def convert_file():
         f = request.files['file']
         if f.filename != '':
             if not f.filename.endswith(".dcm"):
+                # use temp directory to open zip file
                 with TemporaryDirectory(dir="/") as tmpdirname:
                     if f.filename.endswith(".zip"):
                         # for converting a whole (zipped) directory

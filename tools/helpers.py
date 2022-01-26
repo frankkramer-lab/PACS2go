@@ -33,7 +33,7 @@ def save_dicom_file(ds, path, zipped_file, mode, counter=''):
     with TemporaryDirectory() as tmpdirname:
         # save dicom file in temporary directory before writing it to the zip file
         dicomized_filename = os.path.join(
-            tmpdirname, f'{mode}_{counter}_{os.path.splitext(os.path.basename(path))[0]}')
+            tmpdirname, f'{mode}_{counter}_{os.path.splitext(os.path.basename(path))[0]}.dcm')
         ds.save_as(dicomized_filename)
         # save/write converted file to zip
         with ZipFile(zipped_file, 'a') as zip:
