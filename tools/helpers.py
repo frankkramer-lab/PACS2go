@@ -33,7 +33,7 @@ def save_dicom_file(ds, path, zipped_file, mode, counter=''):
     with TemporaryDirectory() as tmpdirname:
         # save dicom file in temporary directory before writing it to the zip file
         dicomized_filename = os.path.join(
-            tmpdirname, f'{mode}_{counter}_{os.path.splitext(os.path.basename(path))[0]}.dcm')
+            tmpdirname, f'{mode}_{counter}_{os.path.basename(path).split(".")[0]}.dcm')
         ds.save_as(dicomized_filename)
         # save/write converted file to zip
         with ZipFile(zipped_file, 'a') as zip:
@@ -43,15 +43,15 @@ def save_dicom_file(ds, path, zipped_file, mode, counter=''):
 
 # creates new uids for dicom creation and returns them as a list
 def create_new_uids():
-        SOPClassUID = generate_uid()
-        SOPInstanceUID = generate_uid()
-        StudyInstanceUID = generate_uid()
-        SeriesInstanceUID = generate_uid()
-        PatientID = str(uuid.uuid4())
+    SOPClassUID = generate_uid()
+    SOPInstanceUID = generate_uid()
+    StudyInstanceUID = generate_uid()
+    SeriesInstanceUID = generate_uid()
+    PatientID = str(uuid.uuid4())
 
-        uids = [SOPClassUID, SOPInstanceUID,
-                StudyInstanceUID, SeriesInstanceUID, PatientID]
-        return uids
+    uids = [SOPClassUID, SOPInstanceUID,
+            StudyInstanceUID, SeriesInstanceUID, PatientID]
+    return uids
 
 
 # checks destination and re-sets it if necessary, returns destination
