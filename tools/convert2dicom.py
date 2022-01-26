@@ -1,4 +1,3 @@
-from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
 import pydicom
 from pydicom.dataset import Dataset
 from PIL import Image
@@ -6,9 +5,12 @@ import numpy
 import os
 from datetime import date
 import nibabel as nib
+
 # to import project functionalities
 import sys
 sys.path.append('./tools')
+from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
+
 
 
 # Conversion function for both directories and single files

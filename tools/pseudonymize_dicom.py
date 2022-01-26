@@ -1,4 +1,3 @@
-from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
 from tempfile import TemporaryDirectory
 from importlib_metadata import zipp
 import pydicom
@@ -10,6 +9,8 @@ from zipfile import ZipFile
 # to import project functionalities
 import sys
 sys.path.append('./tools')
+from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
+
 
 # pseudonymization function for both directories and single files
 def pseudonymize(path, destination='', upload=False, from_web_request=False):
@@ -136,7 +137,8 @@ def pseudonymize_file(path, uids, pseudonym, identity_headers, instance_index=0)
 
 
 # how to use pseudonymize_dicom:
-# single dcm file, no upload:
+# single dcm file, no upload: 
 # pseudonymize(path=r'/home/main/Desktop/pacs2go/pacs2go/test_data/1-001.dcm')
 # directory with dcm files, with upload to ORTHANC
 # pseudonymize(path=r'/home/main/Desktop/images/pseudo_test/CT THINS', upload=True)
+

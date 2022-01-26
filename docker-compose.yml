@@ -39,6 +39,7 @@ services:
       - 8000:80
     volumes:
       - ./web-service:/app
+      - ./tools:/app/tools
     environment:
       FLASK_ENV: development
     depends_on:
