@@ -1,11 +1,8 @@
 from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
-from tempfile import TemporaryDirectory
 import pydicom
 from pydicom.dataset import Dataset
-from pydicom.uid import generate_uid
 from PIL import Image
 import numpy
-import uuid
 import os
 from datetime import date
 import nibabel as nib
@@ -14,7 +11,7 @@ import sys
 sys.path.append('./tools')
 
 
-# Conversion function for both directories and single files, destination argument is optional
+# Conversion function for both directories and single files
 def convert(path, destination='', upload=False, from_web_request=False):
     # check if path string is legit
     if os.path.isdir(path) or os.path.isfile(path):
@@ -61,7 +58,7 @@ def convert(path, destination='', upload=False, from_web_request=False):
         raise Exception("invalid path")
 
 
-# jpeg/bmp/png conversion to dicom
+# jpeg/bmp/png handling for dicom conversion and saving/uploading the resulting dicom file
 def pilfile2dicom(filename, zipped_file, upload, from_web_request, uids, series_index=0):
     # Load image with Pillow
     img = Image.open(filename)
@@ -86,13 +83,14 @@ def pilfile2dicom(filename, zipped_file, upload, from_web_request, uids, series_
     # convert image data to dicom format
     ds = image2dicom(np_frame, image_properties, uids, series_index)
     if upload:
-        upload_to_orthanc(ds, filename, from_web_request)
+        upload_to_orthanc(ds, from_web_request)
     else:
         # write dicom data to zip
         save_dicom_file(ds, filename, zipped_file, "converted")
 
 
-# nifti conversion to dicom, based on: https://pycad.co/nifti2dicom/
+# nifti handling for dicom conversion, based on: https://pycad.co/nifti2dicom/
+# and saving/uploading resulting dicom files
 def nifti2dicom(filename, zipped_file, upload, from_web_request, uids, series_index=0):
     nifti_file = nib.load(filename)
     nifti_array = nifti_file.get_fdata()
@@ -108,14 +106,14 @@ def nifti2dicom(filename, zipped_file, upload, from_web_request, uids, series_in
         # convert slice data to dicom format
         ds = image2dicom(array, image_properties, uids, series_index, slice)
         if upload:
-            upload_to_orthanc(ds, filename, from_web_request)
+            upload_to_orthanc(ds, from_web_request)
         else:
             # save dicom data to destination
             # mode has extra slice parameter, so new dicom files aren't named the same
-            save_dicom_file(ds, filename, zipped_file, f"converted_{slice}")
+            save_dicom_file(ds, filename, zipped_file, "converted", str(slice))
 
 
-# converts and saves a non-dicom image file to dicom
+# converts a non-dicom image file to dicom and returns resulting dicom dataset
 # based on: https://github.com/jwitos/JPG-to-DICOM/blob/master/jpeg-to-dicom.py
 def image2dicom(array, image_properties, uids, series_index, instance_index=0):
     # Create DICOM from scratch

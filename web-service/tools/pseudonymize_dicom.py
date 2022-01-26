@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import sys
 sys.path.append('./tools')
 
-# pseudonymization function for both directories and single files, destination argument is optional
+# pseudonymization function for both directories and single files
 def pseudonymize(path, destination='', upload=False, from_web_request=False):
     if os.path.isdir(path) or os.path.isfile(path):
         # create new uids (original and pseudonymized version should not have the same uids -> OHIF and ORTHANC problems)
@@ -37,7 +37,7 @@ def pseudonymize(path, destination='', upload=False, from_web_request=False):
                     ds = pseudonymize_file(
                         f, uids, pseudonym, identity.keys(), i)
                     if upload:
-                        upload_to_orthanc(ds, path, from_web_request)
+                        upload_to_orthanc(ds, from_web_request)
                     else:
                         save_dicom_file(ds, f, zipped_file, "pseudonymized")
                     i += 1
@@ -48,7 +48,7 @@ def pseudonymize(path, destination='', upload=False, from_web_request=False):
             pseudonym = create_pseudonym(identity, zipped_file)
             ds = pseudonymize_file(path, uids, pseudonym, identity.keys())
             if upload:
-                upload_to_orthanc(ds, path, from_web_request)
+                upload_to_orthanc(ds, from_web_request)
             else:
                 save_dicom_file(ds, path, zipped_file, "pseudonymized")
         # returning the zip file is necessary for web-service, otherwise the zip was already saved in 'destination'
