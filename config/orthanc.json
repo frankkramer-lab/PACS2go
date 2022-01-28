@@ -3,10 +3,13 @@
         "RemoteAccessAllowed": true,
         "AuthenticationEnabled": true,
         "RegisteredUsers": {
-                "admin": "admin",
-                "tamara": "12345",
-                "test": "test",
-                "uploader": "pacs2go"
+                "admin": "D+<a=&nb+A4RKT)/",
+                "tamara": "=%(_v>p8F)n%u_2'",
+                "uploader": "pacs2go",
+                "user01": "Tgd!X'?']75V5A{r",
+                "user02": "xmYnL_wG93EbxGd%",
+                "user03": "B2V'=N~+_t^X6rNC",
+                "user04": "m:6('tyUHD8L{uZ'"
         },
         "StorageDirectory": "/var/lib/orthanc/db",
         "IndexDirectory": "/var/lib/orthanc/db",

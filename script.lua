@@ -3,7 +3,7 @@ function IncomingHttpRequestFilter(method, uri, ip, username, httpHeaders)
     -- extra: allow 'do lookup' in ORTHANC (/tools/find), as this kind of lookup is a post request, that does not alter data
     if method == 'GET' or string.find(uri,"/tools/find") ~= nil then 
         return true
-    elseif username == 'admin' or username == 'uploader' then
+    elseif username == 'admin' or username == 'uploader' or username == 'tamara' then
         return true
     else
         print("no access")
@@ -13,7 +13,7 @@ end
 
 
 function ReceivedInstanceFilter(dicom, origin, info)
-    -- Only allow incoming images if they are pseudonymized
+    -- Only allow incoming images if they are pseudonymized/anonymized
     if dicom.PatientIdentityRemoved == 'YES' then
         print("Identity is removed")
         return true

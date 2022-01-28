@@ -23,13 +23,13 @@ services:
     volumes:
       # persistent data
       - ./orthanc-db/:/var/lib/orthanc/db
-      # config
-      - ./config/orthanc.json:/etc/orthanc/orthanc.json:ro
+      # lua scripts
       - ./script.lua:/etc/orthanc/script.lua
-    command: /etc/orthanc/orthanc.json # Path to the configuration files 
+    secrets:
+      - orthanc.json
+    command: /run/secrets/ # config file (stored as secret)
     environment:
       - ORTHANC_NAME=PACS2go
-      - DW_ENABLED=true
       
   web:
     # https://mdsa3d.github.io/Tutorial-flask_gunicorn_nginx_docker-compose/
@@ -46,6 +46,10 @@ services:
       - orthanc
     # run the application
     command: gunicorn --bind 0.0.0.0:8000 --timeout 600 wsgi:app
+
+secrets:
+  orthanc.json:
+    file: ./config/orthanc.json
 
 
  
