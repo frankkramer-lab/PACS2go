@@ -11,11 +11,25 @@ body {
         background: rgba(255,255,255,0.31);
         height: 60px;
 }
-.navbar-light .navbar-brand {
+.my-navbar-brand{
         color: var(--bs-white);
+        font-size: 22px;
+        text-decoration: none;
 }
-.navbar-light .navbar-nav .nav-link {
+.my-navbar-brand:hover {
+        color: var(--bs-white);
+        text-decoration: none;
+        text-shadow: 0  0 15px #1b1b1b;
+}
+.my-nav-link {
         color: var(--bs-dark);
+        font-size: 18px;
+        text-decoration: none;
+        padding: 0 5px;
+}
+.my-nav-link:hover {
+        color: var(--bs-warning);
+        text-shadow: 0  0 15px #1b1b1b;
 }
 .my-row {
         padding: 15px 30px;
