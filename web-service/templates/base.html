@@ -6,29 +6,29 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
         <!-- CSS only -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href='/assets/style.css' rel="stylesheet">
 </head>
 
-<body style="background: linear-gradient(88deg, rgb(19,42,75), #b15c5c);">
-        <nav class="navbar navbar-light navbar-expand-md"
-                style="background: rgba(255,255,255,0.31);height: 60px;">
+<body>
+        <nav class="navbar navbar-light navbar-expand-md">
                 <div class="container">
                         <a class="navbar-brand" href="http://vm204-misit.informatik.uni-augsburg.de/web/"
-                                style="color: var(--bs-white);"><img src="../assets/uni-logo-for-web.png"
+                                ><img src="../assets/uni-logo-for-web.png"
                                         height="40px"></a>
-                        <a class="navbar-brand" href="http://vm204-misit.informatik.uni-augsburg.de/web/"
-                                style="color: var(--bs-white);"> PACS2go </a>
+                        <a class="navbar-brand" onmouseover="this.style.color='#d3d3d3'"
+                        onmouseout="this.style.color='white'" href="http://vm204-misit.informatik.uni-augsburg.de/web/"
+                                > PACS2go </a>
                         <div class="collapse navbar-collapse" id="navcol-1">
                                 <ul class="navbar-nav ms-auto">
                                         <li class="nav-item"><a class="nav-link"
-                                                        href="http://vm204-misit.informatik.uni-augsburg.de/"
-                                                        style="color: var(--bs-dark);">Viewer</a></li>
+                                                        href="http://vm204-misit.informatik.uni-augsburg.de/">Viewer</a></li>
                                         <li class="nav-item"><a class="nav-link"
                                                         href="http://vm204-misit.informatik.uni-augsburg.de/pacs-admin/"
-                                                        style="color: var(--bs-dark);">ORTHANC</a></li>
+                                                        >ORTHANC</a></li>
                                         <li class="nav-item"><a class="nav-link" href="pseudonymizer"
-                                                        style="color: var(--bs-dark);">Pseudonymizer</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="converter"
-                                                        style="color: var(--bs-dark);">Converter</a></li>
+                                                        >Pseudonymizer</a></li>
+                                        <li class="nav-item"><a class="nav-link " href="converter"
+                                                        ">Converter</a></li>
                                 </ul>
                         </div>
                 </div>
@@ -37,15 +37,15 @@
         <div class="container">
                 <div class="row">
                         <div class="col-md-12">
-                                <h1 class="display-3"
-                                        style="padding: 30px;font-size: 50px;color: var(--bs-white);padding-bottom: 20px;padding-top: 40px;">
-                                        {{ title }} </h1>
+                                <h1 class="display-3 page-title"> {{ title }} </h1>
                         </div>
                 </div>
         </div>
 
+        <!-- template content -->
         {% block content %}
         {% endblock %}
+
 
         <div class="container" style="padding: 30px;color: var(--bs-danger);">
                 {% with messages = get_flashed_messages() %}

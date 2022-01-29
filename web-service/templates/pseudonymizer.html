@@ -2,44 +2,41 @@
 
 {% block content %}
 
-<div class="container" style="padding: 0 40px;color: var(--bs-white);">
+<div class="container white-writing" style="padding: 0 40px;">
         <p>This tool is able to pseudonymize .dcm (DICOM) files.</p>
         <p>To pseudonymize a whole directory of DICOM images please upload it as a zip file.</p>
         <p>Please note that pixel data (burned-in information) and that vendor-specific tags (uneven DICOM group tag
                 number) may still be identifying.</p> <br>
 </div>
-<div class="container" style="padding: 0 40px">
+<div class="container">
         <form action="http://vm204-misit.informatik.uni-augsburg.de/web/pseudonymize_file" method="POST"
                 enctype="multipart/form-data">
-                <div class="row">
-                        <div class="container" style="color: var(--bs-white);">
-                                <p style="font-size: x-large;"> <b>Step 1:</b> Select a image file from local directory
+                <div class="row my-row">
+                        <div class="container steps">
+                                <p> <b>Step 1:</b> Select an image file from local directory
                                         ...<br></p>
                         </div>
                         <div class="col">
-                                <input class="form-control-lg" type="file" name="file" multiple=''
-                                        style="padding: 40px;color: var(--bs-yellow);" />
+                                <input class="form-control-lg file-input" type="file" name="file" multiple=''/>
                         </div>
                 </div>
 
-                <div class="row"  style="padding: 40px 0">
-                        <div class="container" style="color: var(--bs-white);">
-                                <p style="font-size: x-large;"> <b>Step 2:</b> Choose processing ...</p>
+                <div class="row my-row">
+                        <div class="container steps">
+                                <p> <b>Step 2:</b> Choose processing ...</p>
                         </div>
                         <div class="col">
                                 <input name="p"
-                                        class="btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center btn-xl"
+                                        class="btn process-btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center btn-xl"
                                         type="submit" role="button" onmouseover="this.style.background='#d3d3d3'"
                                         onmouseout="this.style.background='#eeeeee'"
-                                        style="width: 100%;height: 50px;font-size: 20px;border-width: 2px;text-align: center;border: none;"
                                         value="pseudonymize image">
                         </div>
                         <div class="col">
                                 <input name="p-and-u"
-                                        class="btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center btn-xl"
+                                        class="btn process-btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center btn-xl"
                                         onmouseover="this.style.background='#d3d3d3'"
                                         onmouseout="this.style.background='#eeeeee'" type="submit" role="button"
-                                        style="width: 100%;height: 50px;font-size: 20px;border-width: 2px;text-align: center; border: none;"
                                         value="pseudonymize image & upload to ORTHANC">
                         </div>
                 </div>

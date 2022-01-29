@@ -2,39 +2,37 @@
 
 {% block content %}
 
-<div class="container" style="padding:0 40px;color: var(--bs-white);">
-        <p >Image file format should be one of the following: .jpg, .png, .bmp, .nii(.gz) (NIfTI).</p>
+<div class="container white-writing" style="padding:0 40px;">
+        <p>Image file format should be one of the following: .jpg, .png, .bmp, .nii(.gz) (NIfTI).</p>
         <p>To convert a whole directory of medical images please upload it as a zip file.</p>
         <p>Please note that depending on the file size, conversion may take a while.  </p>  <br>
 
 </div>
-<div class="container" style="padding: 0 40px">
+<div class="container">
         <form action="http://vm204-misit.informatik.uni-augsburg.de/web/convert_file" method="POST" enctype="multipart/form-data">
-                <div class="row">
-                        <div class="container" style="color: var(--bs-white);">
-                                <p style="font-size: x-large;"> <b>Step 1:</b> Select a image file from local directory
-                                        ...<br></p>
+                <div class="row my-row">
+                        <div class="container steps">
+                                <p> <b>Step 1:</b> Select an image file from local directory ...<br></p>
                         </div>
                         <div class="col">
-                                <input class="form-control-lg" type="file" name="file" multiple=''
-                                        style="padding: 40px;color: var(--bs-yellow);" />
+                                <input class="form-control-lg file-input" type="file" name="file" multiple='' />
                         </div>
                 </div>
 
-                <div class="row"  style="padding: 40px 0">
-                        <div class="container" style="color: var(--bs-white);">
-                                <p style="font-size: x-large;"> <b>Step 2:</b> Choose processing ...</p>
+                <div class="row my-row">
+                        <div class="container steps">
+                                <p> <b>Step 2:</b> Choose processing ...</p>
                         </div>
                         <div class="col">
-                                <input name="c" class="btn btn-light d-md-flex d-lg-flex justify-content-md-center align-items-md-center justify-content-lg-center align-items-lg-center btn-xl" 
+                                <input name="c" class="btn process-btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center" 
                                 onmouseover="this.style.background='#d3d3d3'" onmouseout="this.style.background='#eeeeee'"
                                 type = "submit"  role="button" style="width: 100%;height: 50px;font-size: 20px;border-width: 2px;text-align: center; border: none;" value="convert image">
                         </div>
 
                         <div class="col">
-                                <input name="c-and-u" class="btn btn-light d-md-flex d-lg-flex justify-content-md-center align-items-md-center justify-content-lg-center align-items-lg-center btn-xl" 
+                                <input name="c-and-u" class="btn process-btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center" 
                                 onmouseover="this.style.background='#d3d3d3'" onmouseout="this.style.background='#eeeeee'"
-                                type = "submit"  role="button" style="width: 100%;height: 50px;font-size: 20px;border-width: 2px;text-align: center; border: none;" value="convert image & upload to ORTHANC">
+                                type = "submit"  role="button"  value="convert image & upload to ORTHANC">
                         </div>
                 </div>
         </form>
