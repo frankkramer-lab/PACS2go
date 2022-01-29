@@ -30,6 +30,7 @@ body {
         border-width: 2px;
         text-align: center;
         border: none;
+        margin-top: 15px;
 }
 .start-btn-big {
         width: 100%;
