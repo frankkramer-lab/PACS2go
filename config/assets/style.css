@@ -24,13 +24,17 @@ body {
         color: var(--bs-white);
 }
 .process-btn {
-        width: 100%;
+        width: 90%;
         height: 50px;
         font-size: 20px;
         border-width: 2px;
         text-align: center;
         border: none;
-        margin-top: 15px;
+        margin: 15px 30px 0;
+}
+.process-btn:hover {
+        background-color:#d3d3d3;
+        box-shadow: 0  0 15px #2e2e2e;
 }
 .start-btn-big {
         width: 100%;
