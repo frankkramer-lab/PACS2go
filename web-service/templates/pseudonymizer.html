@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container white-writing" style="padding: 0 40px;">
+        <p>This tool is able to pseudonymize .dcm (DICOM) files.</p>
+        <p>To pseudonymize a whole directory of DICOM images please upload it as a zip file.</p>
+        <p>Please note that pixel data (burned-in information) and that vendor-specific tags (uneven DICOM group tag
+                number) may still be identifying.</p> <br>
+</div>
+<div class="container">
+        <form action="http://vm204-misit.informatik.uni-augsburg.de/web/pseudonymize_file" method="POST"
+                enctype="multipart/form-data">
+                <div class="row my-row">
+                        <div class="container steps">
+                                <p> <b>Step 1:</b> Select an image file  or .zip file from local directory
+                                        ...<br></p>
+                        </div>
+                        <div class="col">
+                                <input class="form-control-lg file-input" type="file" name="file" multiple=''/>
+                        </div>
+                </div>
+
+                <div class="row my-row">
+                        <div class="container steps">
+                                <p> <b>Step 2:</b> Choose processing ...</p>
+                        </div>
+                        <div class="col">
+                                <input name="p"
+                                        class="process-btn btn  btn-light d-lg-flex justify-content-lg-center align-items-lg-center"
+                                        type="submit" role="button" 
+                                        value="pseudonymize image">
+                        </div>
+                        <div class="col">
+                                <input name="p-and-u"
+                                        class="process-btn btn btn-light d-lg-flex justify-content-lg-center align-items-lg-center" type="submit" role="button"
+                                        value="pseudonymize image & upload to ORTHANC">
+                        </div>
+                </div>
+        </form>
+</div>
+
+{% endblock %}

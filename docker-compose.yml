@@ -15,7 +15,7 @@ services:
       # OHIF Viewer configuration to reach DICOMWeb endpoints
       - ./config/viewer.js:/usr/share/nginx/html/app-config.js:ro
       # university logo
-      - ./config/assets/unia-logo.png:/usr/share/nginx/html/assets/unia-logo.png
+      - ./config/assets:/usr/share/nginx/html/assets
 
   orthanc:
     image: jodogne/orthanc-plugins:1.9.7
@@ -23,10 +23,33 @@ services:
     volumes:
       # persistent data
       - ./orthanc-db/:/var/lib/orthanc/db
-      # config
-      - ./config/orthanc.json:/etc/orthanc/orthanc.json:ro
+      # lua scripts
       - ./script.lua:/etc/orthanc/script.lua
-    command: /etc/orthanc/orthanc.json # Path to the configuration files 
+    secrets:
+      - orthanc.json
+    command: /run/secrets/ # config file (stored as secret)
     environment:
       - ORTHANC_NAME=PACS2go
-      - DW_ENABLED=true
+      
+  web:
+    # https://mdsa3d.github.io/Tutorial-flask_gunicorn_nginx_docker-compose/
+    container_name: web
+    build: ./web-service
+    ports:
+      - 8000:80
+    volumes:
+      - ./web-service:/app
+      - ./tools:/app/tools
+    environment:
+      FLASK_ENV: development
+    depends_on:
+      - orthanc
+    # run the application
+    command: gunicorn --bind 0.0.0.0:8000 --timeout 600 wsgi:app
+
+secrets:
+  orthanc.json:
+    file: ./config/orthanc.json
+
+
+ 
