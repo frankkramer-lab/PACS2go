@@ -40,8 +40,8 @@ To view the web service from which all resources can be navigated to, connect to
   - the pseudonym mapping is written to a .csv file whose destination can be chosen by the user
 - DICOM converter
   - converts different imaging formats to DICOM format
-  - handle: 
-    - a single file or a directory of multiple files
+  - handles: 
+    - single file or directory of multiple files
     - .jpeg, .png, .bmp, .nii(.gz)
 - an ORTHANC DICOM server instance 
 - an OHIF viewer
