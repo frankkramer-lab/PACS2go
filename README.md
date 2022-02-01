@@ -2,15 +2,15 @@
 
 ## Table of Contents
 
-- [General information](#general-info)
+- [General information](#general-information)
 - [Built with](#built-with)
 - [Features](#features)
 - [Getting Started](#getting-started)
-- [Status / Future Work](#status)
+- [Future Work](#future-work)
 
 
 
-## General Info
+## General Information
 
 This *Picture Archiving and Communication System* was designed and implemented in order to help researchers and medical staff manage medical images in a research context. After a quick and easy setup, the system is able to store DICOM images in an ORTHANC instance and lets the user examine them via the included OHIF viewer. Additional tools enable the user to convert non-DICOM imaging files &mdash; such as JPEG or NIfTI &mdash; to DICOM format and also make it possible to pseudonymize DICOM files. All of which can also be done through an intuitive web interface.
 
@@ -67,17 +67,17 @@ $ cd pacs2go
 $ docker-compose up
 ```
 
-The services should now run on your localhost at: http://localhost:80/ 
+The services should now run on your localhost at: http://localhost/ 
 
 More precisely:
 
-- web service: http://localhost:80/web
-- OHIF: http://localhost:80/
-- ORTHANC: http://localhost:80/pacs-admin 
+- web service: http://localhost/web
+- OHIF: http://localhost/
+- ORTHANC: http://localhost/pacs-admin 
 
 
 
-## Status / Future Work
+## Future Work
 
 - nginx addresses:
   - web-service should be http://localhost:80/ and OHIF should be http://localhost:80/ohif (makes more sense for navigation)
@@ -89,4 +89,4 @@ More precisely:
   - idea 1: Web Service Login Interface
     - currently uploads via the Pseudonymisation and Converter tools don't require a password &rarr; create a login interface for the entire web service
   - idea 2: Keycloak
-    - use keycloak as described here: https://docs.ohif.org/deployment/recipes/user-account-control.html
+    - use keycloak as described here: https://docs.ohif.org/deployment/recipes/user-account-control.html and eliminate ORTHANC's Registered Users (hard coded users)
