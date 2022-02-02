@@ -38,17 +38,19 @@ To view the web service from which all resources can be navigated to, connect to
 - Pseudonymisation
   - removes the identity from a DICOM file and replaces it with a pseudonym
   - the pseudonym mapping is written to a .csv file whose destination can be chosen by the user
+  - upload resulting files to ORTHANC or save them to a local directory
 - DICOM converter
   - converts different imaging formats to DICOM format
-  - handles: 
+  - input: 
     - single file or directory of multiple files
     - .jpeg, .png, .bmp, .nii(.gz)
-- an ORTHANC DICOM server instance 
-- an OHIF viewer
+  - upload resulting DICOM files to ORTHANC or save them to a local directory
+- ORTHANC DICOM server instance 
+- OHIF viewer
   - connected to ORTHANC's DICOMweb service &rarr; all images saved to ORTHANC can be viewed here
 - web service / web interface
   - navigation to all services
-  - web interface for Pseudonymisation and DICOM converter with integrated upload function
+  - web interface for Pseudonymisation and DICOM converter
 
 
 
@@ -67,7 +69,7 @@ $ cd pacs2go
 $ docker-compose up
 ```
 
-The services should now run on your localhost at: http://localhost/ 
+The services should now run on your http://localhost/.
 
 More precisely:
 
