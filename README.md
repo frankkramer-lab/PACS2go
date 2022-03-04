@@ -12,9 +12,9 @@
 
 ## General Information
 
-This *Picture Archiving and Communication System* is designed and implemented in order to help researchers and medical staff manage medical images in a research context. After a quick and easy setup, the system is able to store DICOM images in an ORTHANC instance and lets the user examine them via the included OHIF viewer. Additional tools enable the user to convert non-DICOM imaging files &mdash; such as JPEG or NIfTI &mdash; to DICOM format and also make it possible to pseudonymize DICOM files. All of which can also be done through an intuitive web interface.
+This *Picture Archiving and Communication System* is designed and implemented in order to support researchers and medical staff manage medical images in a research context. After a quick and easy setup, the system is able to store DICOM images in an ORTHANC instance and lets the user examine them via the included OHIF viewer. Additional tools enable the user to convert non-DICOM imaging files &mdash; such as JPEG or NIfTI &mdash; to DICOM format and also make it possible to pseudonymize DICOM files. Finally, an intuitive web interface allows access to all services.
 
-To view the web service from which all resources can be navigated to, connect to the Universität Augsburg VPN and visit http://vm204-misit.informatik.uni-augsburg.de/web  
+To access the web service, connect to the Universität Augsburg VPN and visit http://vm204-misit.informatik.uni-augsburg.de/web  
 
 
 
@@ -96,6 +96,9 @@ More precisely:
     - currently uploads via the Pseudonymisation and Converter tools don't require a password &rarr; create a login interface for the entire web service
   - idea 2: Keycloak
     - use keycloak as described here: https://docs.ohif.org/deployment/recipes/user-account-control.html and eliminate ORTHANC's Registered Users (hard coded users)
+- non-DICOM support:
+  - development of an alternative to store non-DICOM files without DICOM conversion
 - nginx addresses:
   - web-service should be http://localhost:80/ and OHIF should be http://localhost:80/ohif (makes more sense for navigation)
   - due to a problem described in a comment on issue #15, this is currently not possible
+
