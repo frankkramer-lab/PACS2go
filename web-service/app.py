@@ -27,48 +27,52 @@ def pseudonymization():
 def pseudonymize_file():
     if request.method == 'POST':
         f = request.files['file']
-        if f.filename.endswith(".dcm") or f.filename.endswith(".zip"):
-            with TemporaryDirectory(dir="/") as tmpdirname:
-                if f.filename.endswith(".dcm"):
-                    # handeling a single file
-                    path = os.path.join(tmpdirname, f.filename)
-                    f.save(path)
-                elif f.filename.endswith(".zip"):
-                    # handeling a zipped directory of DICOM files
-                    try:
-                        # extract zip file
-                        with zipfile.ZipFile(f) as z:
-                            z.extractall(tmpdirname)
-                            # where to find the to-be-pseudonymized directory
-                            path = os.path.join(tmpdirname, os.listdir(tmpdirname)[0])
-                    except:
-                        flash('ERROR: invalid file')
-                        return render_template('pseudonymizer.html', title="Pseudonymizer")
-                # actual pseudonymization in two possible modes
-                # normal mode
-                if 'p' in request.form:
-                    try:
-                        # user gets zipped pseudonym and pseudonymized file
-                        zip = pseudonymize(path,destination=tmpdirname)
-                        return send_file(zip)
-                    except:
-                        flash('Something went wrong. File could not be pseudonymized.')
-                        return render_template('pseudonymizer.html', title="Pseudonymizer")
-                # automized upload mode
-                if 'p-and-u' in request.form:
-                    try:
-                    # user gets zipped pseudonym
-                        zip = pseudonymize(path,destination=tmpdirname, upload=True, from_web_request=True)
-                        flash('Upload was successful.')
-                        return send_file(zip) 
-                    except:
-                        flash('Something went wrong. File could not be pseudonymized.')
-                        return render_template('pseudonymizer.html', title="Pseudonymizer")     
+        if f.filename != '':
+            if f.filename.endswith(".dcm") or f.filename.endswith(".zip"):
+                with TemporaryDirectory(dir="/") as tmpdirname:
+                    if f.filename.endswith(".dcm"):
+                        # handeling a single file
+                        path = os.path.join(tmpdirname, f.filename)
+                        f.save(path)
+                    elif f.filename.endswith(".zip"):
+                        # handeling a zipped directory of DICOM files
+                        try:
+                            # extract zip file
+                            with zipfile.ZipFile(f) as z:
+                                z.extractall(tmpdirname)
+                                # where to find the to-be-pseudonymized directory
+                                path = os.path.join(tmpdirname, os.listdir(tmpdirname)[0])
+                        except:
+                            flash('ERROR: invalid file')
+                            return render_template('pseudonymizer.html', title="Pseudonymizer")
+                    # actual pseudonymization in two possible modes
+                    # normal mode
+                    if 'p' in request.form:
+                        try:
+                            # user gets zipped pseudonym and pseudonymized file
+                            zip = pseudonymize(path,destination=tmpdirname)
+                            return send_file(zip)
+                        except:
+                            flash('Something went wrong. File could not be pseudonymized.')
+                            return render_template('pseudonymizer.html', title="Pseudonymizer")
+                    # automized upload mode
+                    if 'p-and-u' in request.form:
+                        try:
+                        # user gets zipped pseudonym
+                            zip = pseudonymize(path,destination=tmpdirname, upload=True, from_web_request=True)
+                            flash('Upload was successful.')
+                            return send_file(zip) 
+                        except:
+                            flash('Something went wrong. File could not be pseudonymized.')
+                            return render_template('pseudonymizer.html', title="Pseudonymizer")     
+            else:
+                # if no file or wrong format, re-render page and display message to user
+                flash('ERROR: Wrong file format. File needs to be in DICOM format. If you want to pseudonymize this file use our DICOM converter.')
+                return render_template('pseudonymizer.html', title="Pseudonymizer")
         else:
-            # if no file or wrong format, re-render page and display message to user
-            flash('ERROR: No file or wrong format. File needs to be in DICOM format. If you want to pseudonymize this file use our DICOM converter.')
+            # if no file was chosen, re-render page and display message to user
+            flash('ERROR: No file was chosen. Please select a file above.')
             return render_template('pseudonymizer.html', title="Pseudonymizer")
-
         
 
 
@@ -127,6 +131,6 @@ def convert_file():
                 return render_template('dicom-converter.html', title="DICOM converter")
         else:
              # if no file was chosen, re-render page and display message to user
-            flash('ERROR: No file was chosen')
+            flash('ERROR: No file was chosen. Please select a file above.')
             return render_template('dicom-converter.html', title="DICOM converter")
 
