@@ -31,9 +31,11 @@ def insert_file_into_project(name, filename):
 
 """ def show_jpeg():
         project = interface.select.project('test3')
-        files = project.resource('JPEG').files().first()
-        print(files.get())
-        image = Image.open(files.get())
+        file = project.resource('JPEG').files().first()
+        print(file.get())
+        image = Image.open(file.get())
  """
+
+
 # insert_file_into_project('test3', '/home/main/Desktop/pacs2go/pacs2go/test_data/pathology_images/Case-3-A15-25441-4885.jpg') # absoluten Pfad angeben!!
 # insert_file_into_project('test3', '/home/main/Desktop/pacs2go/pacs2go/test_data/example_1.json')
