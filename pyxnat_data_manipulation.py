@@ -1,3 +1,6 @@
+import os
+from tempfile import TemporaryDirectory
+import zipfile
 from pyxnat import Interface
 from PIL import Image
 import uuid
@@ -11,9 +14,8 @@ def create_project(interface,name):
 
 def delete_project(interface,name):
         project = interface.select.project(name)
-        if project.exists() == True:
+        if project.exists():
                 project.delete()
-
 
 def get_all_projects(interface):
         return interface.select.projects().get()
@@ -23,7 +25,16 @@ def get_project_subjects(interface,name):
         return interface.select.project(name).subjects().get()
 
 
-# TODO: upload zips
+def insert_zip_into_project(interface, project_name, file_path):
+        if zipfile.is_zipfile(file_path):
+                with TemporaryDirectory() as tempdir:
+                        with zipfile.ZipFile(file_path) as z:
+                                z.extractall(tempdir)
+                                dir_path = os.path.join(tempdir, os.listdir(tempdir)[0])
+                                for f in os.listdir(os.path.join(tempdir, os.listdir(tempdir)[0])): 
+                                        #TODO: create new dir for each upload ? currently jpegs are all uploaded to the xnat-dir(resource) 'JPEG' 
+                                        insert_file_into_project(interface, project_name, os.path.join(dir_path, f))
+                        
 
 def insert_file_into_project(interface, project_name, file_path):
         project = interface.select.project(project_name)
@@ -35,8 +46,8 @@ def insert_file_into_project(interface, project_name, file_path):
         if file_path.endswith('.nii'):
                 project.resource('NIFTI').file(file_id + '.nii').insert(file_path, content='image', format='NIFTI', tags='image nifti')
         # TODO: upload dicom with subject/experiment data structure 
-        if file_path.endswith('.dcm'):
-                project.resource('DICOM').file(file_id + '.dcm').insert(file_path, content='image', format='DICOM', tags='image dicom')
+        # if file_path.endswith('.dcm'):
+        #         project.resource('DICOM').file(file_id + '.dcm').insert(file_path, content='image', format='DICOM', tags='image dicom')
         return file_id
 
 
@@ -45,7 +56,7 @@ def remove_file_from_project(interface, project_name, file_name, resource_name):
         if file.exists():
                 file.delete()
 
-# TODO: remove resource from project
+# TODO: remove xnat-dir(resource) from project
                 
 """ 
 def show_jpeg():
