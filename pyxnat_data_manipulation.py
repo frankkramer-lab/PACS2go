@@ -17,6 +17,7 @@ def delete_project(interface,name):
         if project.exists():
                 project.delete()
 
+
 def get_all_projects(interface):
         return interface.select.projects().get()
 
