@@ -6,7 +6,7 @@ user = 'admin'
 password = 'admin'
 file = '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000000.dcm' # absoluten Pfad angeben!!
 zip_file = '/home/main/Desktop/pacs2go/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
-
+project_name = 'test'
 
 def test_create_delete_project(connection):
         project_name = uuid.uuid4()
@@ -22,7 +22,14 @@ def test_create_delete_project(connection):
                 print("Failed project creation.")
 
 
+def test_insert_zip_into_project(connection):
+        project_name = connection.get_all_projects()[0]
+        print(project_name)
+        connection.insert_zip_into_project(project_name, zip_file)
+        #TODO: show(retrieve) resource data from project -> interface functionality
+
 connection = XNAT(user, password)
-test_create_delete_project(connection)
+#test_create_delete_project(connection)
+#test_insert_zip_into_project(connection)
 #print(connection.get_all_projects())
 connection.free()
