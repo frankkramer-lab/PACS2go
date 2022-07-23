@@ -34,12 +34,14 @@ def test_insert_file_into_project(connection):
         connection.insert_file_into_project(project_name,file)
 
 def test_retrieve_file(connection):
-        file = connection.retrieve_file("test3", "DICOM", "hello.dcm")
+        file = connection.retrieve_file("test3", "2022-07-23-13-03-33", "bebd60bc-7d92-4c9c-8939-c3aa866d0ae2.jpeg")
         print(file)
 
 def test_retrieve_all_files_from_project_resource(connection):
-        files = connection.retrieve_all_files_from_project_resource("test3", "JPEG")
+        files = connection.retrieve_all_files_from_project_resource("test3", "2022-07-23-13-03-33")
         print(files)
+
+
 connection = XNAT(user, password)
 #test_create_delete_project(connection)
 #test_insert_zip_into_project(connection)
