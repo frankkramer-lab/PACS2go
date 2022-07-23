@@ -26,10 +26,25 @@ def test_insert_zip_into_project(connection):
         project_name = connection.get_all_projects()[0]
         print(project_name)
         connection.insert_zip_into_project(project_name, zip_file)
-        #TODO: show(retrieve) resource data from project -> interface functionality
+        #TODO: show(retrieve) resource data from project (here: print what's inside the project)-> interface functionality
 
+def test_insert_file_into_project(connection):
+        project_name = connection.get_all_projects()[0]
+        print(project_name)
+        connection.insert_file_into_project(project_name,file)
+
+def test_retrieve_file(connection):
+        file = connection.retrieve_file("test3", "DICOM", "hello.dcm")
+        print(file)
+
+def test_retrieve_all_files_from_project_resource(connection):
+        files = connection.retrieve_all_files_from_project_resource("test3", "JPEG")
+        print(files)
 connection = XNAT(user, password)
 #test_create_delete_project(connection)
 #test_insert_zip_into_project(connection)
+#test_insert_file_into_project(connection)
 #print(connection.get_all_projects())
+#test_retrieve_file(connection)
+#test_retrieve_all_files_from_project_resource(connection)
 connection.free()

@@ -57,7 +57,7 @@ class XNAT:
         # single file upload to given project
         def insert_file_into_project(self, project_name, file_path):
                 project = self.interface.select.project(project_name)
-                file_id = str(uuid.uuid4())
+                file_id = str(uuid.uuid4()) # file names are unique, duplicate file names can not be inserted
                 if file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
                         project.resource('JPEG').file(file_id + '.jpeg').insert(file_path, content='image', format='JPEG', tags='image jpeg')
                 if file_path.endswith('.json'):
@@ -69,11 +69,27 @@ class XNAT:
                         project.resource('DICOM').file(file_id + '.dcm').insert(file_path, content='image', format='DICOM', tags='image dicom')
                 return file_id
 
+
         # remove a file from a given project resource
-        def remove_file_from_project(interface, project_name, file_name, resource_name):
-                file = interface.select.project(project_name).resource(resource_name).file(file_name)
+        def remove_file_from_project(self, project_name, file_name, resource_name):
+                file = self.interface.select.project(project_name).resource(resource_name).file(file_name)
                 if file.exists():
                         file.delete()
 
 
+        #---------------------------------------#
+        #           XNAT file retrieval         #
+        #---------------------------------------#
+        def retrieve_file(self, project_name, resource_name, file_name):
+                file = self.interface.select.project(project_name).resource(resource_name).file(file_name)
+                return file
     
+        def retrieve_all_files_from_project_resource(self, project_name, resource_name):
+                file_names = self.interface.select.project(project_name).resource(resource_name).files().get()
+                files = []
+                for f in file_names:
+                        file = self.retrieve_file(project_name, resource_name, f)
+                        files.append(file)
+                print(files)
+
+                
