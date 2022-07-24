@@ -1,3 +1,4 @@
+import resource
 from pyxnat import Interface
 from xnat_data_interface import XNAT
 import uuid
@@ -35,18 +36,31 @@ def test_insert_file_into_project(connection):
 
 def test_retrieve_file(connection):
         file = connection.retrieve_file("test3", "2022-07-23-13-03-33", "bebd60bc-7d92-4c9c-8939-c3aa866d0ae2.jpeg")
-        print(file)
+        print(file.id())       
 
 def test_retrieve_all_files_from_project_resource(connection):
         files = connection.retrieve_all_files_from_project_resource("test3", "2022-07-23-13-03-33")
         print(files)
+
+def test_remove_file_from_project(connection):
+        file_id = connection.insert_file_into_project(project_name, file, "2022-07-23-13-03-33")
+        print(connection.get_all_resources_from_project(project_name))
+        print(len(connection.retrieve_all_files_from_project_resource(project_name, "2022-07-23-13-03-33")))
+        connection.remove_file_from_project(project_name, "2022-07-23-13-03-33", file_id)
+        print(len(connection.retrieve_all_files_from_project_resource(project_name, "2022-07-23-13-03-33")))
+
+def test_remove_resource_dir(connection):
+        connection.remove_resource_from_project("test3","2022-07-24-18-41-10")
+        print(connection.get_all_resources_from_project('test3'))
 
 
 connection = XNAT(user, password)
 #test_create_delete_project(connection)
 #test_insert_zip_into_project(connection)
 #test_insert_file_into_project(connection)
-#print(connection.get_all_projects())
+print(connection.get_all_projects())
+#test_remove_resource_dir(connection)
 #test_retrieve_file(connection)
 #test_retrieve_all_files_from_project_resource(connection)
+test_remove_file_from_project(connection)
 connection.free()
