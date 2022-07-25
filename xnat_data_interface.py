@@ -33,17 +33,6 @@ class XNAT:
         def get_project(self, name):
                 return self.interface.select.project(name)
 
-        # create new project with identifier 'name'
-        def create_project(self,name):
-                project = self.interface.select.project(name)
-                if project.exists() != True:
-                        project.create()
-
-        # delete project with identifier 'name'
-        def delete_project(self,name):
-                project = self.interface.select.project(name)
-                if project.exists():
-                        project.delete()
 
         #---------------------------------------#
         #    XNAT files insertion/deletion      #
@@ -123,7 +112,18 @@ class XNAT:
 class XNATProject:
         def __init__(self, connection, name):
                 project = connection.get_project(name)
+                if project.exists() != True:
+                        project.create()
                 self.name = project.id()
-                self.owners = project.owners()
                 self.description = project.description()
+                self.owners = project.owners()
                 self.your_user_role = project.user_role(connection.user)
+                self.connection = connection
+
+
+        # delete project
+        def delete_project(self):
+                project = self.connection.get_project(self.name)
+                if project.exists():
+                        project.delete()
+        

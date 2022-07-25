@@ -11,10 +11,10 @@ project_name = 'test'
 
 def test_create_delete_project(connection):
         project_name = uuid.uuid4()
-        connection.create_project(project_name)
+        project = XNATProject(connection, project_name)
         if str(project_name) in connection.get_all_projects():
                 print('Successful project creation.' + ' All projects: ' + str(connection.get_all_projects()))
-                connection.delete_project(str(project_name))
+                project.delete_project()
                 if not str(project_name) in connection.get_all_projects():
                         print('Successful project deletion.' + ' Remaining projects: ' + str(connection.get_all_projects()))
                 else:
@@ -64,6 +64,5 @@ connection = XNAT(user, password)
 #test_retrieve_all_files_from_project_resource(connection)
 #test_remove_file_from_project(connection)
 #print(connection.get_project("test").user_role('admin'))
-project = XNATProject(connection, project_name)
-print(project.your_user_role)
+
 connection.free()
