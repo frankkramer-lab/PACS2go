@@ -56,7 +56,7 @@ def test_remove_resource_dir(connection):
 
 with XNAT(user, password) as connection:
         #test_create_delete_project(connection)
-        #test_insert_zip_into_project(connection)
+        test_insert_zip_into_project(connection)
         #test_insert_file_into_project(connection)
         #print(connection.get_all_projects())
         #test_remove_resource_dir(connection)
@@ -65,6 +65,6 @@ with XNAT(user, password) as connection:
         #test_remove_file_from_project(connection)
         #print(connection.get_project("test").user_role('admin'))
         project = XNATProject(connection, project_name)
-        print(project.get_resources()[0].files())
+        #print(project.get_resources()[0].files().get())
 
 

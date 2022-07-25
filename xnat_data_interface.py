@@ -107,8 +107,12 @@ class XNATProject:
                                 with zipfile.ZipFile(file_path) as z:
                                         z.extractall(tempdir)
                                         dir_path = os.path.join(tempdir, os.listdir(tempdir)[0])
-                                        for f in os.listdir(os.path.join(tempdir, os.listdir(tempdir)[0])):                 
-                                                self.insert_file_into_project(os.path.join(dir_path, f), resource_name)
+                                        # get all files, even those within a lower-level directory
+                                        onlyfiles = []
+                                        for (dirpath, dirnames, filenames) in os.walk(dir_path):
+                                                onlyfiles.extend(filenames)
+                                        for f in onlyfiles:  
+                                              self.insert_file_into_project(os.path.join(dir_path, f), resource_name)
 
         # single file upload to given project
         def insert_file_into_project(self, file_path, resource_name=''):
@@ -131,3 +135,5 @@ class XNATProject:
                         file_id = file_id + '.dcm'
                         project.resource(resource_name).file(file_id).insert(file_path, content='image', format='DICOM', tags='image dicom')
                 return file_id
+
+        
