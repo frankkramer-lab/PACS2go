@@ -28,6 +28,9 @@ class XNAT:
         # get list of project identifiers       
         def get_all_projects(self):
                 return self.interface.select.projects().get()
+        
+        def get_project(self, name):
+                return self.interface.select.project(name)
 
         # create new project with identifier 'name'
         def create_project(self,name):
@@ -115,4 +118,11 @@ class XNAT:
                         files.append(file)
                 return files
 
-                
+
+class XNATProject:
+        def __init__(self, connection, name):
+                project = connection.get_project(name)
+                self.name = project.id()
+                self.owners = project.owners()
+                self.description = project.description()
+                #self.your_user_role = project.user_role(connection._user)
