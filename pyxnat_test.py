@@ -1,6 +1,6 @@
 import resource
 from pyxnat import Interface
-from xnat_data_interface import XNAT
+from xnat_data_interface import XNAT, XNATProject
 import uuid
 
 user = 'admin'
@@ -64,4 +64,6 @@ connection = XNAT(user, password)
 #test_retrieve_all_files_from_project_resource(connection)
 #test_remove_file_from_project(connection)
 #print(connection.get_project("test").user_role('admin'))
+project = XNATProject(connection, project_name)
+print(project.your_user_role)
 connection.free()

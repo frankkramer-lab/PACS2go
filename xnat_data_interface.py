@@ -15,6 +15,7 @@ class XNAT:
                 self.interface = Interface(server='http://vm204-misit.informatik.uni-augsburg.de',
                           user=username,
                           password=password)
+                self.user = self.interface._user
 
         # disconnect from xnat server to quit session
         def free(self):
@@ -125,4 +126,4 @@ class XNATProject:
                 self.name = project.id()
                 self.owners = project.owners()
                 self.description = project.description()
-                #self.your_user_role = project.user_role(connection._user)
+                self.your_user_role = project.user_role(connection.user)
