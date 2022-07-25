@@ -45,12 +45,6 @@ class XNAT:
                 if file.exists():
                         file.delete()
 
-        # remove a resource dir from a project
-        def remove_resource_from_project(self, project_name, resource_name):
-                resource = self.interface.select.project(project_name).resource(resource_name)
-                if resource.exists():
-                        resource.delete()
-
         #---------------------------------------#
         #           XNAT file retrieval         #
         #---------------------------------------#
@@ -59,15 +53,6 @@ class XNAT:
                 file = self.interface.select.project(project_name).resource(resource_name).file(file_name)
                 return file
     
-        # get all files from one resource
-        def retrieve_all_files_from_project_resource(self, project_name, resource_name):
-                file_names = self.interface.select.project(project_name).resource(resource_name).files().get()
-                files = []
-                for f in file_names:
-                        file = self.retrieve_file(project_name, resource_name, f)
-                        files.append(file)
-                return files
-
 
 #---------------------------------------------#
 #       XNAT Project interface class          #
@@ -89,6 +74,11 @@ class XNATProject:
                 if project.exists():
                         project.delete()
         
+        # get resource from project
+        def get_resource(self, resource_name):
+                project = self.connection.get_project(self.name)
+                return project.resource(resource_name)
+
         # get list of project resource objects 
         def get_resources(self):
                 project = self.connection.get_project(self.name)
@@ -136,4 +126,27 @@ class XNATProject:
                         project.resource(resource_name).file(file_id).insert(file_path, content='image', format='DICOM', tags='image dicom')
                 return file_id
 
-        
+
+class XNATResource:
+        def __init__(self, project, name):
+                resource = project.get_resource(name)
+                self.id = resource.id()
+                self.name = resource.label()
+                self.number_of_files = len(resource.files().fetchall())
+                self.project = project
+
+        # get all files from resource
+        def get_all_files(self):
+                resource = self.project.get_resource(self.name)
+                file_names = resource.files().fetchall()
+                files = []
+                for f in file_names:
+                        file = resource.file(f)
+                        files.append(file)
+                return files
+
+        # remove a resource dir from a project
+        def remove_resource(self):
+                resource = self.project.get_resource(self.name)
+                if resource.exists():
+                        resource.delete()

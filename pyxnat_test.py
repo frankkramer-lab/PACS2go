@@ -1,6 +1,6 @@
 import resource
 from pyxnat import Interface
-from xnat_data_interface import XNAT, XNATProject
+from xnat_data_interface import XNAT, XNATProject, XNATResource
 import uuid
 
 user = 'admin'
@@ -50,21 +50,26 @@ def test_remove_file_from_project(connection):
         print(len(connection.retrieve_all_files_from_project_resource(project_name, "2022-07-23-13-03-33")))
 
 def test_remove_resource_dir(connection):
-        connection.remove_resource_from_project("test3","2022-07-24-18-41-10")
-        print(connection.get_all_resources_from_project('test3'))
+        project = XNATProject(connection, project_name)
+        resource_name = uuid.uuid4()
+        resource = XNATResource(project, "2022-07-24-19-02-10")
+        print(len(project.get_resources()))
+        resource.remove_resource()
+        print(len(project.get_resources()))
 
 
 with XNAT(user, password) as connection:
         #test_create_delete_project(connection)
-        test_insert_zip_into_project(connection)
+        #test_insert_zip_into_project(connection)
         #test_insert_file_into_project(connection)
         #print(connection.get_all_projects())
-        #test_remove_resource_dir(connection)
+        test_remove_resource_dir(connection)
         #test_retrieve_file(connection)
         #test_retrieve_all_files_from_project_resource(connection)
         #test_remove_file_from_project(connection)
         #print(connection.get_project("test").user_role('admin'))
         project = XNATProject(connection, project_name)
-        #print(project.get_resources()[0].files().get())
+        resource = XNATResource(project, "2022-07-24-19-02-10")
+        #print(resource.retrieve_all_files_from_project_resource())
 
 
