@@ -7,6 +7,7 @@ user = 'admin'
 password = 'admin'
 file = '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000000.dcm' # absoluten Pfad angeben!!
 zip_file = '/home/main/Desktop/pacs2go/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
+zip_file_2 = '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images.zip'
 project_name = 'test'
 
 def test_create_delete_project(connection):
@@ -26,7 +27,7 @@ def test_create_delete_project(connection):
 def test_insert_zip_into_project(connection):
         project = XNATProject(connection, project_name)
         print(project.name)
-        project.insert_zip_into_project(zip_file)
+        project.insert_zip_into_project(zip_file_2)
 
 def test_insert_file_into_project(connection):
         project = XNATProject(connection, project_name)
@@ -53,18 +54,17 @@ def test_remove_resource_dir(connection):
         print(connection.get_all_resources_from_project('test3'))
 
 
-connection = XNAT(user, password)
-#test_create_delete_project(connection)
-test_insert_zip_into_project(connection)
-#test_insert_file_into_project(connection)
-#print(connection.get_all_projects())
-#test_remove_resource_dir(connection)
-#test_retrieve_file(connection)
-#test_retrieve_all_files_from_project_resource(connection)
-#test_remove_file_from_project(connection)
-#print(connection.get_project("test").user_role('admin'))
-project = XNATProject(connection, project_name)
-print(project.get_resources())
+with XNAT(user, password) as connection:
+        #test_create_delete_project(connection)
+        #test_insert_zip_into_project(connection)
+        #test_insert_file_into_project(connection)
+        #print(connection.get_all_projects())
+        #test_remove_resource_dir(connection)
+        #test_retrieve_file(connection)
+        #test_retrieve_all_files_from_project_resource(connection)
+        #test_remove_file_from_project(connection)
+        #print(connection.get_project("test").user_role('admin'))
+        project = XNATProject(connection, project_name)
+        print(project.get_resources()[0].files())
 
 
-connection.free()

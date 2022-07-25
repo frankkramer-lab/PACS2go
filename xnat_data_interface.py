@@ -17,11 +17,13 @@ class XNAT:
                           password=password)
                 self.user = self.interface._user
 
-        # disconnect from xnat server to quit session
-        def free(self):
+        def __enter__(self):
+                return self
+
+        def __exit__(self, type, value, traceback):
+                # disconnect from xnat server to quit session
                 self.interface.disconnect()
                 print("successful disconnect from server")
-
 
         #---------------------------------------#
         #      XNAT Projects data retrieval     #
