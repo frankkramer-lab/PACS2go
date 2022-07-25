@@ -64,5 +64,8 @@ connection = XNAT(user, password)
 #test_retrieve_all_files_from_project_resource(connection)
 #test_remove_file_from_project(connection)
 #print(connection.get_project("test").user_role('admin'))
+project = XNATProject(connection, project_name)
+print(project.get_resources())
+
 
 connection.free()

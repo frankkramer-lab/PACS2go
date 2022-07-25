@@ -85,14 +85,6 @@ class XNAT:
         #---------------------------------------#
         #           XNAT file retrieval         #
         #---------------------------------------#
-        # get list of project resource objects 
-        def get_all_resources_from_project(self, project_name):
-                resource_ids = self.interface.select.project(project_name).resources().fetchall()
-                resources = []
-                for r in resource_ids:
-                        resource = self.interface.select.project(project_name).resource(r)
-                        resources.append(resource)
-                return resources
 
         # get single file
         def retrieve_file(self, project_name, resource_name, file_name):
@@ -109,6 +101,9 @@ class XNAT:
                 return files
 
 
+#---------------------------------------------#
+#       XNAT Project interface class          #
+#---------------------------------------------#
 class XNATProject:
         def __init__(self, connection, name):
                 project = connection.get_project(name)
@@ -120,10 +115,18 @@ class XNATProject:
                 self.your_user_role = project.user_role(connection.user)
                 self.connection = connection
 
-
         # delete project
         def delete_project(self):
                 project = self.connection.get_project(self.name)
                 if project.exists():
                         project.delete()
         
+        # get list of project resource objects 
+        def get_resources(self):
+                project = self.connection.get_project(self.name)
+                resource_ids = project.resources().fetchall()
+                resources = []
+                for r in resource_ids:
+                        resource = project.resource(r)
+                        resources.append(resource)
+                return resources
