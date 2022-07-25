@@ -24,15 +24,14 @@ def test_create_delete_project(connection):
 
 
 def test_insert_zip_into_project(connection):
-        project_name = connection.get_all_projects()[0]
-        print(project_name)
-        connection.insert_zip_into_project(project_name, zip_file)
-        #TODO: show(retrieve) resource data from project (here: print what's inside the project)-> interface functionality
+        project = XNATProject(connection, project_name)
+        print(project.name)
+        project.insert_zip_into_project(zip_file)
 
 def test_insert_file_into_project(connection):
-        project_name = connection.get_all_projects()[0]
-        print(project_name)
-        connection.insert_file_into_project(project_name,file)
+        project = XNATProject(connection, project_name)
+        print(project.name)
+        project.insert_file_into_project(file)
 
 def test_retrieve_file(connection):
         file = connection.retrieve_file("test3", "2022-07-23-13-03-33", "bebd60bc-7d92-4c9c-8939-c3aa866d0ae2.jpeg")
@@ -56,7 +55,7 @@ def test_remove_resource_dir(connection):
 
 connection = XNAT(user, password)
 #test_create_delete_project(connection)
-#test_insert_zip_into_project(connection)
+test_insert_zip_into_project(connection)
 #test_insert_file_into_project(connection)
 #print(connection.get_all_projects())
 #test_remove_resource_dir(connection)
