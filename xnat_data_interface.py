@@ -32,26 +32,17 @@ class XNAT:
         def get_all_projects(self):
                 return self.interface.select.projects().get()
         
+        # get single project
         def get_project(self, name):
                 return self.interface.select.project(name)
 
+        # get single resource
+        def get_resource(self, project_name, resource_name):
+                return self.interface.select.project(project_name).resource(resource_name)
 
-        #---------------------------------------#
-        #    XNAT files insertion/deletion      #
-        #---------------------------------------#
-        # remove a file from a given project resource
-        def remove_file_from_project(self, project_name, resource_name, file_name):
-                file = self.interface.select.project(project_name).resource(resource_name).file(file_name)
-                if file.exists():
-                        file.delete()
-
-        #---------------------------------------#
-        #           XNAT file retrieval         #
-        #---------------------------------------#
         # get single file
         def retrieve_file(self, project_name, resource_name, file_name):
-                file = self.interface.select.project(project_name).resource(resource_name).file(file_name)
-                return file
+                return self.interface.select.project(project_name).resource(resource_name).file(file_name)
     
 
 #---------------------------------------------#
@@ -124,6 +115,7 @@ class XNATProject:
                 if file_path.endswith('.dcm'):
                         file_id = file_id + '.dcm'
                         project.resource(resource_name).file(file_id).insert(file_path, content='image', format='DICOM', tags='image dicom')
+                # return XNATFile(resource_name,fle_path)
                 return file_id
 
 
@@ -145,8 +137,28 @@ class XNATResource:
                         files.append(file)
                 return files
 
+        def get_file(self, file_name):
+                resource = self.project.get_resource(self.name)
+                return resource.file(file_name)
+
         # remove a resource dir from a project
         def remove_resource(self):
                 resource = self.project.get_resource(self.name)
                 if resource.exists():
                         resource.delete()
+
+
+class XNATFile:
+        def __init__(self,resource,file_name):
+                file = resource.get_file(file_name)
+                self.resource = resource
+                self.format = file.format()
+                self.size = file.size()
+                self.name = file.id()
+
+        # delete file
+        def delete_file(self):
+                file = self.resource.get_file(self.name)
+                if file.exists():
+                        file.delete()
+
