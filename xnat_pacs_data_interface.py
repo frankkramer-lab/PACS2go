@@ -4,18 +4,20 @@ from tempfile import TemporaryDirectory
 import zipfile
 from pyxnat import Interface
 import uuid
+from pacs_data_interface import Connection, Project, Directory, File
 
 
 #---------------------------------------------#
 #          XNAT data interface class          #
 #---------------------------------------------#
-class XNAT:
+class XNAT(Connection):
         def __init__(self, username, password):
                 # connect to xnat server
                 self.interface = Interface(server='http://vm204-misit.informatik.uni-augsburg.de',
                           user=username,
                           password=password)
                 self.user = self.interface._user
+                self._projects = self.get_all_projects()
 
         def __enter__(self):
                 return self
@@ -50,14 +52,14 @@ class XNAT:
 #---------------------------------------------#
 class XNATProject:
         def __init__(self, connection, name):
-                project = connection.get_project(name)
+                self.connection = connection
+                project = self.connection.get_project(name)
                 if project.exists() != True:
                         project.create()
                 self.name = project.id()
                 self.description = project.description()
                 self.owners = project.owners()
                 self.your_user_role = project.user_role(connection.user)
-                self.connection = connection
 
         # delete project
         def delete_project(self):
@@ -121,7 +123,8 @@ class XNATProject:
 
 class XNATResource:
         def __init__(self, project, name):
-                resource = project.get_resource(name)
+                #resource = project.get_resource(name)
+                resource = project.connection.interface.select.project(project.name).resource(name)
                 self.id = resource.id()
                 self.name = resource.label()
                 self.number_of_files = len(resource.files().fetchall())
@@ -148,17 +151,23 @@ class XNATResource:
                         resource.delete()
 
 
-class XNATFile:
+class XNATFile(File):
         def __init__(self,resource,file_name):
-                file = resource.get_file(file_name)
-                self.resource = resource
-                self.format = file.format()
-                self.size = file.size()
-                self.name = file.id()
+                super().__init__(directory=resource,name=file_name)
+                self._xnat_file_object = resource.get_file(file_name)
+
+        def format(self):
+                self._xnat_file_object.format()
+
+        def size(self):
+                self._xnat_file_object.size()
+
+        def data(self):
+                self._xnat_file_object.size().get()
 
         # delete file
         def delete_file(self):
-                file = self.resource.get_file(self.name)
+                file = self.xnat_file_object
                 if file.exists():
                         file.delete()
 

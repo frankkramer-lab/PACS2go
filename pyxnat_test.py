@@ -1,6 +1,6 @@
 import resource
 from pyxnat import Interface
-from xnat_data_interface import XNAT, XNATFile, XNATProject, XNATResource
+from xnat_pacs_data_interface import XNAT, XNATFile, XNATProject, XNATResource
 import uuid
 
 user = 'admin'
@@ -63,6 +63,7 @@ with XNAT(user, password) as connection:
         #test_insert_zip_into_project(connection)
         #test_insert_file_into_project(connection)
         #print(connection.get_all_projects())
+        #print(connection.get_project(project_name).attrs())
         #test_remove_resource_dir(connection)
         #test_retrieve_file(connection)
         #test_retrieve_all_files_from_project_resource(connection)
@@ -70,7 +71,9 @@ with XNAT(user, password) as connection:
         #print(connection.get_project("test").user_role('admin'))
         project = XNATProject(connection, project_name)
         resource = XNATResource(project, "2022-07-25-15-38-06")
+        #print(resource.name)
         file = XNATFile(resource, "a06551bd-c9fe-4f20-b1dc-40c2d96c6d94.dcm")
-        print(file.__dir__())
+        print(file._xnat_file_object.get())
+        #print(file.__dir__())
 
 
