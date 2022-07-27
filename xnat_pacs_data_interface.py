@@ -52,11 +52,11 @@ class XNAT(Connection):
 #---------------------------------------------#
 class XNATProject(Project):
         def __init__(self, connection, name):
-                super().__init__(connection, name)
-                project = self.connection.get_project(name)
+                project = connection.interface.select.project(name)
                 if project.exists() != True:
                         project.create()
                 self._xnat_project_object = project
+                super().__init__(connection, name)
 
         @property
         def description(self):
@@ -132,9 +132,10 @@ class XNATProject(Project):
 
 
 class XNATResource(Directory):
-        def __init__(self, project, name):
+        def __init__(self, project:XNATProject, name):
+                project = project.connection.interface.select.project(project.name)
+                self._xnat_resource_object = project.resource(name)
                 super().__init__(project, name)
-                self._xnat_resource_object = project.get_resource(name)
 
         # remove a resource dir from a project
         def delete_directory(self):
@@ -158,9 +159,9 @@ class XNATResource(Directory):
 
 
 class XNATFile(File):
-        def __init__(self,resource,file_name):
+        def __init__(self,resource:XNATResource,file_name):
+                self._xnat_file_object = resource._xnat_resource_object.file(file_name)
                 super().__init__(directory=resource,name=file_name)
-                self._xnat_file_object = resource.get_file(file_name)
 
         @property
         def format(self):
@@ -169,10 +170,10 @@ class XNATFile(File):
         @property
         def size(self):
                 return self._xnat_file_object.size()
-                
+
         @property
         def data(self):
-                return self._xnat_file_object.size().get()
+                return self._xnat_file_object.get()
 
         # delete file
         def delete_file(self):

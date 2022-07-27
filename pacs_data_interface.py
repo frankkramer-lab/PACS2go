@@ -56,6 +56,7 @@ class Project(ABC):
         def insert_zip_into_project(self, file_path):
                 pass
         
+        @abstractmethod
         def insert_file_into_project(self, file_path):
                 pass
         
