@@ -17,7 +17,7 @@ class XNAT(Connection):
                           user=username,
                           password=password)
                 self.user = self.interface._user
-                self._projects = self.get_all_projects()
+                super().__init__()
 
         def __enter__(self):
                 return self
@@ -30,21 +30,18 @@ class XNAT(Connection):
         #---------------------------------------#
         #      XNAT Projects data retrieval     #
         #---------------------------------------#
-        # get list of project identifiers       
-        def get_all_projects(self):
-                return self.interface.select.projects().get()
-        
         # get single project
         def get_project(self, name):
-                return self.interface.select.project(name)
+                return XNATProject(self,name)
 
-        # get single resource
-        def get_resource(self, project_name, resource_name):
-                return self.interface.select.project(project_name).resource(resource_name)
-
-        # get single file
-        def retrieve_file(self, project_name, resource_name, file_name):
-                return self.interface.select.project(project_name).resource(resource_name).file(file_name)
+        # get list of project identifiers       
+        def get_all_projects(self):
+                project_names = self.interface.select.projects().fetchall()
+                projects = []
+                for p in project_names:
+                        project = self.get_project(p)
+                        projects.append(project)
+                return projects
     
 
 #---------------------------------------------#
@@ -73,22 +70,21 @@ class XNATProject(Project):
 
         # delete project
         def delete_project(self):
-                project = self.connection.get_project(self.name)
+                project = self._xnat_project_object
                 if project.exists():
                         project.delete()
         
         # get resource from project
         def get_directory(self, resource_name):
-                project = self.connection.get_project(self.name)
-                return project.resource(resource_name)
+                return XNATResource(self, resource_name)
 
         # get list of project resource objects 
         def get_all_directories(self):
-                project = self.connection.get_project(self.name)
+                project = self._xnat_project_object
                 resource_ids = project.resources().fetchall()
                 resources = []
                 for r in resource_ids:
-                        resource = project.resource(r)
+                        resource = self.get_directory(r)
                         resources.append(resource)
                 return resources
 
@@ -144,8 +140,7 @@ class XNATResource(Directory):
                         resource.delete()
         
         def get_file(self, file_name):
-                resource = self._xnat_resource_object
-                return resource.file(file_name)
+                return XNATFile(self, file_name)
 
         # get all files from resource
         def get_all_files(self):
@@ -153,7 +148,7 @@ class XNATResource(Directory):
                 file_names = resource.files().fetchall()
                 files = []
                 for f in file_names:
-                        file = resource.file(f)
+                        file = self.get_file(f)
                         files.append(file)
                 return files
 

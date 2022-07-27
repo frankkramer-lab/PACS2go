@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, abstractproperty
 
 class Connection(ABC):
-        def __init__(self, username, password):
+        def __init__(self, username='', password=''):
                 self._projects = self.get_all_projects()
 
         @abstractmethod
