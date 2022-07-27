@@ -71,6 +71,7 @@ with XNAT(user, password) as connection:
         #print(connection.get_project("test").user_role('admin'))
         project = XNATProject(connection, project_name)
         resource = XNATResource(project, "2022-07-25-15-38-06")
+        print(resource.id, resource.name)
         #print(resource.name)
         file = XNATFile(resource, "a06551bd-c9fe-4f20-b1dc-40c2d96c6d94.dcm")
         print(file._xnat_file_object.get())

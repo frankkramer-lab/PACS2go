@@ -26,7 +26,19 @@ class Project(ABC):
         def __init__(self, connection, name):
                 self.connection = connection
                 self.name = name
-                self.get_directories = self.get_all_directories()
+                self._directories = self.get_all_directories()
+
+        @abstractproperty
+        def description(self):
+                pass
+
+        @abstractproperty
+        def owners(self):
+                pass
+
+        @abstractproperty
+        def your_user_role(self):
+                pass
 
         @abstractmethod
         def delete_project(self):

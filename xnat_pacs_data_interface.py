@@ -50,16 +50,26 @@ class XNAT(Connection):
 #---------------------------------------------#
 #       XNAT Project interface class          #
 #---------------------------------------------#
-class XNATProject:
+class XNATProject(Project):
         def __init__(self, connection, name):
-                self.connection = connection
+                super().__init__(connection, name)
                 project = self.connection.get_project(name)
                 if project.exists() != True:
                         project.create()
-                self.name = project.id()
-                self.description = project.description()
-                self.owners = project.owners()
-                self.your_user_role = project.user_role(connection.user)
+                self._xnat_project_object = project
+
+        @property
+        def description(self):
+                return self._xnat_project_object.description()
+
+        @property
+        def owners(self):
+                return self._xnat_project_object.owners()
+
+        @property
+        def your_user_role(self):
+                return self._xnat_project_object.user_role(self.connection.user)
+
 
         # delete project
         def delete_project(self):
@@ -68,12 +78,12 @@ class XNATProject:
                         project.delete()
         
         # get resource from project
-        def get_resource(self, resource_name):
+        def get_directory(self, resource_name):
                 project = self.connection.get_project(self.name)
                 return project.resource(resource_name)
 
         # get list of project resource objects 
-        def get_resources(self):
+        def get_all_directories(self):
                 project = self.connection.get_project(self.name)
                 resource_ids = project.resources().fetchall()
                 resources = []
@@ -121,18 +131,24 @@ class XNATProject:
                 return file_id
 
 
-class XNATResource:
+class XNATResource(Directory):
         def __init__(self, project, name):
-                #resource = project.get_resource(name)
-                resource = project.connection.interface.select.project(project.name).resource(name)
-                self.id = resource.id()
-                self.name = resource.label()
-                self.number_of_files = len(resource.files().fetchall())
-                self.project = project
+                super().__init__(project, name)
+                self._xnat_resource_object = project.get_resource(name)
+
+        # remove a resource dir from a project
+        def delete_directory(self):
+                resource = self._xnat_resource_object
+                if resource.exists():
+                        resource.delete()
+        
+        def get_file(self, file_name):
+                resource = self._xnat_resource_object
+                return resource.file(file_name)
 
         # get all files from resource
         def get_all_files(self):
-                resource = self.project.get_resource(self.name)
+                resource = self._xnat_resource_object
                 file_names = resource.files().fetchall()
                 files = []
                 for f in file_names:
@@ -140,30 +156,23 @@ class XNATResource:
                         files.append(file)
                 return files
 
-        def get_file(self, file_name):
-                resource = self.project.get_resource(self.name)
-                return resource.file(file_name)
-
-        # remove a resource dir from a project
-        def remove_resource(self):
-                resource = self.project.get_resource(self.name)
-                if resource.exists():
-                        resource.delete()
-
 
 class XNATFile(File):
         def __init__(self,resource,file_name):
                 super().__init__(directory=resource,name=file_name)
                 self._xnat_file_object = resource.get_file(file_name)
 
+        @property
         def format(self):
-                self._xnat_file_object.format()
+                return self._xnat_file_object.format()
 
+        @property
         def size(self):
-                self._xnat_file_object.size()
-
+                return self._xnat_file_object.size()
+                
+        @property
         def data(self):
-                self._xnat_file_object.size().get()
+                return self._xnat_file_object.size().get()
 
         # delete file
         def delete_file(self):
