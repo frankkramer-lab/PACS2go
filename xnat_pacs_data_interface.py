@@ -68,7 +68,6 @@ class XNATProject(Project):
         return self._xnat_project_object.user_role(self.connection.user)
 
     # delete project
-
     def delete_project(self):
         project = self._xnat_project_object
         if project.exists():
@@ -81,9 +80,11 @@ class XNATProject(Project):
     # get list of project resource objects
     def get_all_directories(self):
         project = self._xnat_project_object
-        resource_ids = project.resources().fetchall()
+        resource_names = []
+        for r in project.resources():
+            resource_names.append(r.label())
         resources = []
-        for r in resource_ids:
+        for r in resource_names:
             resource = self.get_directory(r)
             resources.append(resource)
         return resources
@@ -103,10 +104,11 @@ class XNATProject(Project):
                     for f in onlyfiles:
                         self.insert_file_into_project(
                             os.path.join(dir_path, f), resource_name)
+        return resource_name
 
     # single file upload to given project
     def insert_file_into_project(self, file_path, resource_name=''):
-        project = self.connection.get_project(self.name)
+        project = self._xnat_project_object
         # file names are unique, duplicate file names can not be inserted
         file_id = str(uuid.uuid4())
         if resource_name == '':
