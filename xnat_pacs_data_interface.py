@@ -172,11 +172,13 @@ class XNATFile(File):
 
     @property
     def size(self):
-        return self._xnat_file_object.size()
+        return int(self._xnat_file_object.size())
 
     @property
     def data(self):
-        return self._xnat_file_object.get()
+        # retrieve data to a temporary directory
+        with TemporaryDirectory() as tempdir:
+            return self._xnat_file_object.get_copy(tempdir + self.name)
 
     # delete file
     def delete_file(self):

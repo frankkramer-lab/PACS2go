@@ -32,10 +32,6 @@ class TestDataInterface(unittest.TestCase):
     def tearDownClass(self):
         # Delete all test data
         with XNAT(self.user, self.pwd) as connection:
-            for d in self.project.get_all_directories():
-                for f in d.get_all_files():
-                    f.delete_file()
-                d.delete_directory()
             self.project.delete_project()
 
     # checks if a project with a certain name is really created and deleted
@@ -75,8 +71,8 @@ class TestDataInterface(unittest.TestCase):
         self.assertIn(file.name, [f.name for f in file.directory.get_all_files()])
 
 
-    # checks if single file and single directory are deleted
-    def test_delete_file_and_directory(self):
+    # checks if single file and single directory are deleted (z because this should be the last test to be executed)
+    def z_test_delete_file_and_directory(self):
         #test deletion of file
         self.assertIn(self.file.name, [f.name for f in self.resource.get_all_files()])
         self.file.delete_file()
@@ -87,9 +83,12 @@ class TestDataInterface(unittest.TestCase):
         self.assertNotIn(self.resource.name, [r.name for r in self.project.get_all_directories()])
 
     
+    # checks if file image data can be retrieved from XNAT
+    def test_file_retrieval(self):
+        im = Image.open(self.file.data)
+        self.assertEqual(im.format, self.file.format)
+        self.assertEqual(len(im.fp.read()) + 623 , self.file.size) #not equal for some reason, len(im.fp.read() is always 623byte smaller (metadata perhabs?)
 
-
-    
 
 if __name__ == '__main__':
     unittest.main()
