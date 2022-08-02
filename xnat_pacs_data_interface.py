@@ -104,7 +104,7 @@ class XNATProject(Project):
                     for f in onlyfiles:
                         self.insert_file_into_project(
                             os.path.join(dir_path, f), resource_name)
-        return resource_name
+        return XNATResource(self, resource_name)
 
     # single file upload to given project
     def insert_file_into_project(self, file_path, resource_name=''):
@@ -132,7 +132,7 @@ class XNATProject(Project):
             project.resource(resource_name).file(file_id).insert(
                 file_path, content='image', format='DICOM', tags='image dicom')
         # return XNATFile(resource_name,fle_path)
-        return file_id
+        return XNATFile(XNATResource(self, resource_name), file_id)
 
 
 class XNATResource(Directory):
@@ -180,6 +180,6 @@ class XNATFile(File):
 
     # delete file
     def delete_file(self):
-        file = self.xnat_file_object
+        file = self._xnat_file_object
         if file.exists():
             file.delete()
