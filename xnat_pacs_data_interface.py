@@ -73,25 +73,25 @@ class XNATProject(Project):
         if project.exists():
             project.delete()
 
-    # get resource from project
-    def get_directory(self, resource_name):
-        return XNATResource(self, resource_name)
+    # get directory from project
+    def get_directory(self, directory_name):
+        return XNATDirectory(self, directory_name)
 
-    # get list of project resource objects
+    # get list of project directory objects
     def get_all_directories(self):
         project = self._xnat_project_object
-        resource_names = []
-        for r in project.resources():
-            resource_names.append(r.label())
-        resources = []
-        for r in resource_names:
-            resource = self.get_directory(r)
-            resources.append(resource)
-        return resources
+        directory_names = []
+        for r in project.directories():
+            directory_names.append(r.label())
+        directories = []
+        for r in directory_names:
+            directory = self.get_directory(r)
+            directories.append(directory)
+        return directories
 
     # extract zip data and feed it to insert_file_project for file upload to a given project
     def insert_zip_into_project(self, file_path):
-        resource_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         if zipfile.is_zipfile(file_path):
             with TemporaryDirectory() as tempdir:
                 with zipfile.ZipFile(file_path) as z:
@@ -103,57 +103,56 @@ class XNATProject(Project):
                         onlyfiles.extend(filenames)
                     for f in onlyfiles:
                         self.insert_file_into_project(
-                            os.path.join(dir_path, f), resource_name)
-        return XNATResource(self, resource_name)
+                            os.path.join(dir_path, f), directory_name)
+        return XNATDirectory(self, directory_name)
 
     # single file upload to given project
-    def insert_file_into_project(self, file_path, resource_name=''):
+    def insert_file_into_project(self, file_path, directory_name=''):
         project = self._xnat_project_object
         # file names are unique, duplicate file names can not be inserted
         file_id = str(uuid.uuid4())
-        if resource_name == '':
-            # if no xnat resource directory is given, a new resource with the current timestamp is created
-            resource_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        if directory_name == '':
+            # if no xnat resource directory is given, a new directory with the current timestamp is created
+            directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         if file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
             file_id = file_id + '.jpeg'
-            project.resource(resource_name).file(file_id).insert(
+            project.directory(directory_name).file(file_id).insert(
                 file_path, content='image', format='JPEG', tags='image jpeg')
         if file_path.endswith('.json'):
             file_id = file_id + '.json'
-            project.resource(resource_name).file(file_id).insert(
+            project.directory(directory_name).file(file_id).insert(
                 file_path, content='metadata', format='JSON', tags='metadata')
         if file_path.endswith('.nii'):
             file_id = file_id + '.nii'
-            project.resource(resource_name).file(file_id).insert(
+            project.directory(directory_name).file(file_id).insert(
                 file_path, content='image', format='NIFTI', tags='image nifti')
         # TODO: upload dicom with subject/experiment data structure
         if file_path.endswith('.dcm'):
             file_id = file_id + '.dcm'
-            project.resource(resource_name).file(file_id).insert(
+            project.directory(directory_name).file(file_id).insert(
                 file_path, content='image', format='DICOM', tags='image dicom')
-        # return XNATFile(resource_name,fle_path)
-        return XNATFile(XNATResource(self, resource_name), file_id)
+        return XNATFile(XNATDirectory(self, directory_name), file_id)
 
 
-class XNATResource(Directory):
+class XNATDirectory(Directory):
     def __init__(self, project: XNATProject, name):
         project = project.connection.interface.select.project(project.name)
-        self._xnat_resource_object = project.resource(name)
+        self._xnat_resource_object = project.directory(name)
         super().__init__(project, name)
 
-    # remove a resource dir from a project
+    # remove a XNAT resource directory from a project
     def delete_directory(self):
-        resource = self._xnat_resource_object
-        if resource.exists():
-            resource.delete()
+        directory = self._xnat_resource_object
+        if directory.exists():
+            directory.delete()
 
     def get_file(self, file_name):
         return XNATFile(self, file_name)
 
-    # get all files from resource
+    # get all files from directory
     def get_all_files(self):
-        resource = self._xnat_resource_object
-        file_names = resource.files().fetchall()
+        directory = self._xnat_resource_object
+        file_names = directory.files().fetchall()
         files = []
         for f in file_names:
             file = self.get_file(f)
@@ -162,9 +161,9 @@ class XNATResource(Directory):
 
 
 class XNATFile(File):
-    def __init__(self, resource: XNATResource, file_name):
-        self._xnat_file_object = resource._xnat_resource_object.file(file_name)
-        super().__init__(directory=resource, name=file_name)
+    def __init__(self, directory: XNATDirectory, file_name):
+        self._xnat_file_object = directory._xnat_resource_object.file(file_name)
+        super().__init__(directory=directory, name=file_name)
 
     @property
     def format(self):
