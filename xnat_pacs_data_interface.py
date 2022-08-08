@@ -3,8 +3,8 @@ import os
 from tempfile import TemporaryDirectory
 import zipfile
 from django.db import DatabaseError
-from pyxnat import Interface # type: ignore
-from pyxnat.core.errors import DatabaseError # type: ignore
+from pyxnat import Interface  # type: ignore
+from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
 from pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Optional, Sequence
@@ -25,9 +25,7 @@ class XNAT(Connection):
             self.interface.manage.users()
         except DatabaseError:
             # raised if wrong username or password was entered
-            raise IOError("Wrong user credentials!")
-
-        
+            raise Exception("Wrong user credentials!")
 
     @property
     def user(self) -> str:
@@ -92,6 +90,8 @@ class XNATProject(Project):
         project = self._xnat_project_object
         if project.exists():
             project.delete()
+        else:
+            raise Exception("Project does not exist/has already been deleted.")
 
     # get directory from project
     def get_directory(self, directory_name: str) -> 'XNATDirectory':
@@ -113,10 +113,10 @@ class XNATProject(Project):
             return directories
 
     # extract zip data and feed it to insert_file_project for file upload to a given project
-    def insert_zip_into_project(self, file_path: str, directory_name: str ='') -> 'XNATDirectory':
-        if directory_name == '':
-            directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '') -> 'XNATDirectory':
         if zipfile.is_zipfile(file_path):
+            if directory_name == '':
+                directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             with TemporaryDirectory() as tempdir:
                 with zipfile.ZipFile(file_path) as z:
                     z.extractall(tempdir)
@@ -128,34 +128,41 @@ class XNATProject(Project):
                     for f in onlyfiles:
                         self.insert_file_into_project(
                             os.path.join(dir_path, f), directory_name)
-        return XNATDirectory(self, directory_name)
+            return XNATDirectory(self, directory_name)
+        else:
+            raise Exception("The input is not a zipfile.")
 
     # single file upload to given project
-    def insert_file_into_project(self, file_path: str, directory_name: str ='') -> 'XNATFile':
-        project = self._xnat_project_object
-        # file names are unique, duplicate file names can not be inserted
-        file_id = str(uuid.uuid4())
-        if directory_name == '':
-            # if no xnat resource directory is given, a new directory with the current timestamp is created
-            directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        if file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
-            file_id = file_id + '.jpeg'
-            project.resource(directory_name).file(file_id).insert(
-                file_path, content='image', format='JPEG', tags='image jpeg')
-        if file_path.endswith('.json'):
-            file_id = file_id + '.json'
-            project.resource(directory_name).file(file_id).insert(
-                file_path, content='metadata', format='JSON', tags='metadata')
-        if file_path.endswith('.nii'):
-            file_id = file_id + '.nii'
-            project.resource(directory_name).file(file_id).insert(
-                file_path, content='image', format='NIFTI', tags='image nifti')
-        # TODO: upload dicom with subject/experiment data structure
-        if file_path.endswith('.dcm'):
-            file_id = file_id + '.dcm'
-            project.resource(directory_name).file(file_id).insert(
-                file_path, content='image', format='DICOM', tags='image dicom')
-        return XNATFile(XNATDirectory(self, directory_name), file_id)
+    def insert_file_into_project(self, file_path: str, directory_name: str = '') -> 'XNATFile':
+        if os.path.exists(file_path):
+            project = self._xnat_project_object
+            # file names are unique, duplicate file names can not be inserted
+            file_id = str(uuid.uuid4())
+            if directory_name == '':
+                # if no xnat resource directory is given, a new directory with the current timestamp is created
+                directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            if file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
+                file_id = file_id + '.jpeg'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='image', format='JPEG', tags='image jpeg')
+            elif file_path.endswith('.json'):
+                file_id = file_id + '.json'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='metadata', format='JSON', tags='metadata')
+            elif file_path.endswith('.nii'):
+                file_id = file_id + '.nii'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='image', format='NIFTI', tags='image nifti')
+            # TODO: upload dicom with subject/experiment data structure
+            elif file_path.endswith('.dcm'):
+                file_id = file_id + '.dcm'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='image', format='DICOM', tags='image dicom')
+            else:
+                raise Exception("This file type is not supported.")
+            return XNATFile(XNATDirectory(self, directory_name), file_id)
+        else:
+            raise Exception("The input is not a file.")
 
 
 class XNATDirectory(Directory):
@@ -169,6 +176,9 @@ class XNATDirectory(Directory):
         directory = self._xnat_resource_object
         if directory.exists():
             directory.delete()
+        else:
+            raise Exception(
+                "Directory does not exist/has already been deleted.")
 
     def get_file(self, file_name: str) -> 'XNATFile':
         return XNATFile(self, file_name)
@@ -201,11 +211,16 @@ class XNATFile(File):
     @property
     def data(self) -> str:
         # retrieve data to a temporary directory
-        with TemporaryDirectory() as tempdir:
-            return self._xnat_file_object.get_copy(tempdir + self.name)
+        if self._xnat_file_object.exists():
+            with TemporaryDirectory() as tempdir:
+                return self._xnat_file_object.get_copy(tempdir + self.name)
+        else:
+            raise Exception("File data does not exist/ has been deleted.")
 
     # delete file
     def delete_file(self) -> None:
         file = self._xnat_file_object
         if file.exists():
             file.delete()
+        else:
+            raise Exception("File does not exist/has already been deleted.")

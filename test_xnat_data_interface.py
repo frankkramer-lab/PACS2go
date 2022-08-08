@@ -6,7 +6,7 @@ from xnat_pacs_data_interface import XNAT, XNATFile, XNATProject, XNATDirectory
 import uuid
 from PIL import Image
 import pyxnat
-from pyxnat.core.errors import DatabaseError
+
 
 class TestConnection(unittest.TestCase):
     user = 'admin'
@@ -16,18 +16,19 @@ class TestConnection(unittest.TestCase):
 
     def test_connection_correct_input(self):
         with XNAT(self.user, self.pwd) as connection:
-            self.assertTrue(type(connection.interface) == pyxnat.core.interfaces.Interface)
+            self.assertTrue(type(connection.interface) ==
+                            pyxnat.core.interfaces.Interface)
             self.assertEqual(self.user, connection.interface._user)
 
     def test_connection_wrong_input(self):
-        with self.assertRaises(IOError):
+        with self.assertRaises(Exception):
             with XNAT(self.wrong_user, self.wrong_pwd) as connection:
-                print("This should not be visible, because username and password are wrong")
-
+                print(
+                    "This should not be visible, because username and password are wrong")
 
 
 class TestDataInterface(unittest.TestCase):
-    file_path = '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000000.dcm'
+    file_path = '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000102.dcm'
     zip_file_setup = '/home/main/Desktop/pacs2go/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
     zip_file_test = '/home/main/Desktop/pacs2go/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
     user = 'admin'
@@ -51,7 +52,8 @@ class TestDataInterface(unittest.TestCase):
             self.to_be_deleted_project = XNATProject(connection, uuid.uuid4())
             self.to_be_deleted_directory = self.project.insert_zip_into_project(
                 self.zip_file_setup)
-            self.to_be_deleted_file = self.project.insert_file_into_project(self.file_path)
+            self.to_be_deleted_file = self.project.insert_file_into_project(
+                self.file_path)
             # name of a project to test create functionality, stored centrally to ensure deletion after test
             self.to_be_created_project_name = uuid.uuid4()
 
@@ -81,21 +83,34 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(
             len_before - 1, len(self.connection.get_all_projects()))
 
+    def test_double_delete_project(self):
+        p = XNATProject(self.connection, uuid.uuid4())
+        p.delete_project()
+        with self.assertRaisesRegex(Exception, "Project does not exist/has already been deleted."):
+            p.delete_project()
+
     def test_insert_zip(self):
         # checks if correct number of files was uploaded and if a new directory was created
         len_before = len(self.project.get_all_directories())
         with ZipFile(self.zip_file_test) as zipfile:
             number_of_files_before = len(zipfile.namelist())
         start_time = time.time()
-        directory = self.project.insert_zip_into_project(self.zip_file_test, 'test_data')
+        directory = self.project.insert_zip_into_project(
+            self.zip_file_test, 'test_data')
         end_time = time.time()
         duration = end_time - start_time
         print("Duration of zip upload: " + str(duration))
-        self.assertEqual(len_before + 1, len(self.project.get_all_directories()))
+        self.assertEqual(
+            len_before + 1, len(self.project.get_all_directories()))
         self.assertIn(directory.name, [
                       r.name for r in self.project.get_all_directories()])
         self.assertEqual(number_of_files_before,
                          len(directory.get_all_files()))
+
+    def test_insert_invalid_zip(self):
+        # checks if a non-zip file raises an excpetion when one tries to upload it as a zip
+        with self.assertRaises(Exception):
+            self.project.insert_zip_into_project(self.file_path, 'test_data_2')
 
     def test_insert_file(self):
         # checks if upload of single file with and without specified directory is successful
@@ -110,12 +125,30 @@ class TestDataInterface(unittest.TestCase):
         self.assertIn(
             file.name, [f.name for f in file.directory.get_all_files()])
 
+    def test_insert_unsupported_file(self):
+        # checks if unsupported files are handeled correctly -> exception is raised
+        with self.assertRaisesRegex(Exception, "This file type is not supported."):
+            self.project.insert_file_into_project(
+                "/home/main/Desktop/pacs2go/pacs2go/test_data/103.bmp")
+
+    def test_insert_invalid_file(self):
+        # checks if something that is not a file raises an exception
+        with self.assertRaisesRegex(Exception, "The input is not a file."):
+            self.project.insert_file_into_project("hello")
+
     def test_file_retrieval(self):
         # checks if file image data can be retrieved from XNAT
         im = Image.open(self.file.data)
         self.assertEqual(im.format, self.file.format)
         # not equal for some reason, len(im.fp.read() is always 623byte smaller (metadata perhabs?)
         self.assertEqual(len(im.fp.read()) + 623, self.file.size)
+
+    def test_file_retrieval_of_deleted_file(self):
+        f = file = self.project.insert_file_into_project(
+            '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000334.dcm', 'test_data_3')
+        f.delete_file()
+        with self.assertRaises(Exception):
+            f.data
 
     def test_delete_file(self):
         # checks if single file is deleted from directory
@@ -126,6 +159,13 @@ class TestDataInterface(unittest.TestCase):
         self.assertNotIn(file.name, [
                          f.name for f in file.directory.get_all_files()])
 
+    def test_double_delete_file(self):
+        file = self.project.insert_file_into_project(
+            '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000334.dcm', 'test_data_4')
+        file.delete_file()
+        with self.assertRaisesRegex(Exception, "File does not exist/has already been deleted."):
+            file.delete_file()
+
     def test_delete_diretory(self):
         # check if single directory is deleted from project
         self.assertIn(self.to_be_deleted_directory.name, [
@@ -133,6 +173,14 @@ class TestDataInterface(unittest.TestCase):
         self.to_be_deleted_directory.delete_directory()
         self.assertNotIn(self.to_be_deleted_directory.name, [
                          r.name for r in self.project.get_all_directories()])
+
+    def test_double_delete_directory(self):
+        file = self.project.insert_file_into_project(
+            '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000334.dcm', 'test_data_5')
+        d = file.directory
+        d.delete_directory()
+        with self.assertRaisesRegex(Exception, "Directory does not exist/has already been deleted."):
+            d.delete_directory()
 
 
 if __name__ == '__main__':
