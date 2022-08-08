@@ -1,9 +1,29 @@
 import time
 import unittest
 from zipfile import ZipFile
+from django.db import DatabaseError
 from xnat_pacs_data_interface import XNAT, XNATFile, XNATProject, XNATDirectory
 import uuid
 from PIL import Image
+import pyxnat
+from pyxnat.core.errors import DatabaseError
+
+class TestConnection(unittest.TestCase):
+    user = 'admin'
+    pwd = 'admin'
+    wrong_user = 'a'
+    wrong_pwd = 'a'
+
+    def test_connection_correct_input(self):
+        with XNAT(self.user, self.pwd) as connection:
+            self.assertTrue(type(connection.interface) == pyxnat.core.interfaces.Interface)
+            self.assertEqual(self.user, connection.interface._user)
+
+    def test_connection_wrong_input(self):
+        with self.assertRaises(IOError):
+            with XNAT(self.wrong_user, self.wrong_pwd) as connection:
+                print("This should not be visible, because username and password are wrong")
+
 
 
 class TestDataInterface(unittest.TestCase):
@@ -67,7 +87,7 @@ class TestDataInterface(unittest.TestCase):
         with ZipFile(self.zip_file_test) as zipfile:
             number_of_files_before = len(zipfile.namelist())
         start_time = time.time()
-        directory = self.project.insert_zip_into_project(self.zip_file_test)
+        directory = self.project.insert_zip_into_project(self.zip_file_test, 'test_data')
         end_time = time.time()
         duration = end_time - start_time
         print("Duration of zip upload: " + str(duration))

@@ -2,7 +2,9 @@ import datetime
 import os
 from tempfile import TemporaryDirectory
 import zipfile
+from django.db import DatabaseError
 from pyxnat import Interface # type: ignore
+from pyxnat.core.errors import DatabaseError # type: ignore
 import uuid
 from pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Optional, Sequence
@@ -18,6 +20,14 @@ class XNAT(Connection):
                                    user=username,
                                    password=password)
         super().__init__()
+        try:
+            # try to access usernames to check if connect was successfull
+            self.interface.manage.users()
+        except DatabaseError:
+            # raised if wrong username or password was entered
+            raise IOError("Wrong user credentials!")
+
+        
 
     @property
     def user(self) -> str:
@@ -28,8 +38,12 @@ class XNAT(Connection):
 
     def __exit__(self, type, value, traceback) -> None:
         # disconnect from xnat server to quit session
-        self.interface.disconnect()
-        print("Successful disconnect from server!")
+        try:
+            self.interface.disconnect()
+            print("Successful disconnect from server!")
+        except DatabaseError:
+            # this is the case if the connection was not possible in the first place
+            print("No disconnect possible.")
 
     #---------------------------------------#
     #      XNAT Projects data retrieval     #
@@ -99,8 +113,9 @@ class XNATProject(Project):
             return directories
 
     # extract zip data and feed it to insert_file_project for file upload to a given project
-    def insert_zip_into_project(self, file_path: str) -> 'XNATDirectory':
-        directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    def insert_zip_into_project(self, file_path: str, directory_name: str ='') -> 'XNATDirectory':
+        if directory_name == '':
+            directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         if zipfile.is_zipfile(file_path):
             with TemporaryDirectory() as tempdir:
                 with zipfile.ZipFile(file_path) as z:
