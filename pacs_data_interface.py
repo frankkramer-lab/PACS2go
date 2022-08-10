@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Optional, List, Any, Sequence
+from typing import Optional, List, Any, Sequence, Union
 
 
 class Connection(ABC):
@@ -58,11 +58,7 @@ class Project(ABC):
         pass
 
     @abstractmethod
-    def insert_zip_into_project(self, file_path: str) -> 'Directory':
-        pass
-
-    @abstractmethod
-    def insert_file_into_project(self, file_path: str) -> 'File':
+    def insert(self, file_path: str) -> Union['Directory', 'File']:
         pass
 
 
