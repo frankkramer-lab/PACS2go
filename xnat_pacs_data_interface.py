@@ -1,3 +1,4 @@
+from ctypes import Union
 import datetime
 import os
 from tempfile import TemporaryDirectory
@@ -7,7 +8,7 @@ from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
 from pacs_data_interface import Connection, Project, Directory, File
-from typing import List, Optional, Sequence
+from typing import List, Sequence, Union
 
 
 #---------------------------------------------#
@@ -111,6 +112,15 @@ class XNATProject(Project):
                 directory = self.get_directory(r)
                 directories.append(directory)
             return directories
+
+    def insert(self, file_path: str, directory_name: str = '') -> Union['XNATDirectory', 'XNATFile']:
+        if os.path.isfile(file_path):
+            self.insert_file_into_project(file_path, directory_name)
+        elif zipfile.is_zipfile(file_path):
+            self.insert_zip_into_project(file_path, directory_name)
+        else:
+            raise Exception("The input is neither a file nor a zip.")
+            
 
     # extract zip data and feed it to insert_file_project for file upload to a given project
     def insert_zip_into_project(self, file_path: str, directory_name: str = '') -> 'XNATDirectory':
