@@ -1,0 +1,10 @@
+version: '3.6'
+services:
+  dash:
+    container_name: dash_web_interface
+    build: ./frontend
+    ports:
+      - 5000:5000
+    volumes:
+      - ./:/app
+    command: python frontend/app.py
