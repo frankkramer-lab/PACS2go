@@ -114,10 +114,10 @@ class XNATProject(Project):
             return directories
 
     def insert(self, file_path: str, directory_name: str = '') -> Union['XNATDirectory', 'XNATFile']:
-        if os.path.isfile(file_path):
-            self.insert_file_into_project(file_path, directory_name)
+        if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
+            return self.insert_file_into_project(file_path, directory_name)
         elif zipfile.is_zipfile(file_path):
-            self.insert_zip_into_project(file_path, directory_name)
+            return self.insert_zip_into_project(file_path, directory_name)
         else:
             raise Exception("The input is neither a file nor a zip.")
             
