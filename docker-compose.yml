@@ -1,13 +1,13 @@
 version: '3.6'
 services:
-  # dash:
-  #   container_name: dash_web_interface
-  #   build: ./frontend
-  #   ports:
-  #     - 80:80
-  #   volumes:
-  #     - ./:/app
-  #   command: python frontend/app.python
+  dash:
+    container_name: dash_web_interface
+    build: ./frontend
+    ports:
+      - 5000:5000
+    volumes:
+      - ./:/app
+    command: python frontend/app.py
 
   xnat-web:
     build:
@@ -30,6 +30,7 @@ services:
         XNAT_EMAIL: ${XNAT_EMAIL}
     ports:
       - 8104:8104
+      - 8080:8080
     volumes:
       - ./xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
       - ./xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs
@@ -58,18 +59,19 @@ services:
       - XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME}
       - XNAT_DATASOURCE_PASSWORD=${XNAT_DATASOURCE_PASSWORD}
 
-  xnat-nginx:
-    image: nginx:${NGINX_VERSION}
-    volumes:
-      - ./xnat-docker-compose/nginx/nginx.conf:/etc/nginx/nginx.conf
-    ports:
-      - "80:80"
-    expose:
-      - "80"
-    depends_on:
-      - xnat-web
-    links:
-      - xnat-web
+  # xnat-nginx:
+  #   image: nginx:${NGINX_VERSION}
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  #   ports:
+  #     - "80:80"
+  #   expose:
+  #     - "80"
+  #   depends_on:
+  #     - xnat-web
+  #     - dash
+  #   links:
+  #     - xnat-web
 
 
 
