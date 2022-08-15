@@ -1,13 +1,11 @@
-from ctypes import Union
 import datetime
 import os
 from tempfile import TemporaryDirectory
 import zipfile
-from django.db import DatabaseError
 from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
-from pacs_data_interface import Connection, Project, Directory, File
+from .pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Sequence, Union
 
 
@@ -17,7 +15,7 @@ from typing import List, Sequence, Union
 class XNAT(Connection):
     def __init__(self, username: str, password: str):
         # connect to xnat server
-        self.interface = Interface(server='http://vm204-misit.informatik.uni-augsburg.de',
+        self.interface = Interface(server='http://vm204-misit.informatik.uni-augsburg.de:8080',
                                    user=username,
                                    password=password)
         super().__init__()

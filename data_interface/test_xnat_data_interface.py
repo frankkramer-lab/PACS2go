@@ -2,7 +2,7 @@ import random
 import time
 import unittest
 from zipfile import ZipFile
-from xnat_pacs_data_interface import XNAT, XNATProject
+from .xnat_pacs_data_interface import XNAT, XNATProject
 import uuid
 from PIL import Image
 import pyxnat
