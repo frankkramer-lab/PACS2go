@@ -8,6 +8,9 @@ services:
     volumes:
       - ./:/app
     command: python frontend/app.py
+    depends_on:
+      - xnat-web
+    restart: always
 
   xnat-web:
     build:

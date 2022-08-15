@@ -5,6 +5,8 @@ import dash_bootstrap_components as dbc
 
 app = Dash(name="xnat2go", external_stylesheets=[dbc.themes.BOOTSTRAP])
 
+server = 'http://xnat-web:8080'
+
 
 colors = {
     'background': '#FFFFFF',
@@ -12,6 +14,11 @@ colors = {
     'sage': '#8cb897'
 }
 
+
+rows = []
+with XNAT(server,"admin", "admin") as connection:
+    for p in connection.get_all_projects():
+        rows.append(html.Tr([html.Td(p.name), html.Td(p.your_user_role)]))
 
 app.layout = html.Div(
     [
@@ -53,13 +60,16 @@ def render_page_content(pathname):
 
     elif pathname == "/projects":
         table_header = [
-            html.Thead(html.Tr([html.Th("Project Name"), html.Th("Number of Directories")]))
+            html.Thead(html.Tr([html.Th("Project Name"), html.Th("Column 2")]))
         ]
 
-        with XNAT("admin", "admin") as connection:
-            rows = []
-            for p in connection.get_all_projects():
-                rows.append(html.Tr([html.Td(p.name), html.Td(p.your_user_role)]))
+        # rows = html.Tr([html.Td("hi"), html.Td("hey")])
+        # try:
+        #     with XNAT(server,"admin", "admin") as connection:
+        #         for p in connection.get_all_projects():
+        #             rows.append(html.Tr([html.Td(p.name), html.Td(p.your_user_role)]))
+        # except:
+        #     return html.H1("404: Not found", className="text-danger"),
 
         table_body = [html.Tbody(rows)]
 

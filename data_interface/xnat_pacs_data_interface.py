@@ -5,7 +5,7 @@ import zipfile
 from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
-from .pacs_data_interface import Connection, Project, Directory, File
+from data_interface.pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Sequence, Union
 
 
@@ -13,9 +13,10 @@ from typing import List, Sequence, Union
 #          XNAT data interface class          #
 #---------------------------------------------#
 class XNAT(Connection):
-    def __init__(self, username: str, password: str):
-        # connect to xnat server
-        self.interface = Interface(server='http://vm204-misit.informatik.uni-augsburg.de:8080',
+    def __init__(self, server:str, username: str, password: str):
+        # connect to xnat server 
+        #'http://vm204-misit.informatik.uni-augsburg.de:8080'
+        self.interface = Interface(server=server,
                                    user=username,
                                    password=password)
         super().__init__()
