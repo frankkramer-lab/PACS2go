@@ -6,3 +6,5 @@
 /test_data/
 /__pycache__
 /data_interface/__pycache__
+/frontend/__pycache__
+/frontend/pages/__pycache__

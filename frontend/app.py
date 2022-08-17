@@ -1,12 +1,12 @@
-from data_interface.xnat_pacs_data_interface import XNAT
-from dash import Dash, dcc, html, Input, Output
+#from data_interface.xnat_pacs_data_interface import XNAT
+from dash import Dash, dcc, html, Input, Output, page_registry, page_container
 import dash_bootstrap_components as dbc
 
 
-app = Dash(name="xnat2go", external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(name="xnat2go", use_pages=True,
+           external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = 'http://xnat-web:8080'
-
 
 colors = {
     'background': '#FFFFFF',
@@ -14,90 +14,25 @@ colors = {
     'sage': '#8cb897'
 }
 
-
-rows = []
-with XNAT(server,"admin", "admin") as connection:
-    for p in connection.get_all_projects():
-        rows.append(html.Tr([html.Td(p.name), html.Td(p.your_user_role)]))
-
 app.layout = html.Div(
     [
         dcc.Location(id="url"),
         dbc.NavbarSimple(
             children=[
-                dbc.NavLink("Home", href="/", active="exact"),
-                dbc.NavLink("Projekte", href="/projects",
-                            active="exact", className="fw-lighter"),
-                dbc.NavLink("Upload", href="/page-2",
-                            active="exact", className="fw-lighter"),
+                dbc.NavLink("Home", href=page_registry['pages.home']['path']),
+                dbc.NavLink(
+                    "Projekte", href=page_registry['pages.projects']['path'], className="fw-lighter"),
+                dbc.NavLink("Upload", href="", className="fw-lighter"),
             ],
             brand="PACS2go",
             color=colors['sage'],
             className="fw-bold mb-3",
             dark=True,
         ),
-        dbc.Container(id="page-content",
-                      style={'backgroundColor': colors['background']})
+        page_container
     ]
 )
 
 
-@app.callback(Output("page-content", "children"), [Input("url", "pathname")])
-def render_page_content(pathname):
-    if pathname == "/":
-        content = [html.H1(
-            children='PACS2go 2.0',
-            style={
-                'textAlign': 'left',
-                'color': colors['text']
-            }
-        ),
-            html.Div(children='Exchange medical files.', style={
-                'textAlign': 'left',
-                'color': colors['text']
-            })]
-        return content
-
-    elif pathname == "/projects":
-        table_header = [
-            html.Thead(html.Tr([html.Th("Project Name"), html.Th("Column 2")]))
-        ]
-
-        # rows = html.Tr([html.Td("hi"), html.Td("hey")])
-        # try:
-        #     with XNAT(server,"admin", "admin") as connection:
-        #         for p in connection.get_all_projects():
-        #             rows.append(html.Tr([html.Td(p.name), html.Td(p.your_user_role)]))
-        # except:
-        #     return html.H1("404: Not found", className="text-danger"),
-
-        table_body = [html.Tbody(rows)]
-
-        table = dbc.Table(table_header + table_body, bordered=True)
-
-        content = [html.H1(
-            children='Your Projects',
-            style={
-                'textAlign': 'left',
-                'color': colors['text']
-            }
-        ),
-            table
-        ]
-        return content
-
-    elif pathname == "/page-2":
-        return html.P("Oh cool, this is page 2!")
-    # If the user tries to reach a different page, return a 404 message
-    return html.Div(
-        [
-            html.H1("404: Not found", className="text-danger"),
-            html.Hr(),
-            html.P(f"The pathname {pathname} was not recognised..."),
-        ],
-        className="p-3 bg-light rounded-3",
-    )
-
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, dev_tools_hot_reload=False)
