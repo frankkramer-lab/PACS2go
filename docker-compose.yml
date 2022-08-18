@@ -14,7 +14,7 @@ services:
 
   xnat-web:
     build:
-      context: ./pacs2go/xnat-docker-compose/xnat
+      context: ./xnat-docker-compose/xnat
       args:
         XNAT_VERSION: ${XNAT_VERSION}
         XNAT_SMTP_ENABLED: ${XNAT_SMTP_ENABLED}
@@ -35,11 +35,11 @@ services:
       - 8104:8104
       - 8080:8080
     volumes:
-      - ./pacs2go/xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
-      - ./pacs2go/xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs
-      - ./pacs2go/xnat-docker-compose/xnat-data/archive:${XNAT_ROOT}/archive
-      - ./pacs2go/xnat-docker-compose/xnat-data/build:${XNAT_ROOT}/build
-      - ./pacs2go/xnat-docker-compose/xnat-data/cache:${XNAT_ROOT}/cache
+      - ./xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
+      - ./xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs
+      - ./xnat-docker-compose/xnat-data/archive:${XNAT_ROOT}/archive
+      - ./xnat-docker-compose/xnat-data/build:${XNAT_ROOT}/build
+      - ./xnat-docker-compose/xnat-data/cache:${XNAT_ROOT}/cache
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - xnat-db
@@ -52,9 +52,9 @@ services:
     expose:
       - "5432"
     volumes:
-      - ./pacs2go/xnat-docker-compose/postgres-data:/var/lib/postgresql/data
+      - ./xnat-docker-compose/postgres-data:/var/lib/postgresql/data
       # 
-      - ./pacs2go/xnat-docker-compose/postgres:/docker-entrypoint-initdb.d
+      - ./xnat-docker-compose/postgres:/docker-entrypoint-initdb.d
     environment:
       - POSTGRES_PASSWORD=${XNAT_DATASOURCE_ADMIN_PASSWORD}
       - POSTGRES_DB=${XNAT_DATASOURCE_NAME}
