@@ -1,4 +1,3 @@
-from pacs2go.data_interface.xnat_pacs_data_interface import XNAT
 from dash import Dash, dcc, html, Input, Output, page_registry, page_container
 import dash_bootstrap_components as dbc
 
@@ -29,7 +28,7 @@ app.layout = html.Div(
             className="fw-bold mb-3",
             dark=True,
         ),
-        page_container
+        html.Div([page_container], style={'padding': '1% 11%'})
     ]
 )
 
