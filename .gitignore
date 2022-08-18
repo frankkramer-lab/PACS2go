@@ -4,7 +4,8 @@
 /version-1.0-orthanc/tools/__pycache__
 /version-1.0-orthanc/web-service/__pycache__
 /test_data/
-/__pycache__
-/data_interface/__pycache__
-/frontend/__pycache__
-/frontend/pages/__pycache__
+/pacs2go/__pycache__
+/pacs2go/data_interface/__pycache__
+/pacs2go/frontend/__pycache__
+/pacs2go/frontend/pages/__pycache__
+/pacs2go.egg-info

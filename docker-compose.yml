@@ -2,19 +2,19 @@ version: '3.6'
 services:
   dash:
     container_name: dash_web_interface
-    build: ./frontend
+    build: ./pacs2go/frontend
     ports:
       - 5000:5000
     volumes:
       - ./:/app
-    command: python frontend/app.py
+    command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
     restart: always
 
   xnat-web:
     build:
-      context: ./xnat-docker-compose/xnat
+      context: ./pacs2go/xnat-docker-compose/xnat
       args:
         XNAT_VERSION: ${XNAT_VERSION}
         XNAT_SMTP_ENABLED: ${XNAT_SMTP_ENABLED}
@@ -35,11 +35,11 @@ services:
       - 8104:8104
       - 8080:8080
     volumes:
-      - ./xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
-      - ./xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs
-      - ./xnat-docker-compose/xnat-data/archive:${XNAT_ROOT}/archive
-      - ./xnat-docker-compose/xnat-data/build:${XNAT_ROOT}/build
-      - ./xnat-docker-compose/xnat-data/cache:${XNAT_ROOT}/cache
+      - ./pacs2go/xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
+      - ./pacs2go/xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs
+      - ./pacs2go/xnat-docker-compose/xnat-data/archive:${XNAT_ROOT}/archive
+      - ./pacs2go/xnat-docker-compose/xnat-data/build:${XNAT_ROOT}/build
+      - ./pacs2go/xnat-docker-compose/xnat-data/cache:${XNAT_ROOT}/cache
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - xnat-db
@@ -52,9 +52,9 @@ services:
     expose:
       - "5432"
     volumes:
-      - ./xnat-docker-compose/postgres-data:/var/lib/postgresql/data
+      - ./pacs2go/xnat-docker-compose/postgres-data:/var/lib/postgresql/data
       # 
-      - ./xnat-docker-compose/postgres:/docker-entrypoint-initdb.d
+      - ./pacs2go/xnat-docker-compose/postgres:/docker-entrypoint-initdb.d
     environment:
       - POSTGRES_PASSWORD=${XNAT_DATASOURCE_ADMIN_PASSWORD}
       - POSTGRES_DB=${XNAT_DATASOURCE_NAME}

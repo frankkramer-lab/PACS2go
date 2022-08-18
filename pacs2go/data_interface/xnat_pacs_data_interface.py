@@ -5,7 +5,7 @@ import zipfile
 from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
-from data_interface.pacs_data_interface import Connection, Project, Directory, File
+from pacs2go.data_interface.pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Sequence, Union
 
 

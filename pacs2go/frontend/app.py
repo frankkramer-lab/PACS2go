@@ -1,9 +1,9 @@
-#from data_interface.xnat_pacs_data_interface import XNAT
+from pacs2go.data_interface.xnat_pacs_data_interface import XNAT
 from dash import Dash, dcc, html, Input, Output, page_registry, page_container
 import dash_bootstrap_components as dbc
 
 
-app = Dash(name="xnat2go", use_pages=True,
+app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages",use_pages=True,
            external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = 'http://xnat-web:8080'
@@ -19,9 +19,9 @@ app.layout = html.Div(
         dcc.Location(id="url"),
         dbc.NavbarSimple(
             children=[
-                dbc.NavLink("Home", href=page_registry['pages.home']['path']),
+                dbc.NavLink("Home", href=page_registry['pacs2go.frontend.pages.home']['path']),
                 dbc.NavLink(
-                    "Projekte", href=page_registry['pages.projects']['path'], className="fw-lighter"),
+                    "Projekte", href=page_registry['pacs2go.frontend.pages.projects']['path'], className="fw-lighter"),
                 dbc.NavLink("Upload", href="", className="fw-lighter"),
             ],
             brand="PACS2go",
