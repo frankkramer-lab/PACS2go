@@ -11,39 +11,41 @@ import pyxnat
 class TestConnection(unittest.TestCase):
     user = 'admin'
     pwd = 'admin'
+    server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
     wrong_user = 'a'
     wrong_pwd = 'a'
 
     def test_connection_correct_input(self):
-        with XNAT(self.user, self.pwd) as connection:
+        with XNAT(self.server, self.user, self.pwd) as connection:
             self.assertTrue(type(connection.interface) ==
                             pyxnat.core.interfaces.Interface)
             self.assertEqual(self.user, connection.interface._user)
 
     def test_connection_wrong_input(self):
         with self.assertRaises(Exception):
-            with XNAT(self.wrong_user, self.wrong_pwd) as connection:
+            with XNAT(self.server, self.wrong_user, self.wrong_pwd) as connection:
                 print(
                     "This should not be visible, because username and password are wrong")
 
 
 class TestDataInterface(unittest.TestCase):
-    file_path = '/home/main/Desktop/pacs2go/pacs2go/test_data/dicom_ct_images/CT000102.dcm'
-    zip_file_setup = '/home/main/Desktop/pacs2go/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
-    zip_file_test = '/home/main/Desktop/pacs2go/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
+    file_path = '/home/main/Desktop/pacs2go/test_data/dicom_ct_images/CT000105.dcm'
+    zip_file_setup = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
+    zip_file_test = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
     user = 'admin'
     pwd = 'admin'
+    server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
 
     # connect to XNAT for all tests (executed for each testrun)
     def run(self, result=None):
-        with XNAT(self.user, self.pwd) as connection:
+        with XNAT(self.server, self.user, self.pwd) as connection:
             self.connection = connection
             super(TestDataInterface, self).run(result)
 
     @classmethod
     def setUpClass(self):
         # create test data
-        with XNAT(self.user, self.pwd) as connection:
+        with XNAT(self.server, self.user, self.pwd) as connection:
             self.project = XNATProject(connection, uuid.uuid4())
             self.directory = self.project.insert_zip_into_project(
                 self.zip_file_setup)
@@ -59,7 +61,7 @@ class TestDataInterface(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         # Delete all test data
-        with XNAT(self.user, self.pwd) as connection:
+        with XNAT(self.server, self.user, self.pwd) as connection:
             self.project.delete_project()
             p = connection.get_project(self.to_be_created_project_name)
             p.delete_project()
@@ -144,7 +146,7 @@ class TestDataInterface(unittest.TestCase):
         # Checks if unsupported files are handeled correctly -> exception is raised
         with self.assertRaisesRegex(Exception, "This file type is not supported."):
             self.project.insert_file_into_project(
-                "/home/main/Desktop/pacs2go/pacs2go/test_data/103.bmp", 'test_file_insert_2')
+                "/home/main/Desktop/pacs2go/test_data/103.bmp", 'test_file_insert_2')
 
     def test_insert_invalid_file(self):
         # Checks if something that is not a file raises an exception
