@@ -15,6 +15,7 @@ colors = {
 
 app.layout = html.Div(
     [
+        # navigation bar on top
         dcc.Location(id="url"),
         dbc.NavbarSimple(
             children=[
@@ -28,6 +29,7 @@ app.layout = html.Div(
             className="fw-bold mb-3",
             dark=True,
         ),
+        # placeholder for each registered page (see pages folder)
         html.Div([page_container], style={'padding': '1% 11%'})
     ]
 )

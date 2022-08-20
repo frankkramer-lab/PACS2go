@@ -8,8 +8,8 @@ server = 'http://xnat-web:8080'
 
 
 def get_projects():
+    # get list of all project names, specific user roles and number of directories per project
     rows = []
-    #link = page_registry['pacs2go.frontend.pages.project']['path']
     with XNAT(server, "admin", "admin") as connection:
         for p in connection.get_all_projects():
             rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="text-dark")), html.Td(
@@ -22,6 +22,7 @@ def get_projects():
 
     table_body = [html.Tbody(rows)]
 
+    # put together project table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
     return table
