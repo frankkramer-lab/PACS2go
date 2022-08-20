@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 
 
 app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages",use_pages=True,
-           external_stylesheets=[dbc.themes.BOOTSTRAP])
+           external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 
 server = 'http://xnat-web:8080'
 
