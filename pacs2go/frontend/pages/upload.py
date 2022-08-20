@@ -1,4 +1,4 @@
-from dash import register_page, html, dcc, callback
+from dash import register_page, html, dcc, callback, ctx
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 
@@ -6,6 +6,7 @@ register_page(__name__, title='PACS2go 2.0', path='/upload')
 
 
 def uploader():
+    # Upload drag and drop area
     return html.Div([
         dcc.Upload(
             id='upload-image',
@@ -22,37 +23,54 @@ def uploader():
                 'borderRadius': '5px',
                 'textAlign': 'center',
             },
-            # Allow multiple files to be uploaded
+            # Don't allow multiple files to be uploaded
             multiple=False
         ),
-        html.Div(id='output-image-upload'),
+        # placeholder for image preview / upload Button to appear
+        html.Div(id='output-image-preview'),
     ])
 
 
 def parse_contents(contents, filename):
+    # display image preview and filename
     if filename.endswith('.jpg') or filename.endswith('.jpeg'):
-        image = dbc.CardImg(src=contents, bottom=True)
-    return dbc.Card(
-    [
-        dbc.CardBody(html.P(filename, className="card-text")),
-        image
-    ],
-    style={"width": "100%"}
-)
+        return dbc.Card(
+            [
+                dbc.CardBody(html.P(filename, className="card-text")),
+                dbc.CardImg(src=contents, bottom=True)
+            ])
+    else:
+        return html.H5(filename)
 
 
-@callback(Output('output-image-upload', 'children'),
+
+@callback(Output('output-image-preview', 'children'),
           Input('upload-image', 'contents'),
           State('upload-image', 'filename'))
 def update_output(contents, filename):
+    # get selected data (preview it) and display upload button
     if contents is not None:
         children = dbc.Row(
             [
                 dbc.Col([parse_contents(contents, filename)]),
-                dbc.Col(dbc.Button("Upload to XNAT", size="lg", color="success", className="col-6 mx-auto")),
+                dbc.Col([dbc.Button("Upload to XNAT", id="click-upload", size="lg", color="success", className="col-6 mx-auto mb-3"),
+                        # placeholder for successful upload message
+                        html.Div(id='output-upload')]),
             ], className="mt-3"
         ),
         return children
+
+
+@callback(
+    Output('output-upload', 'children'),
+    Input('click-upload', 'n_clicks'),
+    State('upload-image', 'contents')
+)
+def upload_to_xnat(contents, btn):
+    # triggered by clicking on the upload button
+    if "click-upload" == ctx.triggered_id:
+        # TODO: implement xnat upload
+        return html.Div("Upload successful")
 
 
 def layout():
