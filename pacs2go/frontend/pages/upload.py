@@ -1,9 +1,13 @@
+import base64
+import tempfile
 from dash import register_page, html, dcc, callback, ctx
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATProject
 
 register_page(__name__, title='PACS2go 2.0', path='/upload')
 
+server = 'http://xnat-web:8080'
 
 def uploader():
     # Upload drag and drop area
@@ -64,13 +68,27 @@ def update_output(contents, filename):
 @callback(
     Output('output-upload', 'children'),
     Input('click-upload', 'n_clicks'),
-    State('upload-image', 'contents')
+    State('upload-image', 'contents'),
+    State('upload-image', 'filename')
 )
-def upload_to_xnat(contents, btn):
+def upload_to_xnat(btn, contents, filename):
     # triggered by clicking on the upload button
     if "click-upload" == ctx.triggered_id:
         # TODO: implement xnat upload
-        return html.Div("Upload successful")
+        with tempfile.NamedTemporaryFile(suffix=filename) as tf:
+            try:
+                # https://docs.faculty.ai/user-guide/apps/examples/dash_file_upload_download.html
+                data = contents.encode("utf8").split(b";base64,")[1]
+                tf.write(base64.b64decode(data))
+                print(tf.name)
+                with XNAT(server,'admin','admin') as connection:
+                    # upload to XNAT server
+                    XNATProject(connection,'test6').insert_file_into_project(tf.name)
+                return html.Div("Upload successful")
+            except Exception as err:
+                print(err.with_traceback())
+                return html.Div("Upload unsuccessful: " + str(err))
+    return html.Div("")
 
 
 def layout():
