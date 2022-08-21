@@ -9,6 +9,8 @@ register_page(__name__, title='PACS2go 2.0', path='/upload')
 
 server = 'http://xnat-web:8080'
 
+# TODO: input fields so user can specify what project (and directory) the data is uploaded to 
+
 def uploader():
     # Upload drag and drop area
     return html.Div([
@@ -47,7 +49,6 @@ def parse_contents(contents, filename):
         return html.H5(filename)
 
 
-
 @callback(Output('output-image-preview', 'children'),
           Input('upload-image', 'contents'),
           State('upload-image', 'filename'))
@@ -59,7 +60,7 @@ def update_output(contents, filename):
                 dbc.Col([parse_contents(contents, filename)]),
                 dbc.Col([dbc.Button("Upload to XNAT", id="click-upload", size="lg", color="success", className="col-6 mx-auto mb-3"),
                         # placeholder for successful upload message
-                        html.Div(id='output-upload')]),
+                         html.Div(id='output-upload')]),
             ], className="mt-3"
         ),
         return children
@@ -68,25 +69,27 @@ def update_output(contents, filename):
 @callback(
     Output('output-upload', 'children'),
     Input('click-upload', 'n_clicks'),
+    # State because only button click should trigger callback
     State('upload-image', 'contents'),
     State('upload-image', 'filename')
 )
 def upload_to_xnat(btn, contents, filename):
     # triggered by clicking on the upload button
     if "click-upload" == ctx.triggered_id:
-        # TODO: implement xnat upload
+        # TODO: implement xnat upload for zip (tempfile can not be recognized as zipfile)!! 
+        # TODO: test different formats through frontend
         with tempfile.NamedTemporaryFile(suffix=filename) as tf:
             try:
                 # https://docs.faculty.ai/user-guide/apps/examples/dash_file_upload_download.html
                 data = contents.encode("utf8").split(b";base64,")[1]
                 tf.write(base64.b64decode(data))
-                print(tf.name)
-                with XNAT(server,'admin','admin') as connection:
+                with XNAT(server, 'admin', 'admin') as connection:
                     # upload to XNAT server
-                    XNATProject(connection,'test6').insert_file_into_project(tf.name)
+                    XNATProject(
+                        connection, 'test6').insert_file_into_project(tf.name)
                 return html.Div("Upload successful")
             except Exception as err:
-                print(err.with_traceback())
+                # TODO: differentiate between different exceptions
                 return html.Div("Upload unsuccessful: " + str(err))
     return html.Div("")
 

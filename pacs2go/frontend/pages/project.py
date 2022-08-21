@@ -2,8 +2,12 @@ from dash import html, dcc, callback, Input, Output, register_page, page_registr
 from pacs2go.data_interface.xnat_pacs_data_interface import XNAT
 import dash_bootstrap_components as dbc
 
-register_page(__name__, title='Project', path_template='/project/<project_name>')
+register_page(__name__, title='Project',
+              path_template='/project/<project_name>')
 server = 'http://xnat-web:8080'
+
+# TODO: get Project data, display directory list with details, display project details
+# TODO: buttons for: insert data, download data, delete project
 
 
 def layout(project_name=None):

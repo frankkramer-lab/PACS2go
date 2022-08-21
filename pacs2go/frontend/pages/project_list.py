@@ -6,6 +6,9 @@ from pacs2go.data_interface.xnat_pacs_data_interface import XNAT
 register_page(__name__, title='Projects', path='/projects')
 server = 'http://xnat-web:8080'
 
+# TODO: add button for create project
+# TODO: only make project clickable if user has rights to certain project
+
 
 def get_projects():
     # get list of all project names, specific user roles and number of directories per project
@@ -13,7 +16,7 @@ def get_projects():
     with XNAT(server, "admin", "admin") as connection:
         for p in connection.get_all_projects():
             rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="text-dark")), html.Td(
-                "You are an " + p.your_user_role + " for this project."),html.Td(len(p.get_all_directories()))]))
+                "You are an " + p.your_user_role + " for this project."), html.Td(len(p.get_all_directories()))]))
 
     table_header = [
         html.Thead(
@@ -30,7 +33,7 @@ def get_projects():
 
 def layout():
     return html.Div(children=[html.H1(
-    children='Your Projects',
-    style={'textAlign': 'left', }, className="pb-3"),
-    get_projects()
-])
+        children='Your Projects',
+        style={'textAlign': 'left', }, className="pb-3"),
+        get_projects()
+    ])

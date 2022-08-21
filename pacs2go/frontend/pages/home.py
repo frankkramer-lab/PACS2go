@@ -12,4 +12,5 @@ def layout():
         html.Div(children='Exchange medical files.', style={
             'textAlign': 'left',
         })
+        # TODO: display cards with Projects, Upload links + maybe some stats about XNAT server (no. of files,..)
     ]
