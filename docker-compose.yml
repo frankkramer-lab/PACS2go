@@ -2,11 +2,11 @@ version: '3.6'
 services:
   dash:
     container_name: dash_web_interface
-    build: ./pacs2go/frontend
+    build: ./
     ports:
       - 5000:5000
     volumes:
-      - ./:/app
+      - ./:/app  # necessary for dev
     command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
