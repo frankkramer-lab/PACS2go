@@ -13,9 +13,20 @@ server = 'http://xnat-web:8080'
 # TODO: input fields so user can specify what project (and directory) the data is uploaded to
 # TODO: upload of large files -> maybe using: https://github.com/np-8/dash-uploader
 
+
 def uploader():
     # Upload drag and drop area
     return html.Div([
+        dbc.Row([
+            dbc.Col(
+                [dbc.Label("Project"),
+                 dbc.Input(id="project_name", placeholder="Project Name...", required=True), ]),
+            dbc.Col(
+                [dbc.Label("Directory"),
+                 dbc.Input(id="directory_name",
+                           placeholder="Directory Name (optional)"),
+                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used",)], className="mb-3")
+        ]),
         dcc.Upload(
             id='file-input',
             children=html.Div([
@@ -77,25 +88,37 @@ def preview_and_upload(contents, filename):
     Input('click-upload', 'n_clicks'),
     # State because only button click should trigger callback
     State('file-input', 'contents'),
-    State('file-input', 'filename')
+    State('file-input', 'filename'),
+    State('project_name', 'value'),
+    State('directory_name', 'value'),
 )
-def upload_to_xnat(btn, contents, filename):
+def upload_to_xnat(btn, contents, filename, project_name, directory_name):
     # triggered by clicking on the upload button
     if "click-upload" == ctx.triggered_id:
-        # TODO: test different formats through frontend
-        with tempfile.NamedTemporaryFile(suffix=filename) as tf:
-            try:
-                # https://docs.faculty.ai/user-guide/apps/examples/dash_file_upload_download.html
-                data = contents.encode("utf8").split(b";base64,")[1]
-                tf.write(base64.b64decode(data))
-                with XNAT(server, 'admin', 'admin') as connection:
-                    # upload to XNAT server
-                    XNATProject(
-                        connection, 'test6').insert(tf.name)
-                return html.Div("Upload successful")
-            except Exception as err:
-                # TODO: differentiate between different exceptions
-                return html.Div("Upload unsuccessful: " + str(err))
+        if project_name:
+            project_name = str(project_name).replace(" ","_")
+            # TODO: test different formats through frontend
+            with tempfile.NamedTemporaryFile(suffix=filename) as tf:
+                try:
+                    # https://docs.faculty.ai/user-guide/apps/examples/dash_file_upload_download.html
+                    data = contents.encode("utf8").split(b";base64,")[1]
+                    tf.write(base64.b64decode(data))
+                    if directory_name:
+                        with XNAT(server, 'admin', 'admin') as connection:
+                            # upload to XNAT server
+                            XNATProject(
+                                connection, project_name).insert(tf.name, directory_name)
+                    else:
+                        with XNAT(server, 'admin', 'admin') as connection:
+                            # upload to XNAT server
+                            XNATProject(
+                                connection, project_name).insert(tf.name)
+                    return html.Div("Upload successful")
+                except Exception as err:
+                    # TODO: differentiate between different exceptions
+                    return html.Div("Upload unsuccessful: " + str(err))
+        else:
+            return html.H5("Please specify Project Name.")
     return html.Div("")
 
 
