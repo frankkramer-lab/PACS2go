@@ -10,7 +10,6 @@ register_page(__name__, title='PACS2go 2.0', path='/upload')
 
 server = 'http://xnat-web:8080'
 
-# TODO: input fields so user can specify what project (and directory) the data is uploaded to
 # TODO: upload of large files -> maybe using: https://github.com/np-8/dash-uploader
 
 
