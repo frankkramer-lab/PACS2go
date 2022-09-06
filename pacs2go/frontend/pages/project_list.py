@@ -168,10 +168,11 @@ for p in get_projects_list():
 def layout():
     return html.Div(children=[
         html.Div([
-            html.Div(html.H1(
-                children='Your Projects')),
-            modal_create()
-        ], className="d-flex justify-content-between mb-4 "),
+            html.H1(
+                children='Your Projects'),
+            html.Div([html.A(dbc.Button(html.I(className="bi bi-arrow-clockwise"), size='lg'), href='', className="me-2"),
+            modal_create()], className="d-flex justify-content-between")
+        ], className="d-flex justify-content-between mb-4"),
         html.Div(delete_feedback()),
         get_projects_table(),
     ])
