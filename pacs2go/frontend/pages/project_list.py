@@ -50,7 +50,7 @@ def modal_create():
                 dbc.ModalHeader(dbc.ModalTitle("Create New Project")),
                 dbc.ModalBody([
                     html.Div(id='create-project-content'),
-                    dbc.Label("Project"),
+                    dbc.Label("Please enter a unique name for your project."),
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
@@ -92,6 +92,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         try:
             with XNAT(server, "admin", "admin") as connection:
                 # try to create project
+                # TODO: what if project name already exists? (has to be unique)
                 XNATProject(connection, project_name)
         except Exception as err:
             # TODO: differentiate between different exceptions
