@@ -6,20 +6,24 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATProject
 
-register_page(__name__, title='PACS2go 2.0', path='/upload')
+register_page(__name__, title='PACS2go 2.0', path_template='/upload/<project_name>')
 
 server = 'http://xnat-web:8080'
 
 # TODO: upload of large files -> maybe using: https://github.com/np-8/dash-uploader
 
 
-def uploader():
+def uploader(passed_project: str):
+    # if user navigates directly to upload, project name input field will be empty
+    if passed_project=='none':
+        passed_project=''
     # Upload drag and drop area
     return html.Div([
         dbc.Row([
             dbc.Col(
+                # input field value equals project name, if user navigates to upload via a specific project
                 [dbc.Label("Project"),
-                 dbc.Input(id="project_name", placeholder="Project Name...", required=True), ]),
+                 dbc.Input(id="project_name", placeholder="Project Name...", required=True, value=passed_project), ]),
             dbc.Col(
                 [dbc.Label("Directory"),
                  dbc.Input(id="directory_name",
@@ -125,7 +129,7 @@ def upload_to_xnat(btn, contents, filename, project_name, directory_name):
 #  Page Layout  #
 #################
 
-def layout():
+def layout(project_name=None):
     return [html.H1(
         children='PACS2go 2.0 - Uploader',
         style={
@@ -134,5 +138,5 @@ def layout():
         className="mb-3"),
         dcc.Markdown(children='Please select a **zip** folder or a single file to upload. \n \n' +
                      'Accepted formats include **DICOM**, **NIFTI**, **JPEG** and **JSON**.'),
-        uploader()
+        uploader(project_name)
     ]

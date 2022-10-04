@@ -8,9 +8,6 @@ server = 'http://xnat-web:8080'
 user = "admin"
 pwd = "admin"
 
-# TODO: get Project data, display directory list with details, display project details
-# TODO: buttons for: insert data, download data, delete project
-
 
 def get_details(project: XNATProject):
     description = "Description: " + project.description
@@ -19,32 +16,32 @@ def get_details(project: XNATProject):
 
 
 def get_directories(project: XNATProject):
-    # get list of all project names, specific user roles and number of directories per project
+    # get list of all directory names and number of files per directory
     rows = []
     for d in project.get_all_directories():
-        # project names represent links to individual project pages
+        # directory names represent links to individual directory pages
         rows.append(html.Tr([html.Td(html.A(d.name, href="", className="text-dark")), html.Td(
             len(d.get_all_files()))]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Project Name"), html.Th("Number of Files")]))
+            html.Tr([html.Th("Directory Name"), html.Th("Number of Files")]))
     ]
 
     table_body = [html.Tbody(rows)]
 
-    # put together project table
+    # put together directory table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
-    return html.Div([html.H5("Directories:"),table])
+    return html.Div([html.H5("Directories:"), table])
 
 
 def modal_delete(project: XNATProject):
-    # modal view for project creation
+    # modal view for project deletion
     return html.Div([
         # button which triggers modal activation
         dbc.Button([html.I(className="bi bi-trash me-2"),
-                    "Delete Project"], id="delete_project", size="lg", color="danger"),
+                    "Delete Project"], id="delete_project", size="md", color="danger"),
         # actual modal view
         dbc.Modal(
             [
@@ -57,7 +54,7 @@ def modal_delete(project: XNATProject):
                     dbc.Input(id="project", value=project.name, disabled=True),
                 ]),
                 dbc.ModalFooter([
-                    # button which triggers the creation of a project (see modal_and_project_creation)
+                    # button which triggers the deletion of a project (see modal_and_project_creation)
                     dbc.Button("Delete Project",
                                id="delete_and_close", color="danger"),
                     # button which causes modal to close/disappear
@@ -67,15 +64,15 @@ def modal_delete(project: XNATProject):
             id="modal_delete",
             is_open=False,
         ),
-    ], className="d-flex justify-content-end")
+    ])
 
 
 def modal_delete_data(project: XNATProject):
-    # modal view for project creation
+    # modal view for deleting all directories of a project
     return html.Div([
         # button which triggers modal activation
         dbc.Button([html.I(className="bi bi-trash me-2"),
-                    "Delete All Directories"], id="delete_project_data", size="lg", color="danger"),
+                    "Delete All Directories"], id="delete_project_data", size="md", color="danger"),
         # actual modal view
         dbc.Modal(
             [
@@ -85,10 +82,11 @@ def modal_delete_data(project: XNATProject):
                     html.Div(id="delete-project-data-content"),
                     dbc.Label(
                         "Are you sure you want to delete all directories of this project? This will empty the entire project."),
-                    dbc.Input(id="project_2", value=project.name, disabled=True),
+                    dbc.Input(id="project_2",
+                              value=project.name, disabled=True),
                 ]),
                 dbc.ModalFooter([
-                    # button which triggers the creation of a project (see modal_and_project_creation)
+                    # button which triggers the directory deletion (see modal_and_project_creation)
                     dbc.Button("Delete All Directories",
                                id="delete_data_and_close", color="danger"),
                     # button which causes modal to close/disappear
@@ -101,11 +99,16 @@ def modal_delete_data(project: XNATProject):
     ])
 
 
+def insert_data(project: XNATProject):
+    return html.Div(dbc.Button([html.I(className="bi bi-plus-square-fill me-2"),
+                    "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
+
+
 #################
 #   Callbacks   #
 #################
 
-# callback for project creation modal view and executing project creation
+# callback for project deletion modal view and executing project deletion
 @callback([Output('modal_delete', 'is_open'), Output('delete-project-content', 'children')],
           [Input('delete_project', 'n_clicks'), Input(
               'close_modal_delete', 'n_clicks'), Input('delete_and_close', 'n_clicks')],
@@ -127,7 +130,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
         return is_open, no_update
 
 
-# callback for project creation modal view and executing project creation
+# callback used to delete all directories of a project (open modal view + actual deletion)
 @callback([Output('modal_delete_data', 'is_open'), Output('delete-project-data-content', 'children')],
           [Input('delete_project_data', 'n_clicks'), Input(
               'close_modal_delete_data', 'n_clicks'), Input('delete_data_and_close', 'n_clicks')],
@@ -164,13 +167,14 @@ def layout(project_name=None):
     except:
         return dbc.Alert("No Project found", color="danger")
     return html.Div([
-        html.Div([
-            html.H1(f"Project {project.name}", style={
-                    'textAlign': 'left', }, className="pb-3"),
-            html.Div(
-                [modal_delete(project),
-                modal_delete_data(project)], className="d-grid gap-3"),
-        ], className="d-flex justify-content-between mb-3"),
+        dbc.Row([
+            dbc.Col(html.H1(f"Project {project.name}", style={
+                    'textAlign': 'left', })),
+            dbc.Col(
+                [insert_data(project),
+                 modal_delete(project),
+                 modal_delete_data(project), ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+        ], className="mb-3"),
         get_details(project),
         get_directories(project)
     ])
