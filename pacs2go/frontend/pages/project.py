@@ -123,7 +123,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
                 p = connection.get_project(project_name)
                 p.delete_project()
                 # TODO: redirect to project list view
-                return no_update, no_update
+                return not is_open, no_update
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
