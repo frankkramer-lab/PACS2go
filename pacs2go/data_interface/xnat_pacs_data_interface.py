@@ -12,14 +12,13 @@ from typing import List, Sequence, Union
 #---------------------------------------------#
 #          XNAT data interface class          #
 #---------------------------------------------#
-class XNAT(Connection):
+class XNAT():
     def __init__(self, server:str, username: str, password: str):
         # connect to xnat server 
         #'http://vm204-misit.informatik.uni-augsburg.de:8080'
         self.interface = Interface(server=server,
                                    user=username,
                                    password=password)
-        super().__init__()
         try:
             # try to access usernames to check if connect was successfull
             self.interface.manage.users()
@@ -71,7 +70,8 @@ class XNATProject(Project):
         if project.exists() != True:
             project.create()
         self._xnat_project_object = project
-        super().__init__(connection, name)
+        self.connection = connection
+        self.name = name
 
     @property
     def description(self) -> str:
@@ -178,7 +178,8 @@ class XNATDirectory(Directory):
     def __init__(self, project: XNATProject, name: str) -> None:
         p = project.connection.interface.select.project(project.name)
         self._xnat_resource_object = p.resource(name)
-        super().__init__(project, name)
+        self.name = name
+        self.project = project
 
     # remove a XNAT resource directory from a project
     def delete_directory(self) -> None:
@@ -207,7 +208,9 @@ class XNATFile(File):
     def __init__(self, directory: XNATDirectory, file_name: str) -> None:
         self._xnat_file_object = directory._xnat_resource_object.file(
             file_name)
-        super().__init__(directory=directory, name=file_name)
+        self.directory = directory
+        self.name = file_name
+
 
     @property
     def format(self) -> str:
