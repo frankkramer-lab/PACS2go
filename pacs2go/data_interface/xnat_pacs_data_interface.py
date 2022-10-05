@@ -5,7 +5,6 @@ import zipfile
 from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
-from pacs2go.data_interface.pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Sequence, Union
 
 
@@ -64,7 +63,7 @@ class XNAT():
 #---------------------------------------------#
 #       XNAT Project interface class          #
 #---------------------------------------------#
-class XNATProject(Project):
+class XNATProject():
     def __init__(self, connection: XNAT, name: str) -> None:
         project = connection.interface.select.project(name)
         if project.exists() != True:
@@ -174,7 +173,7 @@ class XNATProject(Project):
             raise Exception("The input is not a file.")
 
 
-class XNATDirectory(Directory):
+class XNATDirectory():
     def __init__(self, project: XNATProject, name: str) -> None:
         p = project.connection.interface.select.project(project.name)
         self._xnat_resource_object = p.resource(name)
@@ -204,7 +203,7 @@ class XNATDirectory(Directory):
         return files
 
 
-class XNATFile(File):
+class XNATFile():
     def __init__(self, directory: XNATDirectory, file_name: str) -> None:
         self._xnat_file_object = directory._xnat_resource_object.file(
             file_name)
