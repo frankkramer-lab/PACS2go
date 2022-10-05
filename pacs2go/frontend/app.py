@@ -13,6 +13,8 @@ colors = {
     'sage': '#8cb897'
 }
 
+
+#TODO: turn this into def layout and connect right here -> avoid reconnecting a million times
 app.layout = html.Div(
     [
         # navigation bar on top
