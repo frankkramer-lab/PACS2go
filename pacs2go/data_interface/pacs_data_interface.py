@@ -1,67 +1,70 @@
-from abc import ABC, abstractmethod, abstractproperty
 from typing import Optional, List, Any, Sequence, Union
+from xnat_pacs_data_interface import XNAT, XNATProject
 
 
-class Connection(ABC):
-    def __init__(self, username: Optional[str]='', password: Optional[str]='') -> None:
-        self._projects = self.get_all_projects()
-        self.interface: Any
+class Connection():
+    def __init__(self, server:str, username: str, password: str, kind: str) -> None:
+        self.kind = kind
+        if self.kind == "XNAT":
+            self.conn = XNAT(server, username, password)
+        else:
+            raise ValueError(kind)
 
-    @abstractproperty
+    @property
     def user(self) -> str:
-        pass
+        if self.kind =="XNAT":
+            return self.conn.user
 
-    @abstractmethod
     def __enter__(self) -> 'Connection':
-        pass
+        if self.kind =="XNAT":
+            return self.conn.__enter__()
 
-    @abstractmethod
     def __exit__(self, type, value, traceback) -> None:
-        pass
+        if self.kind =="XNAT":
+            return self.conn.__exit__(type, value, traceback)
 
-    @abstractmethod
     def get_project(self, name: str) -> Optional['Project']:
-        pass
+        if self.kind =="XNAT":
+            self.conn.get_project(name)
 
-    @abstractmethod
     def get_all_projects(self) -> Sequence['Project']:
-        pass
+        if self.kind =="XNAT":
+            self.conn.get_all_projects()
 
 
-class Project(ABC):
+class Project():
     def __init__(self, connection: Connection, name: str) -> None:
         self.connection = connection
         self.name = name
 
-    @abstractproperty
+    @property
     def description(self) -> str:
         pass
 
-    @abstractproperty
+    @property
     def owners(self) -> List[str]:
         pass
 
-    @abstractproperty
+    @property
     def your_user_role(self) -> str:
         pass
 
-    @abstractmethod
     def delete_project(self) -> None:
         pass
 
-    @abstractmethod
-    def get_directory(self, name) -> 'Directory':
-        pass
+    # @abstractmethod
+    # def get_directory(self, name) -> 'Directory':
+    #     pass
 
-    @abstractmethod
-    def get_all_directories(self) -> Sequence['Directory']:
-        pass
+    # @abstractmethod
+    # def get_all_directories(self) -> Sequence['Directory']:
+    #     pass
 
-    @abstractmethod
-    def insert(self, file_path: str) -> Union['Directory', 'File']:
-        pass
+    # @abstractmethod
+    # def insert(self, file_path: str) -> Union['Directory', 'File']:
+    #     pass
 
-
+"""
 class Directory(ABC):
     def __init__(self, project: Project, name: str) -> None:
         self.name = name
@@ -99,4 +102,4 @@ class File(ABC):
 
     @abstractmethod
     def delete_file(self) -> None:
-        pass
+        pass """
