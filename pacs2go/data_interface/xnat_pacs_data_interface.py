@@ -26,6 +26,10 @@ class XNAT():
             raise Exception("Wrong user credentials!")
 
     @property
+    def _kind(self) -> str:
+        return "XNAT"
+
+    @property
     def user(self) -> str:
         return self.interface._user
 

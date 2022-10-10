@@ -1,5 +1,5 @@
 import unittest
-from pacs_data_interface import Connection
+from pacs_data_interface import Connection, Project
 import uuid
 
 class TestDataInterface(unittest.TestCase):
@@ -9,7 +9,7 @@ class TestDataInterface(unittest.TestCase):
     user = 'admin'
     pwd = 'admin'
     server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
-    conn = Connection(server, user, pwd, "XNAT") #this !!!!
+    conn = Connection(server, user, pwd, "XNAT")
 
     # connect to XNAT for all tests (executed for each testrun)
     def run(self, result=None):
@@ -18,8 +18,19 @@ class TestDataInterface(unittest.TestCase):
             super(TestDataInterface, self).run(result)
 
     def test_connection(self):
-        u = str(self.conn.user)
+        u = str(self.connection.user)
         self.assertEqual(u, "admin")
+
+    def test_create_project(self):
+        # Checks if a project with a certain name is really created
+        len_before = len(self.connection.get_all_projects())
+        project = Project(self.connection, uuid.uuid4())
+        self.assertIn(str(project.name), [
+                      p.name for p in self.connection.get_all_projects()])
+        self.assertEqual(
+            len_before + 1, len(self.connection.get_all_projects()))
+        project.delete_project()
+    
 
 
 
