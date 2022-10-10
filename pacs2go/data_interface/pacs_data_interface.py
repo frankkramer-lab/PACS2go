@@ -92,9 +92,9 @@ class Project():
         else:
             return ValueError(self.connection._kind)
 
-    def insert(self, file_path: str) -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '') -> Union['Directory', 'File']:
         if self.connection._kind == "XNAT":
-            return self._xnat_project.insert(file_path)
+            return self._xnat_project.insert(file_path, directory_name)
         else:
             return ValueError(self.connection._kind)
 
@@ -136,21 +136,24 @@ class File():
         else:
             return ValueError(self.directory.project.connection._kind)
 
+    @property
     def format(self) -> str:
         if self.directory.project.connection._kind == "XNAT":
-            return self._xnat_file.format()
+            return self._xnat_file.format
         else:
             return ValueError(self.directory.project.connection._kind)
 
+    @property
     def size(self) -> int:
         if self.directory.project.connection._kind == "XNAT":
-            return self._xnat_file.size()
+            return self._xnat_file.size
         else:
             return ValueError(self.directory.project.connection._kind)
 
+    @property
     def data(self) -> str:
         if self.directory.project.connection._kind == "XNAT":
-            return self._xnat_file.data()
+            return self._xnat_file.data
         else:
             return ValueError(self.directory.project.connection._kind)
 
