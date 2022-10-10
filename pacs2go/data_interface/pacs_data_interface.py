@@ -1,102 +1,164 @@
-from abc import ABC, abstractmethod, abstractproperty
 from typing import Optional, List, Any, Sequence, Union
+from xnat_pacs_data_interface import XNAT, XNATDirectory, XNATFile, XNATProject
 
 
-class Connection(ABC):
-    def __init__(self, username: Optional[str]='', password: Optional[str]='') -> None:
-        self._projects = self.get_all_projects()
-        self.interface: Any
+class Connection():
+    def __init__(self, server: str, username: str, password: str, kind: str) -> None:
+        self.kind = kind
+        if self.kind == "XNAT":
+            self._xnat_connection = XNAT(server, username, password)
+        else:
+            raise ValueError(kind)
 
-    @abstractproperty
+    @property
+    def _kind(self) -> str:
+        return self.kind
+
+    @property
     def user(self) -> str:
-        pass
+        if self.kind == "XNAT":
+            return self._xnat_connection.user
+        else:
+            raise ValueError(self.kind)
 
-    @abstractmethod
     def __enter__(self) -> 'Connection':
-        pass
+        if self.kind == "XNAT":
+            return self._xnat_connection.__enter__()
 
-    @abstractmethod
     def __exit__(self, type, value, traceback) -> None:
-        pass
+        if self.kind == "XNAT":
+            return self._xnat_connection.__exit__(type, value, traceback)
+        else:
+            raise ValueError(self.kind)
 
-    @abstractmethod
     def get_project(self, name: str) -> Optional['Project']:
-        pass
+        if self.kind == "XNAT":
+            self._xnat_connection.get_project(name)
+        else:
+            raise ValueError(self.kind)
 
-    @abstractmethod
     def get_all_projects(self) -> Sequence['Project']:
-        pass
+        if self.kind == "XNAT":
+            self._xnat_connection.get_all_projects()
+        else:
+            raise ValueError(self.kind)
 
 
-class Project(ABC):
+class Project():
     def __init__(self, connection: Connection, name: str) -> None:
         self.connection = connection
         self.name = name
+        if self.connection._kind == "XNAT":
+            self._xnat_project = XNATProject(connection, name)
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractproperty
+    @property
     def description(self) -> str:
-        pass
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.description
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractproperty
+    @property
     def owners(self) -> List[str]:
-        pass
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.owners
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractproperty
+    @property
     def your_user_role(self) -> str:
-        pass
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.your_user_role
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractmethod
     def delete_project(self) -> None:
-        pass
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.delete_project()
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractmethod
     def get_directory(self, name) -> 'Directory':
-        pass
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.get_directory(name)
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractmethod
     def get_all_directories(self) -> Sequence['Directory']:
-        pass
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.get_all_directories()
+        else:
+            return ValueError(self.connection._kind)
 
-    @abstractmethod
-    def insert(self, file_path: str) -> Union['Directory', 'File']:
-        pass
+    def insert(self, file_path: str, directory_name: str = '') -> Union['Directory', 'File']:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.insert(file_path, directory_name)
+        else:
+            return ValueError(self.connection._kind)
 
 
-class Directory(ABC):
+class Directory():
     def __init__(self, project: Project, name: str) -> None:
         self.name = name
         self.project = project
+        if self.project.connection._kind == "XNAT":
+            self._xnat_directory = XNATDirectory(project, name)
+        else:
+            return ValueError(self.project.connection._kind)
 
-    @abstractmethod
     def delete_directory(self) -> None:
-        pass
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.delete_directory()
+        else:
+            return ValueError(self.project.connection._kind)
 
-    @abstractmethod
     def get_file(self, file_name: str) -> 'File':
-        pass
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.get_file(file_name)
+        else:
+            return ValueError(self.project.connection._kind)
 
-    @abstractmethod
     def get_all_files(self) -> Sequence['File']:
-        pass
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.get_all_files()
+        else:
+            return ValueError(self.project.connection._kind)
 
 
-class File(ABC):
+class File():
     def __init__(self, directory: Directory, name: str) -> None:
         self.directory = directory
         self.name = name
+        if self.directory.project.connection._kind == "XNAT":
+            self._xnat_file = XNATFile(directory, name)
+        else:
+            return ValueError(self.directory.project.connection._kind)
 
-    @abstractproperty
+    @property
     def format(self) -> str:
-        pass
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.format
+        else:
+            return ValueError(self.directory.project.connection._kind)
 
-    @abstractproperty
+    @property
     def size(self) -> int:
-        pass
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.size
+        else:
+            return ValueError(self.directory.project.connection._kind)
 
-    @abstractproperty
+    @property
     def data(self) -> str:
-        pass
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.data
+        else:
+            return ValueError(self.directory.project.connection._kind)
 
-    @abstractmethod
     def delete_file(self) -> None:
-        pass
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.delete_file()
+        else:
+            return ValueError(self.directory.project.connection._kind) 
