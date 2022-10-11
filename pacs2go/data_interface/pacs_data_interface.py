@@ -1,5 +1,5 @@
 from typing import Optional, List, Any, Sequence, Union
-from xnat_pacs_data_interface import XNAT, XNATDirectory, XNATFile, XNATProject
+from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATDirectory, XNATFile, XNATProject
 
 
 class Connection():

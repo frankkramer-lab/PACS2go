@@ -1,21 +1,23 @@
 from dash import html, callback, Input, Output, register_page, ctx, State, no_update
-from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATFile, XNATProject
+from pacs2go.data_interface.pacs_data_interface import Connection, Project
 import dash_bootstrap_components as dbc
+from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='Project',
               path_template='/project/<project_name>')
 server = 'http://xnat-web:8080'
 user = "admin"
 pwd = "admin"
+conn = get_connection()
 
 
-def get_details(project: XNATProject):
+def get_details(project: Project):
     description = "Description: " + project.description
     owners = "Owners: " + ', '.join(project.owners)
     return html.Div([html.H5(owners), html.H5(description)])
 
 
-def get_directories(project: XNATProject):
+def get_directories(project: Project):
     # get list of all directory names and number of files per directory
     rows = []
     for d in project.get_all_directories():
@@ -36,7 +38,7 @@ def get_directories(project: XNATProject):
     return html.Div([html.H5("Directories:"), table])
 
 
-def modal_delete(project: XNATProject):
+def modal_delete(project: Project):
     # modal view for project deletion
     return html.Div([
         # button which triggers modal activation
@@ -67,7 +69,7 @@ def modal_delete(project: XNATProject):
     ])
 
 
-def modal_delete_data(project: XNATProject):
+def modal_delete_data(project: Project):
     # modal view for deleting all directories of a project
     return html.Div([
         # button which triggers modal activation
@@ -99,7 +101,7 @@ def modal_delete_data(project: XNATProject):
     ])
 
 
-def insert_data(project: XNATProject):
+def insert_data(project: Project):
     return html.Div(dbc.Button([html.I(className="bi bi-plus-square-fill me-2"),
                     "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
 
@@ -119,7 +121,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
         return not is_open, no_update
     if ctx.triggered_id == "delete_and_close":
         try:
-            with XNAT(server, user, pwd) as connection:
+            with conn as connection:
                 p = connection.get_project(project_name)
                 p.delete_project()
                 # TODO: redirect to project list view
@@ -141,7 +143,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
         return not is_open, no_update
     if ctx.triggered_id == "delete_data_and_close":
         try:
-            with XNAT(server, user, pwd) as connection:
+            with conn as connection:
                 p = connection.get_project(project_name)
                 dirs = p.get_all_directories()
                 if len(dirs) == 0:
@@ -162,7 +164,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
 
 def layout(project_name=None):
     try:
-        with XNAT(server, user, pwd) as connection:
+        with conn as connection:
             project = connection.get_project(project_name)
     except:
         return dbc.Alert("No Project found", color="danger")
