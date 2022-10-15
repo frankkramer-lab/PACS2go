@@ -16,11 +16,12 @@ app.layout = html.Div(
                 dbc.NavLink(
                     "Home", href=page_registry['pacs2go.frontend.pages.home']['path']),
                 dbc.NavLink(
-                    "Projekte", href=page_registry['pacs2go.frontend.pages.project_list']['path'], className="fw-lighter"),
+                    "Projects", href=page_registry['pacs2go.frontend.pages.project_list']['path'], className="fw-lighter"),
                 dbc.NavLink(
                     "Upload", href=page_registry['pacs2go.frontend.pages.upload']['path'], className="fw-lighter"),
             ],
             brand="PACS2go",
+            brand_href="/",
             color=colors['sage'],
             className="fw-bold mb-3",
             dark=True,

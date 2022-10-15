@@ -3,7 +3,8 @@ from pacs2go.data_interface.pacs_data_interface import Connection
 colors = {
     'background': '#FFFFFF',
     'text': '#000000',
-    'sage': '#8cb897'
+    'sage': '#8cb897',
+    'links': '#0e6e39'
 }
 
 
