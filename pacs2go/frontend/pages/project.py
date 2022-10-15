@@ -1,14 +1,10 @@
 from dash import html, callback, Input, Output, register_page, ctx, State, no_update
-from pacs2go.data_interface.pacs_data_interface import Connection, Project
+from pacs2go.data_interface.pacs_data_interface import Project
 import dash_bootstrap_components as dbc
 from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='Project',
               path_template='/project/<project_name>')
-server = 'http://xnat-web:8080'
-user = "admin"
-pwd = "admin"
-conn = get_connection()
 
 
 def get_details(project: Project):
@@ -121,7 +117,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
         return not is_open, no_update
     if ctx.triggered_id == "delete_and_close":
         try:
-            with conn as connection:
+            with get_connection() as connection:
                 p = connection.get_project(project_name)
                 p.delete_project()
                 # TODO: redirect to project list view
@@ -143,7 +139,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
         return not is_open, no_update
     if ctx.triggered_id == "delete_data_and_close":
         try:
-            with conn as connection:
+            with get_connection() as connection:
                 p = connection.get_project(project_name)
                 dirs = p.get_all_directories()
                 if len(dirs) == 0:
@@ -164,7 +160,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
 
 def layout(project_name=None):
     try:
-        with conn as connection:
+        with get_connection() as connection:
             project = connection.get_project(project_name)
     except:
         return dbc.Alert("No Project found", color="danger")

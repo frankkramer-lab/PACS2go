@@ -6,10 +6,10 @@ colors = {
     'sage': '#8cb897'
 }
 
-server = 'http://xnat-web:8080'
-user = "admin"
-pwd = "admin"
-
 
 def get_connection():
-    return Connection(server, user, pwd, "XNAT")
+    server = 'http://xnat-web:8080'
+    user = "admin"
+    pwd = "admin"
+    connection_type = "XNAT"
+    return Connection(server, user, pwd, connection_type)

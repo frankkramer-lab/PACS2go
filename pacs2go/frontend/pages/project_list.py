@@ -1,17 +1,17 @@
 from dash import html, dcc, callback, Input, Output, register_page, ctx, State, no_update
 import dash_bootstrap_components as dbc
-from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATProject
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import get_connection
 
 
 register_page(__name__, title='Projects', path='/projects')
-server = 'http://xnat-web:8080'
 
 # TODO: only make project clickable if user has rights to certain project
 
 
 def get_projects_list():
     try:
-        with XNAT(server, "admin", "admin") as connection:
+        with get_connection() as connection:
             return connection.get_all_projects()
     except:
         return []
@@ -23,7 +23,7 @@ def get_projects_table():
     for p in get_projects_list():
         # project names represent links to individual project pages
         rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="text-dark")), html.Td(
-            "You are an " + p.your_user_role + " for this project."), html.Td(len(p.get_all_directories()))]))
+            p.your_user_role.capitalize()), html.Td(len(p.get_all_directories()))]))
 
     table_header = [
         html.Thead(
@@ -90,10 +90,10 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         # project name cannot contain whitespaces
         project_name = str(project_name).replace(" ", "_")
         try:
-            with XNAT(server, "admin", "admin") as connection:
+            with get_connection() as connection:
                 # try to create project
                 # TODO: what if project name already exists? (has to be unique)
-                XNATProject(connection, project_name)
+                Project(connection, project_name)
         except Exception as err:
             # TODO: differentiate between different exceptions
             return is_open, dbc.Alert(str(err), color="danger")
@@ -112,8 +112,7 @@ def layout():
             html.H1(
                 children='Your Projects'),
             html.Div([html.A(dbc.Button(html.I(className="bi bi-arrow-clockwise"), size='lg'), href='', className="me-2"),
-            modal_create()], className="d-flex justify-content-between")
+                      modal_create()], className="d-flex justify-content-between")
         ], className="d-flex justify-content-between mb-4"),
         get_projects_table(),
     ])
-

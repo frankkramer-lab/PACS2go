@@ -4,19 +4,20 @@ import base64
 from dash import register_page, html, dcc, callback, ctx
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
-from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATProject
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import get_connection
 
-register_page(__name__, title='PACS2go 2.0', path_template='/upload/<project_name>')
+register_page(__name__, title='PACS2go 2.0',
+              path_template='/upload/<project_name>')
 
-server = 'http://xnat-web:8080'
 
 # TODO: upload of large files -> maybe using: https://github.com/np-8/dash-uploader
 
 
 def uploader(passed_project: str):
     # if user navigates directly to upload, project name input field will be empty
-    if passed_project=='none':
-        passed_project=''
+    if passed_project == 'none':
+        passed_project = ''
     # Upload drag and drop area
     return html.Div([
         dbc.Row([
@@ -99,7 +100,7 @@ def upload_to_xnat(btn, contents, filename, project_name, directory_name):
     # triggered by clicking on the upload button
     if "click-upload" == ctx.triggered_id:
         if project_name:
-            project_name = str(project_name).replace(" ","_")
+            project_name = str(project_name).replace(" ", "_")
             # TODO: test different formats through frontend
             with tempfile.NamedTemporaryFile(suffix=filename) as tf:
                 try:
@@ -107,14 +108,14 @@ def upload_to_xnat(btn, contents, filename, project_name, directory_name):
                     data = contents.encode("utf8").split(b";base64,")[1]
                     tf.write(base64.b64decode(data))
                     if directory_name:
-                        with XNAT(server, 'admin', 'admin') as connection:
+                        with get_connection() as connection:
                             # upload to XNAT server
-                            XNATProject(
+                            Project(
                                 connection, project_name).insert(tf.name, directory_name)
                     else:
-                        with XNAT(server, 'admin', 'admin') as connection:
+                        with get_connection() as connection:
                             # upload to XNAT server
-                            XNATProject(
+                            Project(
                                 connection, project_name).insert(tf.name)
                     return html.Div("Upload successful")
                 except Exception as err:
