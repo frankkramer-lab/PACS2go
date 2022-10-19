@@ -1,10 +1,11 @@
 import tempfile
 import shutil
+from PIL import Image
 from dash import register_page, html, dcc, get_app, callback, ctx, no_update
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import get_connection, colors
 import dash_uploader as du  # https://github.com/np-8/dash-uploader
 import uuid
 
@@ -26,7 +27,7 @@ def get_upload_component(id):
         max_file_size=1024,  # 1GB
         filetypes=['zip', 'jpeg', 'jpg', 'dcm', 'json', 'nii'],
         upload_id=uuid.uuid1(),  # Unique session id
-        text='Drag and Drop your file right here!', 
+        text='Drag and Drop your file right here! Or click here to select a file!',
         text_completed='Ready for XNAT Upload: ',
     )
 
@@ -71,10 +72,12 @@ def uploader(passed_project: str):
 def pass_filename_and_show_upload_button(filenames):
     # get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
-    return html.Div([
-        dbc.Button("Upload to XNAT", id="click-upload", size="lg", color="success"),
+    return [html.Div([
+        dbc.Button("Upload to XNAT", id="click-upload",
+                   size="lg", color="success"),
         # placeholder for successful upload message
-        html.Div(id='output-uploader', className="mt-3")], className="mt-3"), filename
+        html.Div(id='output-uploader', className="mt-3")], className="mt-3"),
+        filename]
 
 
 # called when 'Upload to XNAT' button (appears after dash-uploader received an upload) is clicked
@@ -101,7 +104,8 @@ def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
                         Project(connection, project_name).insert(filename)
                     # remove tempdir after successful upload to XNAT
                     shutil.rmtree(dirpath)
-                return dbc.Alert(f"Upload to {project_name} successful!", color="success")
+                return dbc.Alert([f"The upload was successful! ", html.A(f"Click here to go to {project_name}.", 
+                    href=f"/project/{project_name}", className="fw-bold text-decoration-none", style={'color': colors['links']})], color="success")
             except Exception as err:
                 # TODO: differentiate between different exceptions
                 return dbc.Alert("Upload unsuccessful: " + str(err), color="danger")
