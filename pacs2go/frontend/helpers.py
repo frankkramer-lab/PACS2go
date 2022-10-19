@@ -4,7 +4,7 @@ colors = {
     'background': '#FFFFFF',
     'text': '#000000',
     'sage': '#8cb897',
-    'links': '#0e6e39'
+    'links': '#2d9e2b'
 }
 
 

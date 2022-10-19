@@ -17,7 +17,7 @@ def card_view_projects():
     for p in projects:
         project_list.append(dbc.ListGroupItem([html.A(
             p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
-            html.A(html.I(className="bi bi-plus-square me-2"), href=f"/upload/{p.name}", style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+            html.A(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}", style={'color': colors['links']})], class_name="d-flex justify-content-between"))
     card = dbc.Card(
         dbc.CardBody(
             [
@@ -28,7 +28,7 @@ def card_view_projects():
                               class_name="my-3"
                               ),
                 dbc.Button("Go to Project Overview",
-                             href=f"/projects/", outline=False, color='success'),
+                           href=f"/projects/", outline=False, color='success'),
             ]
         ))
     return card
@@ -41,7 +41,8 @@ def card_view_upload():
                 html.H4("Upload", className="card-title"),
                 html.P(f"Upload Medical Files. Currently we support DICOM, JPEG, Nifti and JSON.",
                        className="card-subtitle"),
-                dbc.Button("Upload to PACS2go", href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
+                dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
+                           href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
             ]
         ),)
     return card
@@ -52,14 +53,9 @@ def card_view_upload():
 #################
 
 def layout():
-    return [html.H1(
-        children='PACS2go 2.0',
-        style={
-            'textAlign': 'left',
-        }),
-        html.Div(children='Exchange medical files.', style={
-            'textAlign': 'left',
-        }),
+    return [
+        html.H1('Welcome to PACS2go 2.0'),
+        html.Div('Exchange medical files.'),
         dbc.Row([
             dbc.Col(card_view_projects(),),
             dbc.Col(card_view_upload(),),

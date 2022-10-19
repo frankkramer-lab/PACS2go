@@ -1,7 +1,7 @@
 from dash import html, callback, Input, Output, register_page, ctx, State, no_update
 from pacs2go.data_interface.pacs_data_interface import Project
 import dash_bootstrap_components as dbc
-from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import get_connection, colors
 
 register_page(__name__, title='Project',
               path_template='/project/<project_name>')
@@ -18,7 +18,7 @@ def get_directories(project: Project):
     rows = []
     for d in project.get_all_directories():
         # directory names represent links to individual directory pages
-        rows.append(html.Tr([html.Td(html.A(d.name, href="", className="text-dark")), html.Td(
+        rows.append(html.Tr([html.Td(html.A(d.name, href="", className="text-decoration-none", style={'color': colors['links']})), html.Td(
             len(d.get_all_files()))]))
 
     table_header = [
@@ -98,7 +98,7 @@ def modal_delete_data(project: Project):
 
 
 def insert_data(project: Project):
-    return html.Div(dbc.Button([html.I(className="bi bi-plus-square-fill me-2"),
+    return html.Div(dbc.Button([html.I(className="bi bi-cloud-upload me-2"),
                     "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
 
 

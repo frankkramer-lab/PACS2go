@@ -1,7 +1,7 @@
 from dash import html, dcc, callback, Input, Output, register_page, ctx, State, no_update
 import dash_bootstrap_components as dbc
 from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import get_connection, colors
 
 
 register_page(__name__, title='Projects', path='/projects')
@@ -22,7 +22,7 @@ def get_projects_table():
     rows = []
     for p in get_projects_list():
         # project names represent links to individual project pages
-        rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="text-dark")), html.Td(
+        rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
             p.your_user_role.capitalize()), html.Td(len(p.get_all_directories()))]))
 
     table_header = [
