@@ -1,40 +1,33 @@
-#from PIL import Image
 import tempfile
 import shutil
-import os
-from dash import register_page, html, dcc, get_app
+from dash import register_page, html, dcc, get_app, callback, ctx, no_update
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import get_connection
-import dash_uploader as du
+import dash_uploader as du  # https://github.com/np-8/dash-uploader
 import uuid
 
 
 register_page(__name__, title='PACS2go 2.0',
-              path_template='/large_upload/<project_name>')
+              path_template='/upload/<project_name>')
 
-# TODO: upload of large files -> maybe using: https://github.com/np-8/dash-uploader
-
-
-# setup 
+# setup dash-uploader
+# attention: global variables not recommended for multi-user environments
 dirpath = tempfile.mkdtemp()
 UPLOAD_FOLDER_ROOT = dirpath
 du.configure_upload(get_app(), UPLOAD_FOLDER_ROOT)
 
-def upload_tempdir_to_xnat(filename):
-    # after dash-uploader upload file to tempdir, upload to xnat and delete tempdir
-    project_name = "test_1"
-    with get_connection() as connection:
-        Project(connection, project_name).insert(filename)
-        shutil.rmtree(dirpath)
 
 def get_upload_component(id):
+    # dash-uploader Upload component
     return du.Upload(
         id=id,
-        max_file_size=1800,  # 1800 Mb
+        max_file_size=1024,  # 1GB
         filetypes=['zip', 'jpeg', 'jpg', 'dcm', 'json', 'nii'],
         upload_id=uuid.uuid1(),  # Unique session id
+        text='Drag and Drop your file right here!', 
+        text_completed='Ready for XNAT Upload: ',
     )
 
 
@@ -55,52 +48,72 @@ def uploader(passed_project: str):
                            placeholder="Directory Name (optional)"),
                  dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used",)], className="mb-3")
         ]),
-        # du uploader
         html.Div(
             [
                 get_upload_component(id='dash-uploader'),
-                html.Div(id='callback-output'),
-            ],),
-        # placeholder for image preview / upload Button to appear
-        html.Div(id='image-preview-and-upload-button'),
+                # placeholder for 'Upload to XNAT' button
+                html.Div(id='du-callback-output'),
+            ],)
     ])
-
-
-def preview(contents, filename):
-    # display image preview and filename
-    if filename.endswith('.jpg') or filename.endswith('.jpeg'):
-        return dbc.Card(
-            [
-                dbc.CardBody(html.P(filename, className="card-text")),
-                dbc.CardImg(src=contents, bottom=True)
-            ])
-    else:
-        return html.H5(filename)
 
 
 #################
 #   Callbacks   #
 #################
 
+# callback for the dash-uploader Upload component -> called when something is uploaded
+# triggers the appearance of an 'Upload to XNAT' button
 @du.callback(
-    output=Output('callback-output', 'children'),
+    output=[Output('du-callback-output', 'children'),
+            Output('filename-storage', 'data')],
     id='dash-uploader',
 )
-def get_a_list(filenames):
+def pass_filename_and_show_upload_button(filenames):
+    # get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
-    upload_tempdir_to_xnat(filename)
-    if filename.endswith('.jpg') or filename.endswith('.jpeg'):
-        return dbc.Card(
-            [
-                dbc.CardBody(html.P(filename, className="card-text")),
-                #dbc.CardImg(src=contents, bottom=True)
-            ])
+    return html.Div([
+        dbc.Button("Upload to XNAT", id="click-upload", size="lg", color="success"),
+        # placeholder for successful upload message
+        html.Div(id='output-uploader', className="mt-3")], className="mt-3"), filename
+
+
+# called when 'Upload to XNAT' button (appears after dash-uploader received an upload) is clicked
+# and triggers the file upload to XNAT
+@callback(
+    Output('output-uploader', 'children'),
+    Input('click-upload', 'n_clicks'),
+    State('project_name', 'value'),
+    State('directory_name', 'value'),
+    State('filename-storage', 'data')
+)
+def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
+    if ctx.triggered_id == "click-upload":
+        if project_name:
+            # project name shall not contain whitespaces
+            project_name = str(project_name).replace(" ", "_")
+            try:
+                with get_connection() as connection:
+                    if dir_name:
+                        Project(connection, project_name).insert(
+                            filename, dir_name)
+                    else:
+                        # if dir_name is an empty string
+                        Project(connection, project_name).insert(filename)
+                    # remove tempdir after successful upload to XNAT
+                    shutil.rmtree(dirpath)
+                return dbc.Alert(f"Upload to {project_name} successful!", color="success")
+            except Exception as err:
+                # TODO: differentiate between different exceptions
+                return dbc.Alert("Upload unsuccessful: " + str(err), color="danger")
+        else:
+            return dbc.Alert("Please specify Project Name.", color="danger")
     else:
-        return html.H5(filename)
+        return no_update
 
 #################
 #  Page Layout  #
 #################
+
 
 def layout(project_name=None):
     return [html.H1(
@@ -111,5 +124,7 @@ def layout(project_name=None):
         className="mb-3"),
         dcc.Markdown(children='Please select a **zip** folder or a single file to upload. \n \n' +
                      'Accepted formats include **DICOM**, **NIFTI**, **JPEG** and **JSON**.'),
-        uploader(project_name)
+        uploader(project_name),
+        # store filename for upload to xnat https://dash.plotly.com/sharing-data-between-callbacks
+        dcc.Store(id='filename-storage')
     ]
