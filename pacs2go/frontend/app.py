@@ -19,6 +19,8 @@ app.layout = html.Div(
                     "Projects", href=page_registry['pacs2go.frontend.pages.project_list']['path'], className="fw-lighter"),
                 dbc.NavLink(
                     "Upload", href=page_registry['pacs2go.frontend.pages.upload']['path'], className="fw-lighter"),
+                dbc.NavLink(
+                    "L-Upload", href=page_registry['pacs2go.frontend.pages.large_upload']['path'], className="fw-lighter"),
             ],
             brand="PACS2go",
             brand_href="/",

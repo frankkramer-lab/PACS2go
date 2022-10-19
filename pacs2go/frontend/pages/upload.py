@@ -7,6 +7,7 @@ import dash_bootstrap_components as dbc
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import get_connection
 
+
 register_page(__name__, title='PACS2go 2.0',
               path_template='/upload/<project_name>')
 
