@@ -38,6 +38,8 @@ def uploader(passed_project: str):
         passed_project = ''
     # Upload drag and drop area
     return html.Div([
+        dbc.Row(html.H5([html.B("1."), " Specify the project's name.", html.Br(),
+                         "If you choose a pre-existent project name, the data will be inserted into this project. Otherwise a new project will be created."])),
         dbc.Row([
             dbc.Col(
                 # input field value equals project name, if user navigates to upload via a specific project
@@ -49,12 +51,14 @@ def uploader(passed_project: str):
                            placeholder="Directory Name (optional)"),
                  dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used",)], className="mb-3")
         ]),
-        html.Div(
+        dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
+                         'Accepted formats include DICOM, NIFTI, JPEG and JSON.'])),
+        dbc.Row(
             [
                 get_upload_component(id='dash-uploader'),
                 # placeholder for 'Upload to XNAT' button
                 html.Div(id='du-callback-output'),
-            ],)
+            ])
     ])
 
 
@@ -73,6 +77,7 @@ def pass_filename_and_show_upload_button(filenames):
     # get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
     return [html.Div([
+        html.H5([html.B("3."), ' Confirm upload to XNAT.']),
         dbc.Button("Upload to XNAT", id="click-upload",
                    size="lg", color="success"),
         # placeholder for successful upload message
@@ -104,8 +109,8 @@ def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
                         Project(connection, project_name).insert(filename)
                     # remove tempdir after successful upload to XNAT
                     shutil.rmtree(dirpath)
-                return dbc.Alert([f"The upload was successful! ", html.A(f"Click here to go to {project_name}.", 
-                    href=f"/project/{project_name}", className="fw-bold text-decoration-none", style={'color': colors['links']})], color="success")
+                return dbc.Alert([f"The upload was successful! ", html.A(f"Click here to go to {project_name}.",
+                                                                         href=f"/project/{project_name}", className="fw-bold text-decoration-none", style={'color': colors['links']})], color="success")
             except Exception as err:
                 # TODO: differentiate between different exceptions
                 return dbc.Alert("Upload unsuccessful: " + str(err), color="danger")
@@ -126,8 +131,6 @@ def layout(project_name=None):
             'textAlign': 'left',
         },
         className="mb-3"),
-        dcc.Markdown(children='Please select a **zip** folder or a single file to upload. \n \n' +
-                     'Accepted formats include **DICOM**, **NIFTI**, **JPEG** and **JSON**.'),
         uploader(project_name),
         # store filename for upload to xnat https://dash.plotly.com/sharing-data-between-callbacks
         dcc.Store(id='filename-storage')
