@@ -45,19 +45,19 @@ def uploader(passed_project: str):
         passed_project = ''
     # Upload drag and drop area
     return html.Div([
-        dbc.Row(html.H5([html.B("1."), " Specify the project's name.", html.Br(),
-                         "If you choose a pre-existent project name, the data will be inserted into this project. Otherwise a new project will be created."])),
+        dbc.Row(html.H5([html.B("1."), " Specify the project's name."])),
         dbc.Row([
             dbc.Col(
                 # input field value equals project name, if user navigates to upload via a specific project
                 [dbc.Label("Project"),
                  html.Datalist(children=get_project_names(), id='project_names'),
-                 dbc.Input(id="project_name", type="text", placeholder="Project Name...", required=True, value=passed_project, list='project_names'), ]),
+                 dbc.Input(id="project_name", type="text", placeholder="Project Name...", required=True, value=passed_project, list='project_names'),
+                 dbc.FormText("If you choose a pre-existent project name, the data will be inserted into this project. Otherwise a new project will be created.")], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
                  dbc.Input(id="directory_name",
                            placeholder="Directory Name (optional)"),
-                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used",)], className="mb-3")
+                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
         ]),
         dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
                          'Accepted formats include DICOM, NIFTI, JPEG and JSON.'])),
