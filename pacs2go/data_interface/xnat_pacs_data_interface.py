@@ -71,7 +71,10 @@ class XNATProject():
     def __init__(self, connection: XNAT, name: str) -> None:
         project = connection.interface.select.project(name)
         if project.exists() != True:
-            project.create()
+            try:
+                project.create()
+            except:
+                raise Exception("This project name has been used with your XNAT server before, please choose another.")
         self._xnat_project_object = project
         self.connection = connection
         self.name = name

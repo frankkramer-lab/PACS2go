@@ -1,5 +1,6 @@
 import tempfile
 import shutil
+from typing import List
 from PIL import Image
 from dash import register_page, html, dcc, get_app, callback, ctx, no_update
 from dash.dependencies import Input, Output, State
@@ -19,6 +20,12 @@ dirpath = tempfile.mkdtemp()
 UPLOAD_FOLDER_ROOT = dirpath
 du.configure_upload(get_app(), UPLOAD_FOLDER_ROOT)
 
+def get_project_names() -> List[str]:
+    with get_connection() as connection:
+        project_list = []
+        for p in connection.get_all_projects():
+            project_list.append(html.Option(value=p.name))
+        return project_list
 
 def get_upload_component(id):
     # dash-uploader Upload component
@@ -44,7 +51,8 @@ def uploader(passed_project: str):
             dbc.Col(
                 # input field value equals project name, if user navigates to upload via a specific project
                 [dbc.Label("Project"),
-                 dbc.Input(id="project_name", placeholder="Project Name...", required=True, value=passed_project), ]),
+                 html.Datalist(children=get_project_names(), id='project_names'),
+                 dbc.Input(id="project_name", type="text", placeholder="Project Name...", required=True, value=passed_project, list='project_names'), ]),
             dbc.Col(
                 [dbc.Label("Directory"),
                  dbc.Input(id="directory_name",
@@ -81,7 +89,7 @@ def pass_filename_and_show_upload_button(filenames):
         dbc.Button("Upload to XNAT", id="click-upload",
                    size="lg", color="success"),
         # placeholder for successful upload message
-        html.Div(id='output-uploader', className="mt-3")], className="mt-3"),
+        dbc.Spinner(html.Div(id='output-uploader', className="mt-3"))], className="mt-3"),
         filename]
 
 
