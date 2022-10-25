@@ -1,32 +1,33 @@
-from ctypes import Union
 import datetime
 import os
 from tempfile import TemporaryDirectory
 import zipfile
-from django.db import DatabaseError
 from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
 import uuid
-from pacs_data_interface import Connection, Project, Directory, File
 from typing import List, Sequence, Union
 
 
 #---------------------------------------------#
 #          XNAT data interface class          #
 #---------------------------------------------#
-class XNAT(Connection):
-    def __init__(self, username: str, password: str):
-        # connect to xnat server
-        self.interface = Interface(server='http://vm204-misit.informatik.uni-augsburg.de',
+class XNAT():
+    def __init__(self, server:str, username: str, password: str):
+        # connect to xnat server 
+        #'http://vm204-misit.informatik.uni-augsburg.de:8080'
+        self.interface = Interface(server=server,
                                    user=username,
                                    password=password)
-        super().__init__()
         try:
             # try to access usernames to check if connect was successfull
             self.interface.manage.users()
         except DatabaseError:
             # raised if wrong username or password was entered
             raise Exception("Wrong user credentials!")
+
+    @property
+    def _kind(self) -> str:
+        return "XNAT"
 
     @property
     def user(self) -> str:
@@ -66,13 +67,17 @@ class XNAT(Connection):
 #---------------------------------------------#
 #       XNAT Project interface class          #
 #---------------------------------------------#
-class XNATProject(Project):
+class XNATProject():
     def __init__(self, connection: XNAT, name: str) -> None:
         project = connection.interface.select.project(name)
         if project.exists() != True:
-            project.create()
+            try:
+                project.create()
+            except:
+                raise Exception("This project name has been used with your XNAT server before, please choose another.")
         self._xnat_project_object = project
-        super().__init__(connection, name)
+        self.connection = connection
+        self.name = name
 
     @property
     def description(self) -> str:
@@ -175,11 +180,12 @@ class XNATProject(Project):
             raise Exception("The input is not a file.")
 
 
-class XNATDirectory(Directory):
+class XNATDirectory():
     def __init__(self, project: XNATProject, name: str) -> None:
         p = project.connection.interface.select.project(project.name)
         self._xnat_resource_object = p.resource(name)
-        super().__init__(project, name)
+        self.name = name
+        self.project = project
 
     # remove a XNAT resource directory from a project
     def delete_directory(self) -> None:
@@ -204,11 +210,13 @@ class XNATDirectory(Directory):
         return files
 
 
-class XNATFile(File):
+class XNATFile():
     def __init__(self, directory: XNATDirectory, file_name: str) -> None:
         self._xnat_file_object = directory._xnat_resource_object.file(
             file_name)
-        super().__init__(directory=directory, name=file_name)
+        self.directory = directory
+        self.name = file_name
+
 
     @property
     def format(self) -> str:
