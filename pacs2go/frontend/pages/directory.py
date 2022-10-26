@@ -9,7 +9,6 @@ register_page(__name__, title='Directory - PACS2go',
 def get_files(directory: Directory):
     rows = []
     for f in directory.get_all_files():
-        # directory names represent links to individual directory pages
         rows.append(html.Tr([html.Td(f.name),html.Td(f.format), html.Td(f.size/1000)]))
 
     table_header = [
@@ -19,13 +18,13 @@ def get_files(directory: Directory):
 
     table_body = [html.Tbody(rows)]
 
-    # put together directory table
+    # put together file table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
     return html.Div([html.H5("Files:"), table])
 
 def modal_delete(directory: Directory):
-    # modal view for project deletion
+    # modal view for directory deletion
     return html.Div([
         # button which triggers modal activation
         dbc.Button([html.I(className="bi bi-trash me-2"),
@@ -41,7 +40,7 @@ def modal_delete(directory: Directory):
                         "Are you sure you want to delete this directory and all its data?"),
                 ]),
                 dbc.ModalFooter([
-                    # button which triggers the deletion of a project (see modal_and_project_creation)
+                    # button which triggers the deletion of the directory
                     dbc.Button("Delete Directory",
                                id="delete_directory_and_close", color="danger"),
                     # button which causes modal to close/disappear
@@ -72,7 +71,7 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
                 project = connection.get_project(project_name)
                 directory = project.get_directory(directory_name)
                 directory.delete_directory()
-                # TODO: redirect to project list view
+                # redirect to project after deletion
                 return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_directory_delete")
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
