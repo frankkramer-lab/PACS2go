@@ -1,4 +1,4 @@
-from dash import register_page, html
+from dash import register_page, html, dcc
 import dash_bootstrap_components as dbc
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import get_connection, colors
@@ -15,9 +15,9 @@ def card_view_projects():
             return dbc.Alert("Projects could not be retrieved.")
     project_list = []
     for p in projects:
-        project_list.append(dbc.ListGroupItem([html.A(
+        project_list.append(dbc.ListGroupItem([dcc.Link(
             p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
-            html.A(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}", style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+            dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}", style={'color': colors['links']})], class_name="d-flex justify-content-between"))
     card = dbc.Card(
         dbc.CardBody(
             [

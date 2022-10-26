@@ -22,7 +22,7 @@ def get_projects_table():
     rows = []
     for p in get_projects_list():
         # project names represent links to individual project pages
-        rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
+        rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
             p.your_user_role.capitalize()), html.Td(len(p.get_all_directories()))]))
 
     table_header = [
@@ -111,7 +111,7 @@ def layout():
         html.Div([
             html.H1(
                 children='Your Projects'),
-            html.Div([html.A(dbc.Button(html.I(className="bi bi-arrow-clockwise"), size='lg'), href='', className="me-2"),
+            html.Div([dcc.Link(dbc.Button(html.I(className="bi bi-arrow-clockwise"), size='lg'), href='', className="me-2"),
                       modal_create()], className="d-flex justify-content-between")
         ], className="d-flex justify-content-between mb-4"),
         get_projects_table(),

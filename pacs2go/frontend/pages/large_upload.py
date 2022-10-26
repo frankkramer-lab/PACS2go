@@ -117,7 +117,7 @@ def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
                         Project(connection, project_name).insert(filename)
                     # remove tempdir after successful upload to XNAT
                     shutil.rmtree(dirpath)
-                return dbc.Alert([f"The upload was successful! ", html.A(f"Click here to go to {project_name}.",
+                return dbc.Alert([f"The upload was successful! ", dcc.Link(f"Click here to go to {project_name}.",
                                                                          href=f"/project/{project_name}", className="fw-bold text-decoration-none", style={'color': colors['links']})], color="success")
             except Exception as err:
                 # TODO: differentiate between different exceptions
