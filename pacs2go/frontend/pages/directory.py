@@ -1,12 +1,24 @@
 from dash import html, callback, Input, Output, register_page, ctx, State, no_update, dcc
 from pacs2go.data_interface.pacs_data_interface import Directory
 import dash_bootstrap_components as dbc
-from pacs2go.frontend.helpers import get_connection, colors
+from pacs2go.frontend.helpers import get_connection, colors, pil_to_b64
+from PIL import Image
 
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
 
-def get_files(directory: Directory):
+
+# preview first image within the directory
+def get_single_file_preview(directory:Directory):
+    file = directory.get_all_files()[0]
+    if file.format == 'JPEG':
+        image = html.Img(id="my-img",className="image", width="100%", src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+        return html.Div([html.H4("Preview:"), image], className="w-25 h-25")
+    else:
+        return html.Div()
+
+# show table of the directories files and their details
+def get_files_table(directory: Directory):
     rows = []
     for f in directory.get_all_files():
         rows.append(html.Tr([html.Td(f.name),html.Td(f.format), html.Td(f.size/1000)]))
@@ -21,7 +33,7 @@ def get_files(directory: Directory):
     # put together file table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
-    return html.Div([html.H5("Files:"), table])
+    return html.Div([html.H4("Files:"), table])
 
 def modal_delete(directory: Directory):
     # modal view for directory deletion
@@ -100,6 +112,7 @@ def layout(project_name=None, directory_name=None):
                         modal_delete(directory),
                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
         ], className="mb-3"),
-        html.H5(f"Belongs to project: {project.name}"),
-        get_files(directory)
+        html.H4(f"Belongs to project: {project.name}"),
+        get_files_table(directory),
+        get_single_file_preview(directory),
     ])
