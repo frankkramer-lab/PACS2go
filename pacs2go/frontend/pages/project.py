@@ -3,7 +3,7 @@ from pacs2go.data_interface.pacs_data_interface import Project
 import dash_bootstrap_components as dbc
 from pacs2go.frontend.helpers import get_connection, colors
 
-register_page(__name__, title='Project',
+register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')
 
 

@@ -11,7 +11,7 @@ import dash_uploader as du  # https://github.com/np-8/dash-uploader
 import uuid
 
 
-register_page(__name__, title='PACS2go 2.0',
+register_page(__name__, title='Upload - PACS2go',
               path_template='/upload/<project_name>')
 
 # setup dash-uploader

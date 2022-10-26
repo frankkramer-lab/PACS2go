@@ -4,7 +4,7 @@ from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import get_connection, colors
 
 
-register_page(__name__, title='Projects', path='/projects')
+register_page(__name__, title='Projects - PACS2go', path='/projects')
 
 # TODO: only make project clickable if user has rights to certain project
 
