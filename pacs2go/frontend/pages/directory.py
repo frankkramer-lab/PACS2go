@@ -110,6 +110,8 @@ def layout(project_name=None, directory_name=None):
             dbc.Col(
                 [
                         modal_delete(directory),
+                        dbc.Button([html.I(className="bi bi-play me-2"),
+                    "Viewer"], size="md", color="success", href=f"/viewer/{project.name}/{directory.name}"),
                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
         ], className="mb-3"),
         html.H4(f"Belongs to project: {project.name}"),
