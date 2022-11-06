@@ -4,41 +4,57 @@ from pacs2go.data_interface.pacs_data_interface import Directory, File
 import dash_bootstrap_components as dbc
 from pacs2go.frontend.helpers import get_connection, colors, pil_to_b64
 from PIL import Image
+import json
 
 register_page(__name__, title='Viewer - PACS2go',
-              path_template='/viewer/<project_name>/<directory_name>')
+              path_template='/viewer/<project_name>/<directory_name>/<file_name>')
 
 
-def get_file_array(project_name: str, directory_name: str):
+def get_file_list(project_name: str, directory_name: str):
     with get_connection() as connection:
         project = connection.get_project(project_name)
         directory = project.get_directory(directory_name)
         return directory.get_all_files()
 
 
-def show_image(file: File):
-    if file.format == 'JPEG':
-        image = html.Img(id="my-img", className="image",
-                         src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+def show_file(file: File):
+    if file.format == 'JSON' or file.format == 'JPEG':
+        if file.format == 'JPEG':
+            content = html.Img(id="my-img", className="image",
+                               src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+
+        elif file.format == 'JSON':
+            f = open(file.data)
+            content = json.dumps(json.load(f))
+
+        elif file.format == 'NIFTI':
+            # TODO: implement dash-slicer
+            pass
+
         data = dbc.Card(
             dbc.CardBody(
                 [
                     html.H6(f"File Name: {file.name}"),
                     html.H6(f"File Format: {file.format}"),
                     html.H6(f"File Size: {file.size}"),
-                    html.Div([image]),
+                    html.Div([content]),
                 ],))
         return data
+
     else:
         return html.Div()
 
 
-def files_dropdown(files: List[File]):
+def files_dropdown(files: List[File],  file_name: str = None):
+    if file_name:
+        first_file = file_name
+    else:
+        first_file = files[0].name
     return html.Div([html.H4("Choose a file: "),
                      dcc.Dropdown(id='image-dropdown',
                                   options=[{'label': f.name, 'value': f.name}
                                            for f in files],
-                                  value=files[0].name, className="mb-3")])
+                                  value=first_file, className="mb-3")])
 
 
 def slide_show():
@@ -57,21 +73,21 @@ def slide_show():
 
 @callback([Output('current_image', 'children')], [Input('image-dropdown', 'value')],
           State('directory', 'data'), State('project', 'data'))
-def show_chosen_image(file_name: str, directory_name: str, project_name: str):
+def show_chosen_image(chosen_file_name: str, directory_name: str, project_name: str):
     with get_connection() as connection:
         directory = connection.get_project(
             project_name).get_directory(directory_name)
-        file = directory.get_file(file_name)
-        return [show_image(file)]
+        file = directory.get_file(chosen_file_name)
+        return [show_file(file)]
 
 #################
 #  Page Layout  #
 #################
 
 
-def layout(project_name: str = None, directory_name: str = None):
+def layout(project_name: str = None, directory_name: str = None, file_name: str = None):
     try:
-        files = get_file_array(project_name, directory_name)
+        files = get_file_list(project_name, directory_name)
     except:
         return dbc.Alert("No Directory found", color="danger")
     return html.Div([
@@ -82,6 +98,6 @@ def layout(project_name: str = None, directory_name: str = None):
                 dbc.Col(html.H1(f"Directory {directory_name}", style={
                     'textAlign': 'left', })),
                 ], className="mb-3"),
-        files_dropdown(files),
+        files_dropdown(files, file_name),
         slide_show(),
     ])

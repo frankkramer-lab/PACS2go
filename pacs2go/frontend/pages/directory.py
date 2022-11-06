@@ -9,23 +9,27 @@ register_page(__name__, title='Directory - PACS2go',
 
 
 # preview first image within the directory
-def get_single_file_preview(directory:Directory):
+def get_single_file_preview(directory: Directory):
     file = directory.get_all_files()[0]
     if file.format == 'JPEG':
-        image = html.Img(id="my-img",className="image", width="100%", src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+        image = html.Img(id="my-img", className="image", width="100%",
+                         src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
         return html.Div([html.H4("Preview:"), image], className="w-25 h-25")
     else:
         return html.Div()
 
 # show table of the directories files and their details
+
+
 def get_files_table(directory: Directory):
     rows = []
     for f in directory.get_all_files():
-        rows.append(html.Tr([html.Td(f.name),html.Td(f.format), html.Td(f.size/1000)]))
+        rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                     ), html.Td(f.format), html.Td(f.size/1000)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("Format"),html.Th("File Size (in Bytes)"),]))
+            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Size (in Bytes)"), ]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -34,6 +38,7 @@ def get_files_table(directory: Directory):
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
     return html.Div([html.H4("Files:"), table])
+
 
 def modal_delete(directory: Directory):
     # modal view for directory deletion
@@ -69,6 +74,8 @@ def modal_delete(directory: Directory):
 #################
 
 # callback for directory deletion modal view and executing directory deletion
+
+
 @callback([Output('modal_delete_directory', 'is_open'), Output('delete-directory-content', 'children')],
           [Input('delete_directory', 'n_clicks'), Input(
               'close_modal_delete_directory', 'n_clicks'), Input('delete_directory_and_close', 'n_clicks')],
@@ -94,6 +101,7 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
 #  Page Layout  #
 #################
 
+
 def layout(project_name=None, directory_name=None):
     try:
         with get_connection() as connection:
@@ -109,9 +117,9 @@ def layout(project_name=None, directory_name=None):
                     'textAlign': 'left', })),
             dbc.Col(
                 [
-                        modal_delete(directory),
-                        dbc.Button([html.I(className="bi bi-play me-2"),
-                    "Viewer"], color="success", href=f"/viewer/{project.name}/{directory.name}"),
+                    modal_delete(directory),
+                    dbc.Button([html.I(className="bi bi-play me-2"),
+                                "Viewer"], color="success", href=f"/viewer/{project.name}/{directory.name}"),
                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
         ], className="mb-3"),
         html.H4(f"Belongs to project: {project.name}"),
