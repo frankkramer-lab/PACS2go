@@ -33,7 +33,7 @@ services:
         XNAT_EMAIL: ${XNAT_EMAIL}
     ports:
       - 8104:8104
-      - 8080:8080
+      - 8888:8080
     volumes:
       - ./xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
       - ./xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs

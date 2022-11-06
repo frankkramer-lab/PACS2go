@@ -92,12 +92,11 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         try:
             with get_connection() as connection:
                 # try to create project
-                # TODO: what if project name already exists? (has to be unique)
                 Project(connection, project_name)
+                return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_creation")
         except Exception as err:
             # TODO: differentiate between different exceptions
             return is_open, dbc.Alert(str(err), color="danger")
-        return not is_open, no_update
     else:
         return is_open, no_update
 
@@ -111,8 +110,7 @@ def layout():
         html.Div([
             html.H1(
                 children='Your Projects'),
-            html.Div([dcc.Link(dbc.Button(html.I(className="bi bi-arrow-clockwise"), size='lg'), href='', className="me-2"),
-                      modal_create()], className="d-flex justify-content-between")
+            html.Div(modal_create(), className="d-flex justify-content-between")
         ], className="d-flex justify-content-between mb-4"),
         get_projects_table(),
     ])

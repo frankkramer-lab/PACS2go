@@ -120,8 +120,8 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
             with get_connection() as connection:
                 p = connection.get_project(project_name)
                 p.delete_project()
-                # TODO: redirect to project list view
-                return not is_open, no_update
+                # redirect to project list after deletion
+                return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_delete")
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
