@@ -119,7 +119,7 @@ def layout(project_name=None, directory_name=None):
                 [
                     modal_delete(directory),
                     dbc.Button([html.I(className="bi bi-play me-2"),
-                                "Viewer"], color="success", href=f"/viewer/{project.name}/{directory.name}"),
+                                "Viewer"], color="success", href=f"/viewer/{project.name}/{directory.name}/none"),
                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
         ], className="mb-3"),
         html.H4(f"Belongs to project: {project.name}"),

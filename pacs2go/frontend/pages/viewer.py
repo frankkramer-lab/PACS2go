@@ -1,6 +1,9 @@
-from typing import List
-from dash import html, callback, Input, Output, register_page, ctx, State, no_update, dcc
-from pacs2go.data_interface.pacs_data_interface import Directory, File
+from typing import List, Optional
+from dash import html, callback, Input, Output, register_page, State, dcc, get_app
+from dash_slicer import VolumeSlicer
+from nilearn import image
+import numpy as np
+from pacs2go.data_interface.pacs_data_interface import File
 import dash_bootstrap_components as dbc
 from pacs2go.frontend.helpers import get_connection, colors, pil_to_b64
 from PIL import Image
@@ -18,7 +21,7 @@ def get_file_list(project_name: str, directory_name: str):
 
 
 def show_file(file: File):
-    if file.format == 'JSON' or file.format == 'JPEG':
+    if file.format == 'JSON' or file.format == 'JPEG' or file.format == 'NIFTI':
         if file.format == 'JPEG':
             content = html.Img(id="my-img", className="image",
                                src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
@@ -29,7 +32,18 @@ def show_file(file: File):
 
         elif file.format == 'NIFTI':
             # TODO: implement dash-slicer
-            pass
+            img = image.load_img(file.data)
+            mat = img.affine
+            img = img.get_data()
+            img = np.copy(np.moveaxis(img, -1, 0))[:, ::-1]
+            img = np.copy(np.rot90(img, 3, axes=(1, 2)))
+            spacing = abs(mat[2, 2]), abs(mat[1, 1]), abs(mat[0, 0])
+            slicer1 = VolumeSlicer(get_app(), volume=img,
+                                   axis=0, spacing=spacing)
+            content = html.Div(
+                [slicer1.graph, slicer1.slider, *slicer1.stores, html.H5(str())])
+        else:
+            content = html.H5("File not displayable")
 
         data = dbc.Card(
             dbc.CardBody(
@@ -85,19 +99,22 @@ def show_chosen_image(chosen_file_name: str, directory_name: str, project_name: 
 #################
 
 
-def layout(project_name: str = None, directory_name: str = None, file_name: str = None):
+def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     try:
-        files = get_file_list(project_name, directory_name)
+        if directory_name and project_name:
+            files = get_file_list(project_name, directory_name)
+            return html.Div([
+                dcc.Store(id='directory', data=directory_name),
+                dcc.Store(id='project', data=project_name),
+                dcc.Store(id='files'),
+                dbc.Row([
+                        dbc.Col(html.H1(f"Directory {directory_name}", style={
+                            'textAlign': 'left', })),
+                        ], className="mb-3"),
+                files_dropdown(files, file_name),
+                slide_show(),
+            ])
+        else:
+            return dbc.Alert("No Project or Directory specified.", color="danger")
     except:
         return dbc.Alert("No Directory found", color="danger")
-    return html.Div([
-        dcc.Store(id='directory', data=directory_name),
-        dcc.Store(id='project', data=project_name),
-        dcc.Store(id='files'),
-        dbc.Row([
-                dbc.Col(html.H1(f"Directory {directory_name}", style={
-                    'textAlign': 'left', })),
-                ], className="mb-3"),
-        files_dropdown(files, file_name),
-        slide_show(),
-    ])
