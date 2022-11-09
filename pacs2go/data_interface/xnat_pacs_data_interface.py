@@ -1,11 +1,14 @@
 import datetime
 import os
-from tempfile import TemporaryDirectory
+import uuid
 import zipfile
+from tempfile import TemporaryDirectory
+from typing import List
+from typing import Sequence
+from typing import Union
+
 from pyxnat import Interface  # type: ignore
 from pyxnat.core.errors import DatabaseError  # type: ignore
-import uuid
-from typing import List, Sequence, Union
 
 
 #---------------------------------------------#

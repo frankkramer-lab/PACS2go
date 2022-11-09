@@ -1,14 +1,25 @@
-import tempfile
 import shutil
-from typing import List, Optional
-from PIL import Image
-from dash import register_page, html, dcc, get_app, callback, ctx, no_update
-from dash.dependencies import Input, Output, State
-import dash_bootstrap_components as dbc
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import get_connection, colors
-import dash_uploader as du  # https://github.com/np-8/dash-uploader
+import tempfile
 import uuid
+from typing import List
+from typing import Optional
+
+import dash_bootstrap_components as dbc
+import dash_uploader as du  # https://github.com/np-8/dash-uploader
+from dash import callback
+from dash import ctx
+from dash import dcc
+from dash import get_app
+from dash import html
+from dash import no_update
+from dash import register_page
+from dash.dependencies import Input
+from dash.dependencies import Output
+from dash.dependencies import State
+
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
 
 
 register_page(__name__, title='Upload - PACS2go',

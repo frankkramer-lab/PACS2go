@@ -1,5 +1,10 @@
-from dash import Dash, dcc, html, page_registry, page_container
 import dash_bootstrap_components as dbc
+from dash import Dash
+from dash import dcc
+from dash import html
+from dash import page_container
+from dash import page_registry
+
 from pacs2go.frontend.helpers import colors
 
 

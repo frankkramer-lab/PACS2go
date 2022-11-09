@@ -1,11 +1,12 @@
 import random
-import time
 import unittest
-from zipfile import ZipFile
-from pacs_data_interface import Connection, Project, Directory, File
 import uuid
+
+from pacs_data_interface import Connection
+from pacs_data_interface import Directory
+from pacs_data_interface import File
+from pacs_data_interface import Project
 from PIL import Image
-import pyxnat
 
 
 class TestConnection(unittest.TestCase):

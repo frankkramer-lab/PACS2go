@@ -1,8 +1,19 @@
 from typing import Optional
-from dash import html, callback, Input, Output, register_page, ctx, State, no_update, dcc
-from pacs2go.data_interface.pacs_data_interface import Project
+
 import dash_bootstrap_components as dbc
-from pacs2go.frontend.helpers import get_connection, colors
+from dash import callback
+from dash import ctx
+from dash import dcc
+from dash import html
+from dash import Input
+from dash import no_update
+from dash import Output
+from dash import register_page
+from dash import State
+
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')

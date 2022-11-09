@@ -1,7 +1,10 @@
-from dash import register_page, html, dcc
 import dash_bootstrap_components as dbc
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import get_connection, colors
+from dash import dcc
+from dash import html
+from dash import register_page
+
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='PACS2go 2.0', path='/')
 

@@ -1,11 +1,13 @@
 import random
 import time
 import unittest
-from zipfile import ZipFile
-from xnat_pacs_data_interface import XNAT, XNATProject
 import uuid
-from PIL import Image
+from zipfile import ZipFile
+
 import pyxnat
+from PIL import Image
+from xnat_pacs_data_interface import XNAT
+from xnat_pacs_data_interface import XNATProject
 
 
 class TestConnection(unittest.TestCase):

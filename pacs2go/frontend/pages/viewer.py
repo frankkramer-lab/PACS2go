@@ -1,13 +1,24 @@
-from typing import List, Optional
-from dash import html, callback, Input, Output, register_page, State, dcc, get_app
-from dash_slicer import VolumeSlicer
-import dash_bootstrap_components as dbc
-from nilearn import image
-import numpy as np
-from PIL import Image
 import json
+from typing import List
+from typing import Optional
+
+import dash_bootstrap_components as dbc
+import numpy as np
+from dash import callback
+from dash import dcc
+from dash import get_app
+from dash import html
+from dash import Input
+from dash import Output
+from dash import register_page
+from dash import State
+from dash_slicer import VolumeSlicer
+from nilearn import image
+from PIL import Image
+
 from pacs2go.data_interface.pacs_data_interface import File
-from pacs2go.frontend.helpers import get_connection, pil_to_b64
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import pil_to_b64
 
 
 register_page(__name__, title='Viewer - PACS2go',

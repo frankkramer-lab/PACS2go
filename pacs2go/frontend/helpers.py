@@ -1,6 +1,7 @@
-from pacs2go.data_interface.pacs_data_interface import Connection
 import base64
 from io import BytesIO
+
+from pacs2go.data_interface.pacs_data_interface import Connection
 
 colors = {
     'background': '#FFFFFF',

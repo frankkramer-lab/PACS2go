@@ -1,5 +1,12 @@
-from typing import Optional, List, Any, Sequence, Union
-from pacs2go.data_interface.xnat_pacs_data_interface import XNAT, XNATDirectory, XNATFile, XNATProject
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Union
+
+from pacs2go.data_interface.xnat_pacs_data_interface import XNAT
+from pacs2go.data_interface.xnat_pacs_data_interface import XNATDirectory
+from pacs2go.data_interface.xnat_pacs_data_interface import XNATFile
+from pacs2go.data_interface.xnat_pacs_data_interface import XNATProject
 
 
 class Connection():
@@ -161,4 +168,4 @@ class File():
         if self.directory.project.connection._kind == "XNAT":
             return self._xnat_file.delete_file()
         else:
-            raise ValueError(self.directory.project.connection._kind) 
+            raise ValueError(self.directory.project.connection._kind)
