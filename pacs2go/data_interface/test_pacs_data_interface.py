@@ -46,11 +46,11 @@ class TestDataInterface(unittest.TestCase):
     def setUpClass(self):
         # create test data
         with self.conn as connection:
-            self.project = Project(connection, uuid.uuid4())
+            self.project = Project(connection, str(uuid.uuid4()))
             self.directory = self.project.insert(
                 self.zip_file_setup)
             # data to test delete functionalities
-            self.to_be_deleted_project = Project(connection, uuid.uuid4())
+            self.to_be_deleted_project = Project(connection, str(uuid.uuid4()))
             self.to_be_deleted_directory = self.project.insert(
                 self.zip_file_setup)
             self.to_be_deleted_file = self.project.insert(
@@ -63,13 +63,14 @@ class TestDataInterface(unittest.TestCase):
         # Delete all test data
         with self.conn as connection:
             self.project.delete_project()
-            p = connection.get_project(self.to_be_created_project_name)
-            p.delete_project()
+            p = connection.get_project(str(self.to_be_created_project_name))
+            if p:
+                p.delete_project()
 
     def test_create_project(self):
         # Checks if a project with a certain name is really created
         len_before = len(self.connection.get_all_projects())
-        project = Project(self.connection, self.to_be_created_project_name)
+        project = Project(self.connection, str(self.to_be_created_project_name))
         self.assertIn(str(project.name), [
                       p.name for p in self.connection.get_all_projects()])
         self.assertEqual(
@@ -86,7 +87,7 @@ class TestDataInterface(unittest.TestCase):
 
     def test_double_delete_project(self):
         # Checks if double deleting a project results in an expected Exception
-        p = Project(self.connection, uuid.uuid4())
+        p = Project(self.connection, str(uuid.uuid4()))
         p.delete_project()
         with self.assertRaisesRegex(Exception, "Project does not exist/has already been deleted."):
             p.delete_project()

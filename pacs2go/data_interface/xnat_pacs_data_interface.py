@@ -31,7 +31,7 @@ class XNAT():
 
     @property
     def user(self) -> str:
-        return self.interface._user
+        return str(self.interface._user)
 
     def __enter__(self) -> 'XNAT':
         return self
@@ -53,7 +53,7 @@ class XNAT():
         return XNATProject(self, name)
 
     # get list of project identifiers
-    def get_all_projects(self) -> Sequence['XNATProject']:
+    def get_all_projects(self) -> List['XNATProject']:
         project_names = self.interface.select.projects().fetchall()
         if len(project_names) == 0:
             return []
@@ -200,7 +200,7 @@ class XNATDirectory():
         return XNATFile(self, file_name)
 
     # get all files from directory
-    def get_all_files(self) -> Sequence['XNATFile']:
+    def get_all_files(self) -> List['XNATFile']:
         directory = self._xnat_resource_object
         file_names = directory.files().fetchall()
         files = []

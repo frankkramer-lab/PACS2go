@@ -1,6 +1,6 @@
 import tempfile
 import shutil
-from typing import List
+from typing import List, Optional
 from PIL import Image
 from dash import register_page, html, dcc, get_app, callback, ctx, no_update
 from dash.dependencies import Input, Output, State
@@ -20,6 +20,7 @@ dirpath = tempfile.mkdtemp()
 UPLOAD_FOLDER_ROOT = dirpath
 du.configure_upload(get_app(), UPLOAD_FOLDER_ROOT)
 
+
 def get_project_names() -> List[str]:
     with get_connection() as connection:
         project_list = []
@@ -27,7 +28,8 @@ def get_project_names() -> List[str]:
             project_list.append(html.Option(value=p.name))
         return project_list
 
-def get_upload_component(id):
+
+def get_upload_component(id: str):
     # dash-uploader Upload component
     return du.Upload(
         id=id,
@@ -39,7 +41,7 @@ def get_upload_component(id):
     )
 
 
-def uploader(passed_project: str):
+def uploader(passed_project: Optional[str]):
     # if user navigates directly to upload, project name input field will be empty
     if passed_project == 'none':
         passed_project = ''
@@ -50,8 +52,10 @@ def uploader(passed_project: str):
             dbc.Col(
                 # input field value equals project name, if user navigates to upload via a specific project
                 [dbc.Label("Project"),
-                 html.Datalist(children=get_project_names(), id='project_names'),
-                 dbc.Input(id="project_name", type="text", placeholder="Project Name...", required=True, value=passed_project, list='project_names'),
+                 html.Datalist(children=get_project_names(),
+                               id='project_names'),
+                 dbc.Input(id="project_name", type="text", placeholder="Project Name...",
+                           required=True, value=passed_project, list='project_names'),
                  dbc.FormText("If you choose a pre-existent project name, the data will be inserted into this project. Otherwise a new project will be created.")], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
@@ -81,7 +85,7 @@ def uploader(passed_project: str):
             Output('filename-storage', 'data')],
     id='dash-uploader',
 )
-def pass_filename_and_show_upload_button(filenames):
+def pass_filename_and_show_upload_button(filenames: List[str]):
     # get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
     return [html.Div([
@@ -102,7 +106,7 @@ def pass_filename_and_show_upload_button(filenames):
     State('directory_name', 'value'),
     State('filename-storage', 'data')
 )
-def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
+def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str):
     if ctx.triggered_id == "click-upload":
         if project_name:
             # project name shall not contain whitespaces
@@ -118,7 +122,7 @@ def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
                     # remove tempdir after successful upload to XNAT
                     shutil.rmtree(dirpath)
                 return dbc.Alert([f"The upload was successful! ", dcc.Link(f"Click here to go to {project_name}.",
-                                                                         href=f"/project/{project_name}", className="fw-bold text-decoration-none", style={'color': colors['links']})], color="success")
+                                                                           href=f"/project/{project_name}", className="fw-bold text-decoration-none", style={'color': colors['links']})], color="success")
             except Exception as err:
                 # TODO: differentiate between different exceptions
                 return dbc.Alert("Upload unsuccessful: " + str(err), color="danger")
@@ -132,7 +136,7 @@ def upload_tempfile_to_xnat(btn, project_name, dir_name, filename):
 #################
 
 
-def layout(project_name=None):
+def layout(project_name: Optional[str] = None):
     return [html.H1(
         children='PACS2go 2.0 - Uploader',
         style={

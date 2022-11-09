@@ -1,3 +1,4 @@
+from typing import List
 from dash import html, dcc, callback, Input, Output, register_page, ctx, State, no_update
 import dash_bootstrap_components as dbc
 from pacs2go.data_interface.pacs_data_interface import Project
@@ -9,7 +10,7 @@ register_page(__name__, title='Projects - PACS2go', path='/projects')
 # TODO: only make project clickable if user has rights to certain project
 
 
-def get_projects_list():
+def get_projects_list() -> List[Project]:
     try:
         with get_connection() as connection:
             return connection.get_all_projects()

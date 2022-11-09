@@ -1,23 +1,27 @@
 from typing import List, Optional
 from dash import html, callback, Input, Output, register_page, State, dcc, get_app
 from dash_slicer import VolumeSlicer
+import dash_bootstrap_components as dbc
 from nilearn import image
 import numpy as np
-from pacs2go.data_interface.pacs_data_interface import File
-import dash_bootstrap_components as dbc
-from pacs2go.frontend.helpers import get_connection, colors, pil_to_b64
 from PIL import Image
 import json
+from pacs2go.data_interface.pacs_data_interface import File
+from pacs2go.frontend.helpers import get_connection, pil_to_b64
+
 
 register_page(__name__, title='Viewer - PACS2go',
               path_template='/viewer/<project_name>/<directory_name>/<file_name>')
 
 
-def get_file_list(project_name: str, directory_name: str):
+def get_file_list(project_name: str, directory_name: str) -> List[File]:
     with get_connection() as connection:
         project = connection.get_project(project_name)
-        directory = project.get_directory(directory_name)
-        return directory.get_all_files()
+        if project:
+            directory = project.get_directory(directory_name)
+            return directory.get_all_files()
+        else:
+            raise Exception("No project found.")
 
 
 def show_file(file: File):
@@ -32,6 +36,7 @@ def show_file(file: File):
 
         elif file.format == 'NIFTI':
             # TODO: implement dash-slicer
+            # current problem: graph is empty
             img = image.load_img(file.data)
             mat = img.affine
             img = img.get_data()
@@ -59,7 +64,7 @@ def show_file(file: File):
         return html.Div()
 
 
-def files_dropdown(files: List[File],  file_name: str = None):
+def files_dropdown(files: List[File],  file_name: Optional[str] = None):
     if file_name:
         first_file = file_name
     else:
@@ -89,10 +94,11 @@ def slide_show():
           State('directory', 'data'), State('project', 'data'))
 def show_chosen_image(chosen_file_name: str, directory_name: str, project_name: str):
     with get_connection() as connection:
-        directory = connection.get_project(
-            project_name).get_directory(directory_name)
-        file = directory.get_file(chosen_file_name)
-        return [show_file(file)]
+        project = connection.get_project(project_name)
+        if project:
+            directory = project.get_directory(directory_name)
+            file = directory.get_file(chosen_file_name)
+            return [show_file(file)]
 
 #################
 #  Page Layout  #
@@ -101,7 +107,7 @@ def show_chosen_image(chosen_file_name: str, directory_name: str, project_name: 
 
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     try:
-        if directory_name and project_name:
+        if directory_name and project_name and file_name:
             files = get_file_list(project_name, directory_name)
             return html.Div([
                 dcc.Store(id='directory', data=directory_name),

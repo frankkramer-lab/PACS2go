@@ -1,3 +1,4 @@
+from typing import Optional
 from dash import html, callback, Input, Output, register_page, ctx, State, no_update, dcc
 from pacs2go.data_interface.pacs_data_interface import Project
 import dash_bootstrap_components as dbc
@@ -118,8 +119,9 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
     if ctx.triggered_id == "delete_and_close":
         try:
             with get_connection() as connection:
-                p = connection.get_project(project_name)
-                p.delete_project()
+                project = connection.get_project(project_name)
+                if project:
+                    project.delete_project()
                 # redirect to project list after deletion
                 return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_delete")
         except Exception as err:
@@ -140,14 +142,15 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
     if ctx.triggered_id == "delete_data_and_close":
         try:
             with get_connection() as connection:
-                p = connection.get_project(project_name)
-                dirs = p.get_all_directories()
-                if len(dirs) == 0:
-                    return is_open,  dbc.Alert("Project is empty", color="danger")
-                else:
-                    for d in dirs:
-                        d.delete_directory()
-                    return not is_open, no_update
+                project = connection.get_project(project_name)
+                if project:
+                    dirs = project.get_all_directories()
+                    if len(dirs) == 0:
+                        return is_open,  dbc.Alert("Project is empty", color="danger")
+                    else:
+                        for d in dirs:
+                            d.delete_directory()
+                        return not is_open, no_update
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
@@ -158,21 +161,25 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
 #  Page Layout  #
 #################
 
-def layout(project_name=None):
+def layout(project_name: Optional[str]=None):
     try:
-        with get_connection() as connection:
-            project = connection.get_project(project_name)
+        if project_name:
+            with get_connection() as connection:
+                project = connection.get_project(project_name)
+                if project:
+                    return html.Div([
+                        dbc.Row([
+                            dbc.Col(html.H1(f"Project {project.name}", style={
+                                    'textAlign': 'left', })),
+                            dbc.Col(
+                                [insert_data(project),
+                                modal_delete(project),
+                                modal_delete_data(project), ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+                        ], className="mb-3"),
+                        get_details(project),
+                        get_directories(project)
+                    ])
+                else:
+                    return dbc.Alert("No Project found.", color="danger")
     except:
-        return dbc.Alert("No Project found", color="danger")
-    return html.Div([
-        dbc.Row([
-            dbc.Col(html.H1(f"Project {project.name}", style={
-                    'textAlign': 'left', })),
-            dbc.Col(
-                [insert_data(project),
-                 modal_delete(project),
-                 modal_delete_data(project), ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-        ], className="mb-3"),
-        get_details(project),
-        get_directories(project)
-    ])
+        return dbc.Alert("No Project found.", color="danger")

@@ -1,5 +1,6 @@
+from typing import Optional
 from dash import html, callback, Input, Output, register_page, ctx, State, no_update, dcc
-from pacs2go.data_interface.pacs_data_interface import Directory
+from pacs2go.data_interface.pacs_data_interface import Project, Directory
 import dash_bootstrap_components as dbc
 from pacs2go.frontend.helpers import get_connection, colors, pil_to_b64
 from PIL import Image
@@ -88,10 +89,11 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
         try:
             with get_connection() as connection:
                 project = connection.get_project(project_name)
-                directory = project.get_directory(directory_name)
-                directory.delete_directory()
-                # redirect to project after deletion
-                return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_directory_delete")
+                if project:
+                    directory = project.get_directory(directory_name)
+                    directory.delete_directory()
+                    # redirect to project after deletion
+                    return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_directory_delete")
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
@@ -102,27 +104,30 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
 #################
 
 
-def layout(project_name=None, directory_name=None):
+def layout(project_name: Optional[str] = None, directory_name: Optional[str] = None):
     try:
-        with get_connection() as connection:
-            project = connection.get_project(project_name)
-            directory = project.get_directory(directory_name)
+        if project_name and directory_name:
+            with get_connection() as connection:
+                project = connection.get_project(project_name)
+                if project:
+                    directory = project.get_directory(directory_name)
+                    return html.Div([
+                        dcc.Store(id='directory', data=directory.name),
+                        dcc.Store(id='project', data=project.name),
+                        dbc.Row([
+                            dbc.Col(html.H1(f"Directory {directory.name}", style={
+                                    'textAlign': 'left', })),
+                            dbc.Col(
+                                [
+                                    modal_delete(directory),
+                                    dbc.Button([html.I(className="bi bi-play me-2"),
+                                                "Viewer"], color="success", 
+                                                href=f"/viewer/{project.name}/{directory.name}/none"),
+                                ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+                        ], className="mb-3"),
+                        html.H4(f"Belongs to project: {project.name}"),
+                        get_files_table(directory),
+                        get_single_file_preview(directory),
+                    ])
     except:
         return dbc.Alert("No Directory found", color="danger")
-    return html.Div([
-        dcc.Store(id='directory', data=directory.name),
-        dcc.Store(id='project', data=project.name),
-        dbc.Row([
-            dbc.Col(html.H1(f"Directory {directory.name}", style={
-                    'textAlign': 'left', })),
-            dbc.Col(
-                [
-                    modal_delete(directory),
-                    dbc.Button([html.I(className="bi bi-play me-2"),
-                                "Viewer"], color="success", href=f"/viewer/{project.name}/{directory.name}/none"),
-                ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-        ], className="mb-3"),
-        html.H4(f"Belongs to project: {project.name}"),
-        get_files_table(directory),
-        get_single_file_preview(directory),
-    ])
