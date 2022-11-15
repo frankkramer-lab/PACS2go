@@ -36,7 +36,7 @@ def get_file_list(project_name: str, directory_name: str) -> List[File]:
 
 
 def show_file(file: File):
-    if file.format == 'JSON' or file.format == 'JPEG' or file.format == 'NIFTI':
+    if file.format == 'JSON' or file.format == 'JPEG' or file.format == 'NIFTI' or file.format == 'DICOM':
         if file.format == 'JPEG':
             content = html.Img(id="my-img", className="image",
                                src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
@@ -46,8 +46,7 @@ def show_file(file: File):
             content = json.dumps(json.load(f))
 
         elif file.format == 'NIFTI':
-            # TODO: implement dash-slicer
-            # current problem: graph is empty
+            # TODO: implement dash-slicer --> check if dash version is compatible (current problem: graph is empty)
             img = image.load_img(file.data)
             mat = img.affine
             img = img.get_data()
@@ -56,10 +55,13 @@ def show_file(file: File):
             spacing = abs(mat[2, 2]), abs(mat[1, 1]), abs(mat[0, 0])
             slicer1 = VolumeSlicer(get_app(), volume=img,
                                    axis=0, spacing=spacing)
-            content = html.Div(
-                [slicer1.graph, slicer1.slider, *slicer1.stores, html.H5(str())])
-        else:
-            content = html.H5("File not displayable")
+            #content = html.Div([slicer1.graph, slicer1.slider, *slicer1.stores, html.H5(str())])
+            content = dbc.Alert(
+                "At this current version NIFTI files can not be displayed.", color="danger")
+
+        elif file.format == 'DICOM':
+            content = dbc.Alert(
+                "At this current version DICOM files can not be displayed.", color="danger")
 
         data = dbc.Card(
             dbc.CardBody(
@@ -72,7 +74,7 @@ def show_file(file: File):
         return data
 
     else:
-        return html.Div()
+        html.Div(dbc.Alert("File format currently not displayable.", color="danger"))
 
 
 def files_dropdown(files: List[File],  file_name: Optional[str] = None):
