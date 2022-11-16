@@ -1,15 +1,27 @@
-from dash import html, dcc, callback, Input, Output, register_page, ctx, State, no_update
+from typing import List
+
 import dash_bootstrap_components as dbc
+from dash import callback
+from dash import ctx
+from dash import dcc
+from dash import html
+from dash import Input
+from dash import no_update
+from dash import Output
+from dash import register_page
+from dash import State
+
 from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import get_connection, colors
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
 
 
-register_page(__name__, title='Projects', path='/projects')
+register_page(__name__, title='Projects - PACS2go', path='/projects')
 
 # TODO: only make project clickable if user has rights to certain project
 
 
-def get_projects_list():
+def get_projects_list() -> List[Project]:
     try:
         with get_connection() as connection:
             return connection.get_all_projects()
@@ -18,11 +30,11 @@ def get_projects_list():
 
 
 def get_projects_table():
-    # get list of all project names, specific user roles and number of directories per project
+    # Get list of all project names, specific user roles and number of directories per project
     rows = []
     for p in get_projects_list():
-        # project names represent links to individual project pages
-        rows.append(html.Tr([html.Td(html.A(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
+        # Project names represent links to individual project pages
+        rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
             p.your_user_role.capitalize()), html.Td(len(p.get_all_directories()))]))
 
     table_header = [
@@ -32,19 +44,19 @@ def get_projects_table():
 
     table_body = [html.Tbody(rows)]
 
-    # put together project table
+    # Put together project table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
     return table
 
 
 def modal_create():
-    # modal view for project creation
+    # Modal view for project creation
     return html.Div([
-        # button which triggers modal activation
+        # Button which triggers modal activation
         dbc.Button([html.I(className="bi bi-plus-circle-dotted me-2"),
                     "Create new Project"], id="create_project", size="lg", color="success"),
-        # actual modal view
+        # Actual modal view
         dbc.Modal(
             [
                 dbc.ModalHeader(dbc.ModalTitle("Create New Project")),
@@ -56,10 +68,10 @@ def modal_create():
                               placeholder="Project Name...", required=True),
                 ]),
                 dbc.ModalFooter([
-                    # button which triggers the creation of a project (see modal_and_project_creation)
+                    # Button which triggers the creation of a project (see modal_and_project_creation)
                     dbc.Button("Create Project",
                                id="create_and_close", color="success"),
-                    # button which causes modal to close/disappear
+                    # Button which causes modal to close/disappear
                     dbc.Button("Close", id="close_modal_create")
                 ]),
             ],
@@ -79,25 +91,24 @@ def modal_create():
               'close_modal_create', 'n_clicks'), Input('create_and_close', 'n_clicks')],
           State("modal_create", "is_open"), State('project_name', 'value'))
 def modal_and_project_creation(open, close, create_and_close, is_open, project_name):
-    # open/close modal via button click
+    # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
         return not is_open, no_update
-    # user tries to create modal without specifying a project name -> show alert feedback
+    # User tries to create modal without specifying a project name -> show alert feedback
     elif ctx.triggered_id == "create_and_close" and project_name is None:
         return is_open, dbc.Alert("Please specify project name.", color="danger")
-    # user does everything "right" for project creation
+    # User does everything "right" for project creation
     elif ctx.triggered_id == "create_and_close" and project_name is not None:
-        # project name cannot contain whitespaces
+        # Project name cannot contain whitespaces
         project_name = str(project_name).replace(" ", "_")
         try:
             with get_connection() as connection:
-                # try to create project
-                # TODO: what if project name already exists? (has to be unique)
+                # Try to create project
                 Project(connection, project_name)
+                return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_creation")
         except Exception as err:
             # TODO: differentiate between different exceptions
             return is_open, dbc.Alert(str(err), color="danger")
-        return not is_open, no_update
     else:
         return is_open, no_update
 
@@ -108,11 +119,12 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
 
 def layout():
     return html.Div(children=[
+        # Header including page title and create button
         html.Div([
             html.H1(
                 children='Your Projects'),
-            html.Div([html.A(dbc.Button(html.I(className="bi bi-arrow-clockwise"), size='lg'), href='', className="me-2"),
-                      modal_create()], className="d-flex justify-content-between")
+            html.Div(modal_create(), className="d-flex justify-content-between")
         ], className="d-flex justify-content-between mb-4"),
+        # Project information table
         get_projects_table(),
     ])

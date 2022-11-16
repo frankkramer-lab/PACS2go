@@ -1,12 +1,16 @@
-from dash import Dash, dcc, html, page_registry, page_container
 import dash_bootstrap_components as dbc
+from dash import Dash
+from dash import dcc
+from dash import html
+from dash import page_container
+from dash import page_registry
+
 from pacs2go.frontend.helpers import colors
 
 
 app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages", use_pages=True,
            external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True)
 
-#TODO: turn this into def layout and connect right here -> avoid reconnecting a million times
 app.layout = html.Div(
     [
         # navigation bar on top
