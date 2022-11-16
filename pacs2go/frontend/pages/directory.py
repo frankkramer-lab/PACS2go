@@ -38,11 +38,11 @@ def get_files_table(directory: Directory):
     rows = []
     for f in directory.get_all_files():
         rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                     ), html.Td(f.format), html.Td(f.size/1000)]))
+                                     ), html.Td(f.format), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Size (in Bytes)"), ]))
+            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Size"), ]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -121,6 +121,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
         if project_name and directory_name:
             with get_connection() as connection:
                 project = connection.get_project(project_name)
+
                 if project:
                     directory = project.get_directory(directory_name)
                     return html.Div([
