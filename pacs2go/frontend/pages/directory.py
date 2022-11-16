@@ -147,7 +147,10 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                                href=f"/viewer/{project.name}/{directory.name}/none"),
                                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                         ], className="mb-3"),
-                        html.H4(f"Belongs to project: {project.name}"),
+                        # Link back to project
+                        dcc.Link(
+                            html.H4(f"Belongs to project: {project.name}"), href=f"/project/{project_name}", 
+                            className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
                         # Display a table of all the project's directories
                         get_files_table(directory),
                         # Display a preview of the first file's content

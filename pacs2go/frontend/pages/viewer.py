@@ -17,6 +17,7 @@ from dash import State
 from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import File
+from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import pil_to_b64
 
@@ -146,10 +147,9 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
                 # dcc Store components for project and directory name strings
                 dcc.Store(id='directory', data=directory_name),
                 dcc.Store(id='project', data=project_name),
-                dbc.Row([
-                        dbc.Col(html.H1(f"Directory {directory_name}", style={
-                            'textAlign': 'left', })),
-                        ], className="mb-3"),
+                dcc.Link(
+                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}", 
+                    className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
                 # Get Dropdown with file names
                 files_dropdown(files, file_name),
                 # Show file details of chosen file
@@ -159,5 +159,5 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
         else:
             return dbc.Alert("No Project or Directory specified.", color="danger")
 
-    except:
-        return dbc.Alert("No Directory found", color="danger")
+    except Exception as err:
+        return dbc.Alert("No Directory found " + str(err), color="danger")
