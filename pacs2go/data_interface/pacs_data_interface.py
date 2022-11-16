@@ -81,6 +81,12 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
+    def exists(self) -> bool:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.exists()
+        else:
+            raise ValueError(self.connection._kind)
+
     def delete_project(self) -> None:
         if self.connection._kind == "XNAT":
             return self._xnat_project.delete_project()
@@ -114,6 +120,12 @@ class Directory():
             self._xnat_directory = XNATDirectory(project, name)
         else:
             raise ValueError(self.project.connection._kind)
+
+    def exists(self) -> bool:
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.exists()
+        else:
+            raise ValueError(self.connection._kind)
 
     def delete_directory(self) -> None:
         if self.project.connection._kind == "XNAT":
@@ -163,6 +175,12 @@ class File():
             return self._xnat_file.data
         else:
             raise ValueError(self.directory.project.connection._kind)
+
+    def exists(self) -> bool:
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.exists()
+        else:
+            raise ValueError(self.connection._kind)
 
     def delete_file(self) -> None:
         if self.directory.project.connection._kind == "XNAT":
