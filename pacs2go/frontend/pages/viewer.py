@@ -43,7 +43,7 @@ def show_file(file: File):
     if file.format == 'JPEG':
         # Display JPEG contents as html Img
         content = html.Img(id="my-img", className="image",
-                            src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+                           src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
 
     elif file.format == 'JSON':
         # Display contents of a JSON file as string
@@ -68,10 +68,11 @@ def show_file(file: File):
         # Display of DICOM files is currently not implemented
         content = dbc.Alert(
             "At this current version DICOM files can not be displayed.", color="danger")
-    
+
     else:
         # Handle all other file formats that are at this point not displayable
-        content = dbc.Alert("File format currently not displayable.", color="danger")
+        content = dbc.Alert(
+            "File format currently not displayable.", color="danger")
 
     # Build dbc Card View that displays file information
     data = dbc.Card(
@@ -79,13 +80,13 @@ def show_file(file: File):
             [
                 html.H6(f"File Name: {file.name}"),
                 html.H6(f"File Format: {file.format}"),
-                html.H6(f"File Size: {round(file.size/1024,2)} KB ({file.size} Bytes)"),
+                html.H6(
+                    f"File Size: {round(file.size/1024,2)} KB ({file.size} Bytes)"),
                 html.Div([content]),
             ],))
 
     return data
 
-  
 
 def files_dropdown(files: List[File],  file_name: Optional[str] = None):
     if file_name:
@@ -112,6 +113,7 @@ def file_card_view():
         ])
     ], className="d-flex justify-content-center")
 
+
 #################
 #   Callbacks   #
 #################
@@ -129,6 +131,7 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
             file = directory.get_file(chosen_file_name)
             return [show_file(file)]
 
+
 #################
 #  Page Layout  #
 #################
@@ -137,7 +140,7 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     try:
         if directory_name and project_name and file_name:
-            # get list of 
+            # get list of files
             files = get_file_list(project_name, directory_name)
             return html.Div([
                 # dcc Store components for project and directory name strings
