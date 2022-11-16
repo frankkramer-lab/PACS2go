@@ -16,18 +16,18 @@ from pyxnat.core.errors import DatabaseError  # type: ignore
 #---------------------------------------------#
 class XNAT():
     def __init__(self, server: str, username: str, password: str):
-        # connect to xnat server
+        # Connect to xnat server
         # 'http://vm204-misit.informatik.uni-augsburg.de:8080'
         self.interface = Interface(server=server,
                                    user=username,
                                    password=password)
 
         try:
-            # try to access usernames to check if connect was successfull
+            # Try to access usernames to check if connect was successfull
             self.interface.manage.users()
 
         except DatabaseError:
-            # raised if wrong username or password was entered
+            # Raised if wrong username or password was entered
             raise Exception("Wrong user credentials!")
 
     @property
@@ -42,19 +42,19 @@ class XNAT():
         return self
 
     def __exit__(self, type, value, traceback) -> None:
-        # disconnect from xnat server to quit session
+        # Disconnect from xnat server to quit session
         try:
             self.interface.disconnect()
             print("Successful disconnect from server!")
 
         except DatabaseError:
-            # this is the case if the connection was not possible in the first place
+            # This is the case if the connection was not possible in the first place
             print("No disconnect possible.")
 
     #---------------------------------------#
     #      XNAT Projects data retrieval     #
     #---------------------------------------#
-    # get single project
+    # Get single project
     def get_project(self, name: str) -> 'XNATProject':
         if self.interface.select.project(name).exists():
             return XNATProject(self, name)
@@ -62,7 +62,7 @@ class XNAT():
         else:
             raise Exception("A project with this name does not exist.")
 
-    # get list of project identifiers
+    # Get list of project identifiers
     def get_all_projects(self) -> List['XNATProject']:
         project_names = self.interface.select.projects().fetchall()
 
@@ -108,25 +108,25 @@ class XNATProject():
     def your_user_role(self) -> str:
         return self._xnat_project_object.user_role(self.connection.user)
 
+    # Check if project exists on XNAT server
     def exists(self) -> bool:
         return self._xnat_project_object.exists()
 
-    # delete project
     def delete_project(self) -> None:
         if self.exists():
+            # Delete project
             self._xnat_project_object.delete()
 
         else:
             raise Exception("Project does not exist/has already been deleted.")
 
-    # get directory from project
     def get_directory(self, directory_name: str) -> 'XNATDirectory':
+        # Get directory
         return XNATDirectory(self, directory_name)
 
-    # get list of project directory objects
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         directory_names = []
-        # get directory names
+        # Get directory names
         for r in self._xnat_project_object.resources():
             directory_names.append(r.label())
 
@@ -135,6 +135,7 @@ class XNATProject():
         else:
             directories = []
 
+            # Get a list of all directories
             for r in directory_names:
                 directory = self.get_directory(r)
                 directories.append(directory)
@@ -142,32 +143,41 @@ class XNATProject():
             return directories
 
     def insert(self, file_path: str, directory_name: str = '') -> Union['XNATDirectory', 'XNATFile']:
+        # File path leads to a single file
         if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
             return self.insert_file_into_project(file_path, directory_name)
 
+        # File path equals a zip file
         elif zipfile.is_zipfile(file_path):
             return self.insert_zip_into_project(file_path, directory_name)
 
         else:
             raise Exception("The input is neither a file nor a zip.")
 
-    # extract zip data and feed it to insert_file_project for file upload to a given project
 
     def insert_zip_into_project(self, file_path: str, directory_name: str = '') -> 'XNATDirectory':
+        # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
+                # If no xnat resource directory is given, a new directory with the current timestamp is created
+                # This must be done here for zips bc otherwise all files end up in different directories
                 directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+            else:
+                # XNAT can't handle whitespaces in names -> replace them with underscores
+                directory_name = directory_name.replace(" ", "_")
 
             with TemporaryDirectory() as tempdir:
                 with zipfile.ZipFile(file_path) as z:
                     z.extractall(tempdir)
                     dir_path = os.path.join(tempdir, os.listdir(tempdir)[0])
 
-                    # get all files, even those within a lower-level directory
+                    # Get all files, even those within a lower-level directory
                     onlyfiles = []
                     for (dirpath, dirnames, filenames) in os.walk(dir_path):
                         onlyfiles.extend(filenames)
 
+                    # Insert files
                     for f in onlyfiles:
                         self.insert_file_into_project(
                             os.path.join(dir_path, f), directory_name)
@@ -177,16 +187,20 @@ class XNATProject():
         else:
             raise Exception("The input is not a zipfile.")
 
-    # single file upload to given project
+    # Single file upload to given project
     def insert_file_into_project(self, file_path: str, directory_name: str = '') -> 'XNATFile':
         if os.path.exists(file_path):
             project = self._xnat_project_object
-            # file names are unique, duplicate file names can not be inserted
+            # Rile names are unique, duplicate file names can not be inserted
             file_id = str(uuid.uuid4())
 
             if directory_name == '':
-                # if no xnat resource directory is given, a new directory with the current timestamp is created
+                # If no xnat resource directory is given, a new directory with the current timestamp is created
                 directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+            else:
+                # XNAT can't handle whitespaces in names -> replace them with underscores
+                directory_name = directory_name.replace(" ", "_")
 
             if file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
                 file_id = file_id + '.jpeg'
@@ -203,7 +217,6 @@ class XNATProject():
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='NIFTI', tags='image nifti')
 
-            # TODO: upload dicom with subject/experiment data structure
             elif file_path.endswith('.dcm'):
                 file_id = file_id + '.dcm'
                 project.resource(directory_name).file(file_id).insert(
@@ -221,16 +234,18 @@ class XNATProject():
 class XNATDirectory():
     def __init__(self, project: XNATProject, name: str) -> None:
         p = project.connection.interface.select.project(project.name)
+        # Attention: Directories are originally called 'Resources' in the XNAT Universe
         self._xnat_resource_object = p.resource(name)
         self.name = name
         self.project = project
 
+    # Check if directory/recource exists on XNAT server
     def exists(self) -> bool:
         return self._xnat_resource_object().exists()
 
-    # remove a XNAT resource directory from a project
     def delete_directory(self) -> None:
         if self.exists():
+            # Delete XNAT resource directory
             self._xnat_resource_object.delete()
 
         else:
@@ -238,14 +253,15 @@ class XNATDirectory():
                 "Directory does not exist/has already been deleted.")
 
     def get_file(self, file_name: str) -> 'XNATFile':
+        # Get specific file, via name
         return XNATFile(self, file_name)
 
-    # get all files from directory
     def get_all_files(self) -> List['XNATFile']:
         directory = self._xnat_resource_object
         file_names = directory.files().fetchall()
         files = []
 
+        # Get all files from directory
         for f in file_names:
             file = self.get_file(f)
             files.append(file)
@@ -270,7 +286,7 @@ class XNATFile():
 
     @property
     def data(self) -> str:
-        # retrieve data to a temporary directory
+        # Retrieve data to a temporary directory
         if self.exists():
             with TemporaryDirectory() as tempdir:
                 return self._xnat_file_object.get_copy(tempdir + self.name)
@@ -278,10 +294,11 @@ class XNATFile():
         else:
             raise Exception("File data does not exist/ has been deleted.")
 
+    # Check if file exists on XNAT server
     def exists(self) -> bool:
         return self._xnat_file_object.exists()
 
-    # delete file
+    # Delete file
     def delete_file(self) -> None:
         if self.exists():
             self._xnat_file_object.delete()
