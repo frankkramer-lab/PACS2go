@@ -17,7 +17,7 @@ from pyxnat.core.errors import DatabaseError  # type: ignore
 class XNAT():
     def __init__(self, server: str, username: str, password: str):
         # Connect to xnat server
-        # 'http://vm204-misit.informatik.uni-augsburg.de:8080'
+        # 'http://localhost:8888'
         self.interface = Interface(server=server,
                                    user=username,
                                    password=password)
@@ -60,7 +60,8 @@ class XNAT():
             return XNATProject(self, name)
 
         else:
-            raise Exception("A project with this name does not exist.")
+            raise Exception(
+                f"A project with this name ({name}) does not exist.")
 
     # Get list of project identifiers
     def get_all_projects(self) -> List['XNATProject']:
@@ -76,6 +77,44 @@ class XNAT():
 
         return projects
 
+    def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
+        # Get project
+        try:
+            project = self.get_project(project_name)
+        except:
+            raise Exception(
+                f"Project with the name {project_name} does not exist.")
+
+
+        # Get directory from project
+        directory = XNATDirectory(project, directory_name)
+
+        if directory.exists():
+            # If a directory with given name exists in XNAT, return directory
+            return directory
+
+        else:
+            raise Exception(
+                f"No Directory in Project {project.name} with the name {directory_name}.")
+
+
+    def get_file(self, project_name: str, directory_name: str, file_name: str):
+        # Get directory
+        try:
+            directory = self.get_directory(project_name, directory_name)
+
+        except Exception as err:
+            raise Exception(err)
+
+        # Get file from directory
+        file = directory.get_file(file_name)
+
+        # If a file was retrieved, return file
+        if file.exists():
+            return file
+        else:
+            raise Exception(
+                f"No file called {file_name} in Project {project_name}, Directory {directory_name}")
 
 #---------------------------------------------#
 #       XNAT Project interface class          #
@@ -153,7 +192,6 @@ class XNATProject():
 
         else:
             raise Exception("The input is neither a file nor a zip.")
-
 
     def insert_zip_into_project(self, file_path: str, directory_name: str = '') -> 'XNATDirectory':
         # Extract zip data and feed it to insert_file_project
@@ -241,7 +279,7 @@ class XNATDirectory():
 
     # Check if directory/recource exists on XNAT server
     def exists(self) -> bool:
-        return self._xnat_resource_object().exists()
+        return self._xnat_resource_object.exists()
 
     def delete_directory(self) -> None:
         if self.exists():
