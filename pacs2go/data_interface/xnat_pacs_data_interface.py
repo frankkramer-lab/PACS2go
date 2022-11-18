@@ -232,6 +232,9 @@ class XNATProject():
             # Rile names are unique, duplicate file names can not be inserted
             file_id = str(uuid.uuid4())
 
+            # Lowercase file_path so things like '.PNG' aren't a problem
+            lower_file_path = file_path.lower()
+
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
                 directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -240,37 +243,37 @@ class XNATProject():
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
 
-            if file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
+            if lower_file_path.endswith('.jpg') or lower_file_path.endswith('.jpeg'):
                 file_id = file_id + '.jpeg'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='JPEG', tags='image jpeg')
 
-            elif file_path.endswith('.png'):
+            elif lower_file_path.endswith('.png'):
                 file_id = file_id + '.png'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='PNG', tags='image png')
 
-            elif file_path.endswith('.nii'):
+            elif lower_file_path.endswith('.nii'):
                 file_id = file_id + '.nii'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='NIFTI', tags='image nifti')
 
-            elif file_path.endswith('.dcm'):
+            elif lower_file_path.endswith('.dcm'):
                 file_id = file_id + '.dcm'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='DICOM', tags='image dicom')
 
-            elif file_path.endswith('.tiff'):
+            elif lower_file_path.endswith('.tiff'):
                 file_id = file_id + '.tiff'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='TIFF', tags='image tiff')
 
-            elif file_path.endswith('.csv'):
+            elif lower_file_path.endswith('.csv'):
                 file_id = file_id + '.csv'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='metadata', format='CSV', tags='metadata')
 
-            elif file_path.endswith('.json'):
+            elif lower_file_path.endswith('.json'):
                 file_id = file_id + '.json'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='metadata', format='JSON', tags='metadata')

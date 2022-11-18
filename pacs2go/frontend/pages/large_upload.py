@@ -48,7 +48,7 @@ def get_upload_component(id: str):
     return du.Upload(
         id=id,
         max_file_size=1024,  # 1GB
-        filetypes=['zip', 'jpeg', 'jpg', 'dcm', 'json', 'nii'],
+        filetypes=['zip', 'jpeg', 'jpg', 'dcm', 'json', 'nii', 'png', 'tiff', 'csv'],
         upload_id=uuid.uuid1(),  # Unique session id
         text='Drag and Drop your file right here! Or click here to select a file!',
         text_completed='Ready for XNAT Upload: ',
@@ -78,7 +78,7 @@ def uploader(passed_project: Optional[str]):
                  dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
         ]),
         dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
-                         'Accepted formats include DICOM, NIFTI, JPEG and JSON.'])),
+                         'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
         dbc.Row(
             [
                 get_upload_component(id='dash-uploader'),

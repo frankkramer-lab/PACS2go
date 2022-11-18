@@ -41,7 +41,7 @@ def get_file_list(project_name: str, directory_name: str) -> List[File]:
 
 
 def show_file(file: File):
-    if file.format == 'JPEG':
+    if file.format == 'JPEG' or file.format == 'PNG':
         # Display JPEG contents as html Img
         content = html.Img(id="my-img", className="image",
                            src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
@@ -141,14 +141,14 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     try:
         if directory_name and project_name and file_name:
-            # get list of files
+            # Get list of files
             files = get_file_list(project_name, directory_name)
             return html.Div([
                 # dcc Store components for project and directory name strings
                 dcc.Store(id='directory', data=directory_name),
                 dcc.Store(id='project', data=project_name),
                 dcc.Link(
-                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}", 
+                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
                     className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
                 # Get Dropdown with file names
                 files_dropdown(files, file_name),
