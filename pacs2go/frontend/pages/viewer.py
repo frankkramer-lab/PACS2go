@@ -4,7 +4,9 @@ from typing import Optional
 
 import dash_bootstrap_components as dbc
 import numpy as np
+import pandas as pd
 from dash import callback
+from dash import dash_table
 from dash import dcc
 from dash import get_app
 from dash import html
@@ -41,7 +43,7 @@ def get_file_list(project_name: str, directory_name: str) -> List[File]:
 
 
 def show_file(file: File):
-    if file.format == 'JPEG' or file.format == 'PNG':
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
         # Display JPEG contents as html Img
         content = html.Img(id="my-img", className="image",
                            src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
@@ -50,6 +52,10 @@ def show_file(file: File):
         # Display contents of a JSON file as string
         f = open(file.data)
         content = json.dumps(json.load(f))
+
+    elif file.format == 'CSV':
+        df = pd.read_csv(file.data)
+        content = dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
 
     elif file.format == 'NIFTI':
         # TODO: implement dash-slicer --> check if dash version is compatible (CURRENT PROBLEM: graph is empty)
