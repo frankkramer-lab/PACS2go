@@ -245,10 +245,10 @@ class XNATProject():
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='JPEG', tags='image jpeg')
 
-            elif file_path.endswith('.json'):
-                file_id = file_id + '.json'
+            elif file_path.endswith('.png'):
+                file_id = file_id + '.png'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='metadata', format='JSON', tags='metadata')
+                    file_path, content='image', format='PNG', tags='image png')
 
             elif file_path.endswith('.nii'):
                 file_id = file_id + '.nii'
@@ -259,6 +259,21 @@ class XNATProject():
                 file_id = file_id + '.dcm'
                 project.resource(directory_name).file(file_id).insert(
                     file_path, content='image', format='DICOM', tags='image dicom')
+
+            elif file_path.endswith('.tiff'):
+                file_id = file_id + '.tiff'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='image', format='TIFF', tags='image tiff')
+
+            elif file_path.endswith('.csv'):
+                file_id = file_id + '.csv'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='metadata', format='CSV', tags='metadata')
+
+            elif file_path.endswith('.json'):
+                file_id = file_id + '.json'
+                project.resource(directory_name).file(file_id).insert(
+                    file_path, content='metadata', format='JSON', tags='metadata')
 
             else:
                 raise Exception("This file type is not supported.")
@@ -317,6 +332,14 @@ class XNATFile():
     @property
     def format(self) -> str:
         return self._xnat_file_object.format()
+
+    @property
+    def tags(self) -> str:
+        return self._xnat_file_object.labels()
+
+    @property
+    def content_type(self) -> str:
+        return self._xnat_file_object.content()
 
     @property
     def size(self) -> int:
