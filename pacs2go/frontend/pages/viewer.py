@@ -8,7 +8,7 @@ import pandas as pd
 from dash import callback
 from dash import dash_table
 from dash import dcc
-from dash import get_app
+from dash import no_update
 from dash import html
 from dash import Input
 from dash import Output
@@ -29,17 +29,15 @@ register_page(__name__, title='Viewer - PACS2go',
 
 
 def get_file_list(project_name: str, directory_name: str) -> List[File]:
-    with get_connection() as connection:
-        # Get current project (passed through url/path)
-        project = connection.get_project(project_name)
-
-        if project:
-            directory = project.get_directory(directory_name)
+    try:
+        with get_connection() as connection:
+            # Get current project (passed through url/path)
+            directory = connection.get_directory(project_name, directory_name)
             # Return list of all the files in the directory
             return directory.get_all_files()
 
-        else:
-            raise Exception("No project found.")
+    except:
+        raise Exception("No directory found.")
 
 
 def show_file(file: File):
@@ -129,15 +127,15 @@ def file_card_view():
 @callback([Output('current_image', 'children')], [Input('image-dropdown', 'value')],
           State('directory', 'data'), State('project', 'data'))
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
-    with get_connection() as connection:
-        project = connection.get_project(project_name)
-
-        if project:
-            # get File object of the file that was chosen in the dropdown
-            directory = project.get_directory(directory_name)
-            file = directory.get_file(chosen_file_name)
+    try:
+        with get_connection() as connection:
+            # Get file
+            file = connection.get_file(project_name, directory_name, chosen_file_name)
+            # Return visualization of file details if file exists
             return [show_file(file)]
-
+    except:
+        # Show nothing if file does not exist.
+        return [dbc.Alert("No file was chosen.", color='warning')]
 
 #################
 #  Page Layout  #

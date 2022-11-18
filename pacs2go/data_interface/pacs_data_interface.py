@@ -50,6 +50,19 @@ class Connection():
         else:
             raise ValueError(self.kind)
 
+    def get_directory(self, project_name: str, directory_name: str) -> Optional['Project']:
+        if self.kind == "XNAT":
+            self._xnat_connection.get_directory(project_name, directory_name)
+        else:
+            raise ValueError(self.kind)
+
+    def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['Project']:
+        if self.kind == "XNAT":
+            self._xnat_connection.get_file(
+                project_name, directory_name, file_name)
+        else:
+            raise ValueError(self.kind)
+
 
 class Project():
     def __init__(self, connection: Connection, name: str) -> None:
