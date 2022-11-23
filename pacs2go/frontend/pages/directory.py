@@ -101,14 +101,11 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     if ctx.triggered_id == "delete_directory_and_close":
         try:
             with get_connection() as connection:
-                project = connection.get_project(project_name)
-
-                if project:
-                    directory = project.get_directory(directory_name)
-                    # Delete Directory
-                    directory.delete_directory()
-                    # Redirect to project after deletion
-                    return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_directory_delete")
+                directory = connection.get_directory(project_name, directory_name)
+                # Delete Directory
+                directory.delete_directory()
+                # Redirect to project after deletion
+                return not is_open, dcc.Location(href=f"/project/{project_name}", id="redirect_after_directory_delete")
 
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
@@ -125,15 +122,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
     try:
         if project_name and directory_name:
             with get_connection() as connection:
-                project = connection.get_project(project_name)
-
-                if project:
-                    directory = project.get_directory(directory_name)
-                    return html.Div([
-                        # dcc Store components for project and directory name strings
-                        dcc.Store(id='directory', data=directory.name),
-                        dcc.Store(id='project', data=project.name),
-                        dbc.Row([
+                directory = connection.get_directory(
+                    project_name, directory_name)
+                return html.Div([
+                    # dcc Store components for project and directory name strings
+                    dcc.Store(id='directory', data=directory.name),
+                    dcc.Store(id='project', data=project_name),
+                    dbc.Row([
                             dbc.Col(
                                 html.H1(f"Directory {directory.name}", style={
                                         'textAlign': 'left', })),
@@ -144,18 +139,18 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                     # Button to access the File Viewer (viewer.py)
                                     dbc.Button([html.I(className="bi bi-play me-2"),
                                                 "Viewer"], color="success",
-                                               href=f"/viewer/{project.name}/{directory.name}/none"),
+                                               href=f"/viewer/{project_name}/{directory.name}/none"),
                                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-                        ], className="mb-3"),
-                        # Link back to project
-                        dcc.Link(
-                            html.H4(f"Belongs to project: {project.name}"), href=f"/project/{project_name}", 
-                            className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                        # Display a table of all the project's directories
-                        get_files_table(directory),
-                        # Display a preview of the first file's content
-                        get_single_file_preview(directory),
-                    ])
+                            ], className="mb-3"),
+                    # Link back to project
+                    dcc.Link(
+                        html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
+                        className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
+                    # Display a table of all the project's directories
+                    get_files_table(directory),
+                    # Display a preview of the first file's content
+                    get_single_file_preview(directory),
+                ])
         else:
             raise Exception("No project and directory name was given.")
     except:
