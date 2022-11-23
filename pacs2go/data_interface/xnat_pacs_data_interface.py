@@ -78,43 +78,20 @@ class XNAT():
         return projects
 
     def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
-        # Get project
-        try:
-            project = self.get_project(project_name)
-        except:
-            raise Exception(
-                f"Project with the name {project_name} does not exist.")
+        # See if directory exists in XNAT
+        if self.interface.select.project(project_name).resource(directory_name).exists():
+            return XNATDirectory(XNATProject(self, project_name), directory_name)
+        else:
+            raise Exception("A Directory with the specified properties does not exists.")
 
 
-        # Get directory from project
-        directory = XNATDirectory(project, directory_name)
-
-        if directory.exists():
-            # If a directory with given name exists in XNAT, return directory
-            return directory
-
+    def get_file(self, project_name: str, directory_name: str, file_name: str) -> 'XNATFile':
+        if self.interface.select.project(project_name).resource(directory_name).file(file_name).exists():
+            return XNATFile(XNATDirectory(XNATProject(self, project_name), directory_name), file_name)
         else:
             raise Exception(
-                f"No Directory in Project {project.name} with the name {directory_name}.")
+                f"No file called {file_name} in Project {project_name}, Directory {directory_name}.")
 
-
-    def get_file(self, project_name: str, directory_name: str, file_name: str):
-        # Get directory
-        try:
-            directory = self.get_directory(project_name, directory_name)
-
-        except Exception as err:
-            raise Exception(err)
-
-        # Get file from directory
-        file = directory.get_file(file_name)
-
-        # If a file was retrieved, return file
-        if file.exists():
-            return file
-        else:
-            raise Exception(
-                f"No file called {file_name} in Project {project_name}, Directory {directory_name}")
 
 #---------------------------------------------#
 #       XNAT Project interface class          #
@@ -147,8 +124,8 @@ class XNATProject():
     def your_user_role(self) -> str:
         return self._xnat_project_object.user_role(self.connection.user)
 
-    # Check if project exists on XNAT server
     def exists(self) -> bool:
+        # Check if project exists on XNAT server
         return self._xnat_project_object.exists()
 
     def delete_project(self) -> None:
@@ -157,11 +134,14 @@ class XNATProject():
             self._xnat_project_object.delete()
 
         else:
-            raise Exception("Project does not exist/has already been deleted.")
+            raise Exception(f"Project {self.name} does not exist/has already been deleted.")
 
     def get_directory(self, directory_name: str) -> 'XNATDirectory':
-        # Get directory
-        return XNATDirectory(self, directory_name)
+        if self._xnat_project_object.resource(directory_name).exists():
+            # Get directory
+            return XNATDirectory(self, directory_name)
+        else:
+            raise Exception(f"A directory called {directory_name} does not exist.")
 
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         directory_names = []
@@ -171,9 +151,9 @@ class XNATProject():
 
         if len(directory_names) == 0:
             return []
+
         else:
             directories = []
-
             # Get a list of all directories
             for r in directory_names:
                 directory = self.get_directory(r)
@@ -309,8 +289,11 @@ class XNATDirectory():
                 "Directory does not exist/has already been deleted.")
 
     def get_file(self, file_name: str) -> 'XNATFile':
-        # Get specific file, via name
-        return XNATFile(self, file_name)
+        if self._xnat_resource_object.file(file_name).exists():
+            # Get specific file, via name
+            return XNATFile(self, file_name)
+        else:
+            raise Exception(f"A file calle f{file_name} does not exist.")
 
     def get_all_files(self) -> List['XNATFile']:
         directory = self._xnat_resource_object
