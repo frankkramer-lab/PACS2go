@@ -137,11 +137,9 @@ class XNATProject():
             raise Exception(f"Project {self.name} does not exist/has already been deleted.")
 
     def get_directory(self, directory_name: str) -> 'XNATDirectory':
-        if self._xnat_project_object.resource(directory_name).exists():
-            # Get directory
-            return XNATDirectory(self, directory_name)
-        else:
-            raise Exception(f"A directory called {directory_name} does not exist.")
+        # Get directory
+        return XNATDirectory(self, directory_name)
+            
 
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         directory_names = []
@@ -269,9 +267,10 @@ class XNATProject():
 
 class XNATDirectory():
     def __init__(self, project: XNATProject, name: str) -> None:
-        p = project.connection.interface.select.project(project.name)
         # Attention: Directories are originally called 'Resources' in the XNAT Universe
-        self._xnat_resource_object = p.resource(name)
+        self._xnat_resource_object = project._xnat_project_object.resource(name)
+        if not self._xnat_resource_object:
+            raise Exception(f"A directory called {name} does not exist.")
         self.name = name
         self.project = project
 
@@ -289,11 +288,9 @@ class XNATDirectory():
                 "Directory does not exist/has already been deleted.")
 
     def get_file(self, file_name: str) -> 'XNATFile':
-        if self._xnat_resource_object.file(file_name).exists():
-            # Get specific file, via name
-            return XNATFile(self, file_name)
-        else:
-            raise Exception(f"A file calle f{file_name} does not exist.")
+        # Get specific file, via name
+        return XNATFile(self, file_name)
+
 
     def get_all_files(self) -> List['XNATFile']:
         directory = self._xnat_resource_object
@@ -312,6 +309,8 @@ class XNATFile():
     def __init__(self, directory: XNATDirectory, file_name: str) -> None:
         self._xnat_file_object = directory._xnat_resource_object.file(
             file_name)
+        if not self._xnat_file_object:
+            raise Exception(f"A file called {file_name} does not exist.")
         self.directory = directory
         self.name = file_name
 
