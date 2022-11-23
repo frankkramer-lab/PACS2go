@@ -116,6 +116,19 @@ class XNATProject():
     def description(self) -> str:
         return self._xnat_project_object.description()
 
+    def set_description(self, description_string: str) -> None:
+        # Set new description to given string
+        self._xnat_project_object.attrs.set('description', description_string)
+
+    @property
+    def keywords(self) -> str:
+        return self._xnat_project_object.attrs.get('keywords')
+
+    def set_keywords(self, keyword_string: str) -> None:
+        # new_keyword = self.keywords + ", " + keyword_string
+        # Set new description to given string
+        self._xnat_project_object.attrs.set('keywords', keyword_string)
+
     @property
     def owners(self) -> List[str]:
         return self._xnat_project_object.owners()
@@ -140,7 +153,6 @@ class XNATProject():
         # Get directory
         return XNATDirectory(self, directory_name)
             
-
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         directory_names = []
         # Get directory names
@@ -351,3 +363,9 @@ class XNATFile():
 
         else:
             raise Exception("File does not exist/has already been deleted.")
+
+
+# with XNAT('http://localhost:8888', "admin", "admin") as connection:
+#     p = connection.get_project('test_1')
+#     p.set_description('This is a description :) for a project :) thats nice :)')
+#     print(p.description)

@@ -80,6 +80,25 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
+    def set_description(self) -> str:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.set_description()
+        else:
+            raise ValueError(self.connection._kind)
+
+    @property
+    def keywords(self) -> str:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.keywords
+        else:
+            raise ValueError(self.connection._kind)
+
+    def set_keywords(self) -> str:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.set_keywords()
+        else:
+            raise ValueError(self.connection._kind)
+
     @property
     def owners(self) -> List[str]:
         if self.connection._kind == "XNAT":
