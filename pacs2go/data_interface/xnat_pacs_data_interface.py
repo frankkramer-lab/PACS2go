@@ -82,8 +82,8 @@ class XNAT():
         if self.interface.select.project(project_name).resource(directory_name).exists():
             return XNATDirectory(XNATProject(self, project_name), directory_name)
         else:
-            raise Exception("A Directory with the specified properties does not exists.")
-
+            raise Exception(
+                "A Directory with the specified properties does not exists.")
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> 'XNATFile':
         if self.interface.select.project(project_name).resource(directory_name).file(file_name).exists():
@@ -147,12 +147,13 @@ class XNATProject():
             self._xnat_project_object.delete()
 
         else:
-            raise Exception(f"Project {self.name} does not exist/has already been deleted.")
+            raise Exception(
+                f"Project {self.name} does not exist/has already been deleted.")
 
     def get_directory(self, directory_name: str) -> 'XNATDirectory':
         # Get directory
         return XNATDirectory(self, directory_name)
-            
+
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         directory_names = []
         # Get directory names
@@ -171,19 +172,19 @@ class XNATProject():
 
             return directories
 
-    def insert(self, file_path: str, directory_name: str = '') -> Union['XNATDirectory', 'XNATFile']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
         # File path leads to a single file
         if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
-            return self.insert_file_into_project(file_path, directory_name)
+            return self.insert_file_into_project(file_path, directory_name, tags_string)
 
         # File path equals a zip file
         elif zipfile.is_zipfile(file_path):
-            return self.insert_zip_into_project(file_path, directory_name)
+            return self.insert_zip_into_project(file_path, directory_name, tags_string)
 
         else:
             raise Exception("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '') -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string='') -> 'XNATDirectory':
         # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
@@ -208,7 +209,7 @@ class XNATProject():
                     # Insert files
                     for f in onlyfiles:
                         self.insert_file_into_project(
-                            os.path.join(dir_path, f), directory_name)
+                            os.path.join(dir_path, f), directory_name, tags_string)
 
             return XNATDirectory(self, directory_name)
 
@@ -216,7 +217,7 @@ class XNATProject():
             raise Exception("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, directory_name: str = '') -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '') -> 'XNATFile':
         if os.path.exists(file_path):
             project = self._xnat_project_object
             # Rile names are unique, duplicate file names can not be inserted
@@ -236,37 +237,37 @@ class XNATProject():
             if lower_file_path.endswith('.jpg') or lower_file_path.endswith('.jpeg'):
                 file_id = file_id + '.jpeg'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='JPEG', tags='image jpeg')
+                    file_path, content='image', format='JPEG', tags='Image, JPEG, ' + tags_string)
 
             elif lower_file_path.endswith('.png'):
                 file_id = file_id + '.png'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='PNG', tags='image png')
+                    file_path, content='image', format='PNG', tags='Image, PNG' + tags_string)
 
             elif lower_file_path.endswith('.nii'):
                 file_id = file_id + '.nii'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='NIFTI', tags='image nifti')
+                    file_path, content='image', format='NIFTI', tags='Image, NIFTI' + tags_string)
 
             elif lower_file_path.endswith('.dcm'):
                 file_id = file_id + '.dcm'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='DICOM', tags='image dicom')
+                    file_path, content='image', format='DICOM', tags='Image, DICOM' + tags_string)
 
             elif lower_file_path.endswith('.tiff'):
                 file_id = file_id + '.tiff'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='TIFF', tags='image tiff')
+                    file_path, content='image', format='TIFF', tags='Image, TIFF' + tags_string)
 
             elif lower_file_path.endswith('.csv'):
                 file_id = file_id + '.csv'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='metadata', format='CSV', tags='metadata')
+                    file_path, content='metadata', format='CSV', tags='Metadata, CSV' + tags_string)
 
             elif lower_file_path.endswith('.json'):
                 file_id = file_id + '.json'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='metadata', format='JSON', tags='metadata')
+                    file_path, content='metadata', format='JSON', tags='Metadata, JSON' + tags_string)
 
             else:
                 raise Exception("This file type is not supported.")
@@ -280,7 +281,8 @@ class XNATProject():
 class XNATDirectory():
     def __init__(self, project: XNATProject, name: str) -> None:
         # Attention: Directories are originally called 'Resources' in the XNAT Universe
-        self._xnat_resource_object = project._xnat_project_object.resource(name)
+        self._xnat_resource_object = project._xnat_project_object.resource(
+            name)
         if not self._xnat_resource_object:
             raise Exception(f"A directory called {name} does not exist.")
         self.name = name
@@ -302,7 +304,6 @@ class XNATDirectory():
     def get_file(self, file_name: str) -> 'XNATFile':
         # Get specific file, via name
         return XNATFile(self, file_name)
-
 
     def get_all_files(self) -> List['XNATFile']:
         directory = self._xnat_resource_object
@@ -366,6 +367,5 @@ class XNATFile():
 
 
 # with XNAT('http://localhost:8888', "admin", "admin") as connection:
-#     p = connection.get_project('test_1')
-#     d = p.get_directory('niftis')
-# print(d._xnat_resource_object._getcells())
+#     p = connection.get_project('test_keywords')
+#     print(p.set_keywords('CT'))

@@ -66,10 +66,14 @@ def modal_create():
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
-                    dbc.Label("Please enter a description for your project."),
+                    dbc.Label("Please enter a description for your project.", class_name="mt-2"),
                     # Input Text Field for project name
                     dbc.Input(id="project_description",
                               placeholder="This project is used to..."),
+                    dbc.Label("Please enter a keywords that summarize your project's contents.", class_name="mt-2"),
+                    # Input Text Field for project name
+                    dbc.Input(id="project_keywords",
+                              placeholder="Dermatology, CT,...."),
                 ]),
                 dbc.ModalFooter([
                     # Button which triggers the creation of a project (see modal_and_project_creation)
@@ -93,8 +97,9 @@ def modal_create():
 @callback([Output('modal_create', 'is_open'), Output('create-project-content', 'children')],
           [Input('create_project', 'n_clicks'), Input(
               'close_modal_create', 'n_clicks'), Input('create_and_close', 'n_clicks')],
-          State("modal_create", "is_open"), State('project_name', 'value'), State('project_description', 'value'))
-def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description):
+          State("modal_create", "is_open"), State('project_name', 'value'), State('project_description', 'value'),
+          State('project_keywords', 'value'))
+def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
         return not is_open, no_update
@@ -110,6 +115,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
                 # Try to create project
                 project = Project(connection, project_name)
                 project.set_description(description)
+                project.set_keywords(keywords)
                 return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_creation")
         except Exception as err:
             # TODO: differentiate between different exceptions

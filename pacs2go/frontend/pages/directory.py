@@ -37,11 +37,11 @@ def get_files_table(directory: Directory):
     # Get file information as rows for table
     for f in directory.get_all_files():
         rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                     ), html.Td(f.format), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+                                     ), html.Td(f.format), html.Td(f.tags),html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Size"), ]))
+            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Tags"), html.Th("File Size")]))
     ]
 
     table_body = [html.Tbody(rows)]

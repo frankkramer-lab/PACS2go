@@ -80,7 +80,7 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
-    def set_description(self, description_string: str) -> str:
+    def set_description(self, description_string: str) -> None:
         if self.connection._kind == "XNAT":
             return self._xnat_project.set_description(description_string)
         else:
@@ -93,9 +93,9 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
-    def set_keywords(self) -> str:
+    def set_keywords(self, keywords_string: str) -> None:
         if self.connection._kind == "XNAT":
-            return self._xnat_project.set_keywords()
+            return self._xnat_project.set_keywords(keywords_string)
         else:
             raise ValueError(self.connection._kind)
 
@@ -137,9 +137,9 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
-    def insert(self, file_path: str, directory_name: str = '') -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         if self.connection._kind == "XNAT":
-            return self._xnat_project.insert(file_path, directory_name)
+            return self._xnat_project.insert(file_path, directory_name, tags_string)
         else:
             raise ValueError(self.connection._kind)
 
@@ -191,6 +191,20 @@ class File():
     def format(self) -> str:
         if self.directory.project.connection._kind == "XNAT":
             return self._xnat_file.format
+        else:
+            raise ValueError(self.directory.project.connection._kind)
+
+    @property
+    def content_type(self) -> str:
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.content_type
+        else:
+            raise ValueError(self.directory.project.connection._kind)
+
+    @property
+    def tags(self) -> str:
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.tags
         else:
             raise ValueError(self.directory.project.connection._kind)
 

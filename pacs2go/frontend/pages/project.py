@@ -21,8 +21,9 @@ register_page(__name__, title='Project - PACS2go',
 
 def get_details(project: Project):
     description = "Description: " + project.description
+    keywords = "Keywords: " + project.keywords
     owners = "Owners: " + ', '.join(project.owners)
-    return html.Div([html.H5(owners), html.H5(description)])
+    return html.Div([html.H5(owners), html.H5(description), html.H5(keywords)])
 
 
 def get_directories(project: Project):

@@ -83,10 +83,12 @@ def show_file(file: File):
     data = dbc.Card(
         dbc.CardBody(
             [
-                html.H6(f"File Name: {file.name}"),
-                html.H6(f"File Format: {file.format}"),
-                html.H6(
-                    f"File Size: {round(file.size/1024,2)} KB ({file.size} Bytes)"),
+                html.H6([html.B("File Name: "), f"{file.name}"]),
+                html.H6([html.B("File Format: "),f"{file.format}"]),
+                html.H6([html.B("File Content Type: "),f"{file.content_type}"]),
+                html.H6([html.B("File Tags: "),f"{file.tags}"]),
+                html.H6([html.B("File Size: "),
+                    f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.Div([content]),
             ],))
 
