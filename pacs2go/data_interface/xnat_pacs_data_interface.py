@@ -367,5 +367,5 @@ class XNATFile():
 
 # with XNAT('http://localhost:8888', "admin", "admin") as connection:
 #     p = connection.get_project('test_1')
-#     p.set_description('This is a description :) for a project :) thats nice :)')
-#     print(p.description)
+#     d = p.get_directory('niftis')
+# print(d._xnat_resource_object._getcells())

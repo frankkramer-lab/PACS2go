@@ -80,9 +80,9 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
-    def set_description(self) -> str:
+    def set_description(self, description_string: str) -> str:
         if self.connection._kind == "XNAT":
-            return self._xnat_project.set_description()
+            return self._xnat_project.set_description(description_string)
         else:
             raise ValueError(self.connection._kind)
 
