@@ -10,6 +10,7 @@ from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
+from dash.exceptions import PreventUpdate
 from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import Directory
@@ -27,7 +28,7 @@ def get_single_file_preview(directory: Directory):
     if file.format == 'JPEG':
         image = html.Img(id="my-img", className="image", width="100%",
                          src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
-        return html.Div([html.H4("Preview:"), image], className="w-25 h-25")
+        return html.Div([html.H4("Preview the first file of this directory:"), image], className="w-25 h-25")
     else:
         return html.Div()
 
@@ -37,7 +38,7 @@ def get_files_table(directory: Directory):
     # Get file information as rows for table
     for f in directory.get_all_files():
         rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                     ), html.Td(f.format), html.Td(f.tags),html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+                                     ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
 
     table_header = [
         html.Thead(
@@ -49,7 +50,7 @@ def get_files_table(directory: Directory):
     # Put together file table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
-    return html.Div([html.H4("Files:"), table])
+    return table
 
 
 def modal_delete(directory: Directory):
@@ -101,7 +102,8 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     if ctx.triggered_id == "delete_directory_and_close":
         try:
             with get_connection() as connection:
-                directory = connection.get_directory(project_name, directory_name)
+                directory = connection.get_directory(
+                    project_name, directory_name)
                 # Delete Directory
                 directory.delete_directory()
                 # Redirect to project after deletion
@@ -113,6 +115,34 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
         return is_open, no_update
 
 
+@callback(Output('files_table', 'children'), Input('filter_btn', 'n_clicks'),
+          State('filter', 'value'), State('directory', 'data'), State('project', 'data'))
+def filter_table(btn, filter, directory_name, project_name):
+    if ctx.triggered_id != 'filter_btn':
+        raise PreventUpdate
+    else:
+        with get_connection() as connection:
+            directory = connection.get_directory(project_name, directory_name)
+            rows = []
+            # Get file information as rows for table
+            for f in directory.get_all_files():
+                if str(filter) in f.tags:
+                    rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                                ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+
+        table_header = [
+            html.Thead(
+                html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Tags"), html.Th("File Size")]))
+        ]
+
+        table_body = [html.Tbody(rows)]
+
+        # Put together file table
+        table = dbc.Table(table_header + table_body,
+                          striped=True, bordered=True, hover=True)
+        return table
+
+
 #################
 #  Page Layout  #
 #################
@@ -122,8 +152,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
     try:
         if project_name and directory_name:
             with get_connection() as connection:
-                directory = connection.get_directory(
-                    project_name, directory_name)
+                directory = connection.get_directory(project_name, directory_name)
                 return html.Div([
                     # dcc Store components for project and directory name strings
                     dcc.Store(id='directory', data=directory.name),
@@ -146,8 +175,14 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     dcc.Link(
                         html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
                         className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                    # Display a table of all the project's directories
-                    get_files_table(directory),
+                    html.H4("Files:"),
+                    dbc.Row([   
+                        dbc.Col(dbc.Input(id="filter", placeholder="Search.. (e.g. 'CT')")),
+                        dbc.Col(dbc.Button("Filter", id="filter_btn"))
+                    ], class_name="mb-3"),
+               
+                    # Display a table of all the project's files
+                    html.Div(get_files_table(directory), id='files_table'),
                     # Display a preview of the first file's content
                     get_single_file_preview(directory),
                 ])
