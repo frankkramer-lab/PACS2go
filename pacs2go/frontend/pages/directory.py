@@ -21,6 +21,7 @@ from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import pil_to_b64
 
+
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
 
@@ -52,7 +53,7 @@ def get_files_table(directory: Directory, filter: str = ''):
     rows = []
     # Get file information as rows for table
     for f in directory.get_all_files():
-        if filter in f.tags or len(filter)==0:
+        if filter.lower() in f.tags.lower() or len(filter)==0:
             rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
                                      ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
 
@@ -131,11 +132,11 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
         raise PreventUpdate
 
 
-@callback(Output('files_table', 'children'), Input('filter_btn', 'n_clicks'),
-          State('filter', 'value'), State('directory', 'data'), State('project', 'data'))
-def filter_table(btn, filter, directory_name, project_name):
+@callback(Output('files_table', 'children'), Input('filter_file_tags_btn', 'n_clicks'),
+          State('filter_file_tags', 'value'), State('directory', 'data'), State('project', 'data'))
+def filter_files_table(btn, filter, directory_name, project_name):
     # Apply filter to the files table
-    if ctx.triggered_id == 'filter_btn':
+    if ctx.triggered_id == 'filter_file_tags_btn':
         with get_connection() as connection:
             return get_files_table(connection.get_directory(project_name, directory_name), filter)        
     else:
@@ -181,9 +182,9 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         dbc.CardBody([
                             # Filter file tags
                             dbc.Row([
-                                dbc.Col(dbc.Input(id="filter",
+                                dbc.Col(dbc.Input(id="'filter_file_tags",
                                     placeholder="Search.. (e.g. 'CT')")),
-                                dbc.Col(dbc.Button("Filter", id="filter_btn"))
+                                dbc.Col(dbc.Button("Filter", id="'filter_file_tags_btn"))
                             ], class_name="mb-3"),
 
                             # Display a table of the directory's files

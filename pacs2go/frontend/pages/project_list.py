@@ -10,6 +10,7 @@ from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
+from dash.exceptions import PreventUpdate
 
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
@@ -21,25 +22,19 @@ register_page(__name__, title='Projects - PACS2go', path='/projects')
 # TODO: only make project clickable if user has rights to certain project
 
 
-def get_projects_list() -> List[Project]:
-    try:
-        with get_connection() as connection:
-            return connection.get_all_projects()
-    except:
-        return []
-
-
-def get_projects_table():
+def get_projects_table(filter: str = ''):
     # Get list of all project names, specific user roles and number of directories per project
     rows = []
-    for p in get_projects_list():
-        # Project names represent links to individual project pages
-        rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
-            p.your_user_role.capitalize()), html.Td(len(p.get_all_directories()))]))
+    with get_connection() as connection:
+        for p in connection.get_all_projects():
+            if filter.lower() in p.keywords.lower() or len(filter) == 0:
+                # Project names represent links to individual project pages
+                rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
+                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Project Name"), html.Th("Your user role"), html.Th("Number of Directories")]))
+            html.Tr([html.Th("Project Name"), html.Th("Your user role"), html.Th("Number of Directories"), html.Th("Keywords")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -66,11 +61,13 @@ def modal_create():
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
-                    dbc.Label("Please enter a description for your project.", class_name="mt-2"),
+                    dbc.Label(
+                        "Please enter a description for your project.", class_name="mt-2"),
                     # Input Text Field for project name
                     dbc.Input(id="project_description",
                               placeholder="This project is used to..."),
-                    dbc.Label("Please enter a keywords that summarize your project's contents.", class_name="mt-2"),
+                    dbc.Label(
+                        "Please enter a keywords that summarize your project's contents.", class_name="mt-2"),
                     # Input Text Field for project name
                     dbc.Input(id="project_keywords",
                               placeholder="Dermatology, CT,...."),
@@ -97,7 +94,8 @@ def modal_create():
 @callback([Output('modal_create', 'is_open'), Output('create-project-content', 'children')],
           [Input('create_project', 'n_clicks'), Input(
               'close_modal_create', 'n_clicks'), Input('create_and_close', 'n_clicks')],
-          State("modal_create", "is_open"), State('project_name', 'value'), State('project_description', 'value'),
+          State("modal_create", "is_open"), State('project_name',
+                                                  'value'), State('project_description', 'value'),
           State('project_keywords', 'value'))
 def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
@@ -124,6 +122,16 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         return is_open, no_update
 
 
+@callback(Output('projects_table', 'children'), Input('filter_project_keywords_btn', 'n_clicks'),
+          State('filter_project_keywords', 'value'))
+def filter_projects_table(btn, filter):
+    # Apply filter to the projects table
+    if ctx.triggered_id == 'filter_project_keywords_btn':
+        return get_projects_table(filter)
+    else:
+        raise PreventUpdate
+
+
 #################
 #  Page Layout  #
 #################
@@ -136,6 +144,17 @@ def layout():
                 children='Your Projects'),
             html.Div(modal_create(), className="d-flex justify-content-between")
         ], className="d-flex justify-content-between mb-4"),
-        # Project information table
-        get_projects_table(),
+        dbc.Card([
+            dbc.CardBody([
+                # Filter file tags
+                dbc.Row([
+                    dbc.Col(dbc.Input(id="filter_project_keywords",
+                        placeholder="Search keywords.. (e.g. 'CT')")),
+                    dbc.Col(dbc.Button("Filter", id="filter_project_keywords_btn"))
+                ], class_name="mb-3"),
+
+                # Project information table
+                html.Div(get_projects_table(), id='projects_table'),
+            ])], class_name="mb-3"),
+
     ])
