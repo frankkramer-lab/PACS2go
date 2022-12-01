@@ -10,6 +10,7 @@ from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
+from dash.exceptions import PreventUpdate
 
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
@@ -23,20 +24,21 @@ def get_details(project: Project):
     description = "Description: " + project.description
     keywords = "Keywords: " + project.keywords
     owners = "Owners: " + ', '.join(project.owners)
-    return html.Div([html.H5(owners), html.H5(description), html.H5(keywords)])
+    return [html.H6(owners), html.H6(description), html.H6(keywords)]
 
 
-def get_directories(project: Project):
+def get_directories_table(project: Project, filter:str=''):
     # Get list of all directory names and number of files per directory
     rows = []
     for d in project.get_all_directories():
-        # Directory names represent links to individual directory pages
-        rows.append(html.Tr([html.Td(dcc.Link(d.name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-            len(d.get_all_files()))]))
+        if filter.lower() in d.contained_file_tags.lower() or len(filter)==0:
+            # Directory names represent links to individual directory pages
+            rows.append(html.Tr([html.Td(dcc.Link(d.name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+                len(d.get_all_files())), html.Td(d.contained_file_tags)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Directory Name"), html.Th("Number of Files")]))
+            html.Tr([html.Th("Directory Name"), html.Th("Number of Files"), html.Th("Contained File Tags in this Directory")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -44,7 +46,7 @@ def get_directories(project: Project):
     # Put together directory table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
-    return html.Div([html.H5("Directories:"), table])
+    return table
 
 
 def modal_delete(project: Project):
@@ -178,6 +180,21 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
         return is_open, no_update
 
 
+
+@callback(Output('directory_table', 'children'), Input('filter_directory_tags_btn', 'n_clicks'),
+          State('filter_directory_tags', 'value'), State('project_store', 'data'))
+def filter_files_table(btn, filter, project_name):
+    # Apply filter to the directories table
+    if ctx.triggered_id == 'filter_directory_tags_btn':
+        if filter or filter=="":
+            with get_connection() as connection:
+                return get_directories_table(connection.get_project(project_name), filter)       
+        else:
+            raise PreventUpdate 
+    else:
+        raise PreventUpdate
+
+
 #################
 #  Page Layout  #
 #################
@@ -187,9 +204,11 @@ def layout(project_name: Optional[str] = None):
         if project_name:
             with get_connection() as connection:
                 project = connection.get_project(project_name)
+              
 
                 if project:
                     return html.Div([
+                        dcc.Store(id='project_store', data=project.name),
                         # Header including page title and action buttons
                         dbc.Row([
                             dbc.Col(html.H1(f"Project {project.name}", style={
@@ -200,13 +219,26 @@ def layout(project_name: Optional[str] = None):
                                  modal_delete_data(project), ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                         ], className="mb-3"),
                         # Project Information (owners,..)
-                        get_details(project),
-                        # Directories Table
-                        get_directories(project)
+                        dbc.Card([
+                            dbc.CardHeader("Details"),
+                            dbc.CardBody(get_details(project))], class_name="mb-3"),
+                        dbc.Card([
+                            dbc.CardHeader('Directories'),
+                            dbc.CardBody([
+                                # Filter file tags
+                                dbc.Row([
+                                    dbc.Col(dbc.Input(id="filter_directory_tags",
+                                        placeholder="Search keywords.. (e.g. 'CT')")),
+                                    dbc.Col(dbc.Button("Filter", id="filter_directory_tags_btn"))
+                                ], class_name="mb-3"),
+                                # Directories Table
+                                html.Div(get_directories_table(project), id='directory_table'),
+                            ])], class_name="mb-3"),
+                     
                     ])
 
                 else:
                     return dbc.Alert("No Project found.", color="danger")
 
-    except:
-        return dbc.Alert("No Project found.", color="danger")
+    except Exception as err:
+        return dbc.Alert(f"No Project found. + {err}", color="danger")

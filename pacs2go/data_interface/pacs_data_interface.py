@@ -153,6 +153,13 @@ class Directory():
         else:
             raise ValueError(self.project.connection._kind)
 
+    @property
+    def contained_file_tags(self) -> str:
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.contained_file_tags
+        else:
+            raise ValueError(self.connection._kind)
+
     def exists(self) -> bool:
         if self.project.connection._kind == "XNAT":
             return self._xnat_directory.exists()

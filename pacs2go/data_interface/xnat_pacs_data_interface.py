@@ -242,32 +242,32 @@ class XNATProject():
             elif lower_file_path.endswith('.png'):
                 file_id = file_id + '.png'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='PNG', tags='Image, PNG' + tags_string)
+                    file_path, content='image', format='PNG', tags='Image, PNG, ' + tags_string)
 
             elif lower_file_path.endswith('.nii'):
                 file_id = file_id + '.nii'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='NIFTI', tags='Image, NIFTI' + tags_string)
+                    file_path, content='image', format='NIFTI', tags='Image, NIFTI, ' + tags_string)
 
             elif lower_file_path.endswith('.dcm'):
                 file_id = file_id + '.dcm'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='DICOM', tags='Image, DICOM' + tags_string)
+                    file_path, content='image', format='DICOM', tags='Image, DICOM, ' + tags_string)
 
             elif lower_file_path.endswith('.tiff'):
                 file_id = file_id + '.tiff'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='image', format='TIFF', tags='Image, TIFF' + tags_string)
+                    file_path, content='image', format='TIFF', tags='Image, TIFF, ' + tags_string)
 
             elif lower_file_path.endswith('.csv'):
                 file_id = file_id + '.csv'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='metadata', format='CSV', tags='Metadata, CSV' + tags_string)
+                    file_path, content='metadata', format='CSV', tags='Metadata, CSV, ' + tags_string)
 
             elif lower_file_path.endswith('.json'):
                 file_id = file_id + '.json'
                 project.resource(directory_name).file(file_id).insert(
-                    file_path, content='metadata', format='JSON', tags='Metadata, JSON' + tags_string)
+                    file_path, content='metadata', format='JSON', tags='Metadata, JSON, ' + tags_string)
 
             else:
                 raise Exception("This file type is not supported.")
@@ -287,6 +287,19 @@ class XNATDirectory():
             raise Exception(f"A directory called {name} does not exist.")
         self.name = name
         self.project = project
+        self.contained_file_tags = self.get_contained_file_tags()
+
+    def get_contained_file_tags(self) -> str:
+        # Get all tags from each file
+        tags = ""
+        for f in self.get_all_files():
+            tags = tags + "," + f.tags
+        string1 = tags
+        # Remove Whitespaces and split string at comma
+        words = string1.replace(" ", "").split(",")
+        # Remove duplicates and sort tags
+        tags = " ".join(sorted(set(words), key=words.index)).strip()
+        return tags
 
     # Check if directory/recource exists on XNAT server
     def exists(self) -> bool:
@@ -364,8 +377,3 @@ class XNATFile():
 
         else:
             raise Exception("File does not exist/has already been deleted.")
-
-
-# with XNAT('http://localhost:8888', "admin", "admin") as connection:
-#     p = connection.get_project('test_keywords')
-#     print(p.set_keywords('CT'))
