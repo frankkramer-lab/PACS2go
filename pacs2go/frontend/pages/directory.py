@@ -1,8 +1,11 @@
+import json
 from typing import Optional
 
 import dash_bootstrap_components as dbc
+import pandas as pd
 from dash import callback
 from dash import ctx
+from dash import dash_table
 from dash import dcc
 from dash import html
 from dash import Input
@@ -25,19 +28,32 @@ register_page(__name__, title='Directory - PACS2go',
 # Preview first image within the directory
 def get_single_file_preview(directory: Directory):
     file = directory.get_all_files()[0]
-    if file.format == 'JPEG':
-        image = html.Img(id="my-img", className="image", width="100%",
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
+        content = html.Img(id="my-img", className="image", width="100%",
                          src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
-        return html.Div([html.H4("Preview the first file of this directory:"), image], className="w-25 h-25")
+    elif file.format == 'JSON':
+        # Display contents of a JSON file as string
+        f = open(file.data)
+        content = json.dumps(json.load(f))
+
+    elif file.format == 'CSV':
+        df = pd.read_csv(file.data)
+        content = dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
     else:
         return html.Div()
+        
+    return dbc.Card([
+        dbc.CardHeader("Preview the first file of this directory:"),
+        dbc.CardBody(content, className="w-25 h-25")])
 
 
-def get_files_table(directory: Directory):
+
+def get_files_table(directory: Directory, filter: str = ''):
     rows = []
     # Get file information as rows for table
     for f in directory.get_all_files():
-        rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+        if filter in f.tags or len(filter)==0:
+            rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
                                      ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
 
     table_header = [
@@ -112,35 +128,19 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
-        return is_open, no_update
+        raise PreventUpdate
 
 
 @callback(Output('files_table', 'children'), Input('filter_btn', 'n_clicks'),
           State('filter', 'value'), State('directory', 'data'), State('project', 'data'))
 def filter_table(btn, filter, directory_name, project_name):
-    if ctx.triggered_id != 'filter_btn':
-        raise PreventUpdate
-    else:
+    # Apply filter to the files table
+    if ctx.triggered_id == 'filter_btn':
         with get_connection() as connection:
-            directory = connection.get_directory(project_name, directory_name)
-            rows = []
-            # Get file information as rows for table
-            for f in directory.get_all_files():
-                if str(filter) in f.tags:
-                    rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                                ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
-
-        table_header = [
-            html.Thead(
-                html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Tags"), html.Th("File Size")]))
-        ]
-
-        table_body = [html.Tbody(rows)]
-
-        # Put together file table
-        table = dbc.Table(table_header + table_body,
-                          striped=True, bordered=True, hover=True)
-        return table
+            return get_files_table(connection.get_directory(project_name, directory_name), filter)        
+    else:
+        raise PreventUpdate
+        
 
 
 #################
@@ -152,7 +152,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
     try:
         if project_name and directory_name:
             with get_connection() as connection:
-                directory = connection.get_directory(project_name, directory_name)
+                directory = connection.get_directory(
+                    project_name, directory_name)
                 return html.Div([
                     # dcc Store components for project and directory name strings
                     dcc.Store(id='directory', data=directory.name),
@@ -175,14 +176,20 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     dcc.Link(
                         html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
                         className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                    html.H4("Files:"),
-                    dbc.Row([   
-                        dbc.Col(dbc.Input(id="filter", placeholder="Search.. (e.g. 'CT')")),
-                        dbc.Col(dbc.Button("Filter", id="filter_btn"))
-                    ], class_name="mb-3"),
-               
-                    # Display a table of all the project's files
-                    html.Div(get_files_table(directory), id='files_table'),
+                    dbc.Card([
+                        dbc.CardHeader('Files'),
+                        dbc.CardBody([
+                            # Filter file tags
+                            dbc.Row([
+                                dbc.Col(dbc.Input(id="filter",
+                                    placeholder="Search.. (e.g. 'CT')")),
+                                dbc.Col(dbc.Button("Filter", id="filter_btn"))
+                            ], class_name="mb-3"),
+
+                            # Display a table of the directory's files
+                            html.Div(get_files_table(directory), id='files_table'),
+                    ])], class_name="mb-3"),
+
                     # Display a preview of the first file's content
                     get_single_file_preview(directory),
                 ])

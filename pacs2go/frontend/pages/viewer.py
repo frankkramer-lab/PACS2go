@@ -8,20 +8,20 @@ import pandas as pd
 from dash import callback
 from dash import dash_table
 from dash import dcc
-from dash import no_update
 from dash import html
 from dash import Input
+from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
-# from dash_slicer import VolumeSlicer
-# from nilearn import image
 from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import pil_to_b64
+# from dash_slicer import VolumeSlicer
+# from nilearn import image
 
 
 register_page(__name__, title='Viewer - PACS2go',
