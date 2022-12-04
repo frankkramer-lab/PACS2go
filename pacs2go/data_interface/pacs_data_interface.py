@@ -160,6 +160,13 @@ class Directory():
         else:
             raise ValueError(self.connection._kind)
 
+    @property
+    def number_of_files(self) -> str:
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.number_of_files
+        else:
+            raise ValueError(self.connection._kind)
+
     def exists(self) -> bool:
         if self.project.connection._kind == "XNAT":
             return self._xnat_directory.exists()

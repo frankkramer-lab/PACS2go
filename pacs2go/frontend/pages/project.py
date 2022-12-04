@@ -34,7 +34,7 @@ def get_directories_table(project: Project, filter:str=''):
         if filter.lower() in d.contained_file_tags.lower() or len(filter)==0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                len(d.get_all_files())), html.Td(d.contained_file_tags)]))
+                d.number_of_files), html.Td(d.contained_file_tags)]))
 
     table_header = [
         html.Thead(

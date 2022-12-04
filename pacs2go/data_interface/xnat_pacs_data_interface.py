@@ -287,19 +287,15 @@ class XNATDirectory():
             raise Exception(f"A directory called {name} does not exist.")
         self.name = name
         self.project = project
-        self.contained_file_tags = self.get_contained_file_tags()
 
-    def get_contained_file_tags(self) -> str:
-        # Get all tags from each file
-        tags = ""
-        for f in self.get_all_files():
-            tags = tags + "," + f.tags
-        string1 = tags
-        # Remove Whitespaces and split string at comma
-        words = string1.replace(" ", "").split(",")
-        # Remove duplicates and sort tags
-        tags = " ".join(sorted(set(words), key=words.index)).strip()
-        return tags
+    @property
+    def contained_file_tags(self) -> str:
+        # Retrieved attributes https://wiki.xnat.org/display/XAPI/Subject+Resource+API
+        return self._xnat_resource_object._getcell("tags")
+
+    @property
+    def number_of_files(self) -> str:
+        return self._xnat_resource_object._getcell("file_count")
 
     # Check if directory/recource exists on XNAT server
     def exists(self) -> bool:

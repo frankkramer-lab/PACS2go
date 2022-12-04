@@ -67,10 +67,10 @@ def modal_create():
                     dbc.Input(id="project_description",
                               placeholder="This project is used to..."),
                     dbc.Label(
-                        "Please enter a keywords that summarize your project's contents.", class_name="mt-2"),
+                        "Enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
                     # Input Text Field for project name
                     dbc.Input(id="project_keywords",
-                              placeholder="Dermatology, CT,...."),
+                              placeholder="Dermatology Skin Cancer...."),
                 ]),
                 dbc.ModalFooter([
                     # Button which triggers the creation of a project (see modal_and_project_creation)
