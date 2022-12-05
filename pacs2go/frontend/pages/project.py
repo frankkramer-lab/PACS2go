@@ -27,11 +27,11 @@ def get_details(project: Project):
     return [html.H6(owners), html.H6(description), html.H6(keywords)]
 
 
-def get_directories_table(project: Project, filter:str=''):
+def get_directories_table(project: Project, filter: str = ''):
     # Get list of all directory names and number of files per directory
     rows = []
     for d in project.get_all_directories():
-        if filter.lower() in d.contained_file_tags.lower() or len(filter)==0:
+        if filter.lower() in d.contained_file_tags.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
                 d.number_of_files), html.Td(d.contained_file_tags)]))
@@ -112,6 +112,44 @@ def modal_delete_data(project: Project):
     ])
 
 
+def modal_edit_project(project: Project):
+    # Modal view for project deletion
+    return html.Div([
+        # Button which triggers modal activation
+        dbc.Button([html.I(className="bi bi-pencil me-2"),
+                    "Edit Project"], id="edit_project", size="md", color="success"),
+        # Actual modal view
+        dbc.Modal(
+            [
+                dbc.ModalHeader(dbc.ModalTitle(
+                    f"Edit Project {project.name}")),
+                dbc.ModalBody([
+                    html.Div(id='edit-project-content'),
+                    dbc.Label(
+                        "Please enter a new description for your project.", class_name="mt-2"),
+                    # Input Text Field for project name
+                    dbc.Input(id="new_project_description",
+                              placeholder=project.description, value=project.description),
+                    dbc.Label(
+                        "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
+                    # Input Text Field for project name
+                    dbc.Input(id="new_project_keywords",
+                              placeholder=project.keywords, value=project.keywords),
+                ]),
+                dbc.ModalFooter([
+                    # Button which triggers the creation of a project (see modal_and_project_creation)
+                    dbc.Button("Save changes",
+                               id="edit_and_close", color="success"),
+                    # Button which causes modal to close/disappear
+                    dbc.Button("Close", id="close_modal_edit")
+                ]),
+            ],
+            id="modal_edit_project",
+            is_open=False,
+        ),
+    ])
+
+
 def insert_data(project: Project):
     # Link to Upload functionality with a set project name
     return html.Div(dbc.Button([html.I(className="bi bi-cloud-upload me-2"),
@@ -123,9 +161,11 @@ def insert_data(project: Project):
 #################
 
 @callback([Output('modal_delete', 'is_open'), Output('delete-project-content', 'children')],
-          [Input('delete_project', 'n_clicks'), Input(
-              'close_modal_delete', 'n_clicks'), Input('delete_and_close', 'n_clicks')],
-          State("modal_delete", "is_open"), State("project", "value"))
+          [Input('delete_project', 'n_clicks'),
+           Input('close_modal_delete', 'n_clicks'),
+           Input('delete_and_close', 'n_clicks')],
+          State("modal_delete", "is_open"),
+          State("project", "value"))
 # Callback for project deletion modal view and executing project deletion
 def modal_and_project_deletion(open, close, delete_and_close, is_open, project_name):
     # Open/close modal via button click
@@ -150,9 +190,11 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
 
 
 @callback([Output('modal_delete_data', 'is_open'), Output('delete-project-data-content', 'children')],
-          [Input('delete_project_data', 'n_clicks'), Input(
-              'close_modal_delete_data', 'n_clicks'), Input('delete_data_and_close', 'n_clicks')],
-          State("modal_delete_data", "is_open"), State("project_2", "value"))
+          [Input('delete_project_data', 'n_clicks'),
+           Input('close_modal_delete_data', 'n_clicks'),
+           Input('delete_data_and_close', 'n_clicks')],
+          State("modal_delete_data", "is_open"),
+          State("project_2", "value"))
 # Callback used to delete all directories of a project (open modal view + actual deletion)
 def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open, project_name):
     # Open/close modal via button click
@@ -180,17 +222,50 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
         return is_open, no_update
 
 
+@callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children')],
+          [Input('edit_project', 'n_clicks'),
+           Input('close_modal_edit', 'n_clicks'),
+           Input('edit_and_close', 'n_clicks')],
+          State("modal_edit_project", "is_open"),
+          State('project_store', 'data'),
+          State('new_project_description', 'value'),
+          State('new_project_keywords', 'value'))
+# Callback used to edit project description and keywords
+def modal_edit_project_callback(open, close, edit_and_close, is_open, project_name, description, keywords):
+    # Open/close modal via button click
+    if ctx.triggered_id == "edit_project" or ctx.triggered_id == "close_modal_edit":
+        return not is_open, no_update
+    # User does everything "right"
+    elif ctx.triggered_id == "edit_and_close":
+        try:
+            with get_connection() as connection:
+                project = connection.get_project(project_name)
+                if description:
+                    # Set new description
+                    project.set_description(description)
+                if keywords:
+                    # Set new keywords
+                    project.set_keywords(keywords)
+                return not is_open, no_update
+        except Exception as err:
+            # TODO: differentiate between different exceptions
+            return is_open, dbc.Alert(str(err), color="danger")
+    else:
+        raise PreventUpdate
 
-@callback(Output('directory_table', 'children'), Input('filter_directory_tags_btn', 'n_clicks'),
-          State('filter_directory_tags', 'value'), State('project_store', 'data'))
+
+@callback(Output('directory_table', 'children'),
+          Input('filter_directory_tags_btn', 'n_clicks'),
+          State('filter_directory_tags', 'value'),
+          State('project_store', 'data'))
 def filter_files_table(btn, filter, project_name):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn':
-        if filter or filter=="":
+        if filter or filter == "":
             with get_connection() as connection:
-                return get_directories_table(connection.get_project(project_name), filter)       
+                return get_directories_table(connection.get_project(project_name), filter)
         else:
-            raise PreventUpdate 
+            raise PreventUpdate
     else:
         raise PreventUpdate
 
@@ -204,7 +279,6 @@ def layout(project_name: Optional[str] = None):
         if project_name:
             with get_connection() as connection:
                 project = connection.get_project(project_name)
-              
 
                 if project:
                     return html.Div([
@@ -215,6 +289,7 @@ def layout(project_name: Optional[str] = None):
                                     'textAlign': 'left', })),
                             dbc.Col(
                                 [insert_data(project),
+                                 modal_edit_project(project),
                                  modal_delete(project),
                                  modal_delete_data(project), ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                         ], className="mb-3"),
@@ -229,12 +304,14 @@ def layout(project_name: Optional[str] = None):
                                 dbc.Row([
                                     dbc.Col(dbc.Input(id="filter_directory_tags",
                                         placeholder="Search keywords.. (e.g. 'CT')")),
-                                    dbc.Col(dbc.Button("Filter", id="filter_directory_tags_btn"))
+                                    dbc.Col(dbc.Button(
+                                        "Filter", id="filter_directory_tags_btn"))
                                 ], class_name="mb-3"),
                                 # Directories Table
-                                html.Div(get_directories_table(project), id='directory_table'),
+                                html.Div(get_directories_table(
+                                    project), id='directory_table'),
                             ])], class_name="mb-3"),
-                     
+
                     ])
 
                 else:

@@ -67,7 +67,7 @@ def modal_create():
                     dbc.Input(id="project_description",
                               placeholder="This project is used to..."),
                     dbc.Label(
-                        "Enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
+                        "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
                     # Input Text Field for project name
                     dbc.Input(id="project_keywords",
                               placeholder="Dermatology Skin Cancer...."),
