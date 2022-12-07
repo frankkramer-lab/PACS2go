@@ -51,15 +51,23 @@ def get_single_file_preview(directory: Directory):
 
 def get_files_table(directory: Directory, filter: str = ''):
     rows = []
+    files = directory.get_all_files()
     # Get file information as rows for table
-    for f in directory.get_all_files():
-        if filter.lower() in f.tags.lower() or len(filter)==0:
+    # No filter applied
+    if len(filter)==0:
+        for f in files:
             rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                     ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+                                     ), html.Td(f.tags)]))
+    # Filtering
+    elif len(filter)>0 and filter.lower() in directory.contained_file_tags.lower():
+        for f in files:
+            if filter.lower() in f.tags.lower():
+                rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                        ), html.Td(f.tags)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Tags"), html.Th("File Size")]))
+            html.Tr([html.Th("File Name"), html.Th("File Tags")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -182,13 +190,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         dbc.CardBody([
                             # Filter file tags
                             dbc.Row([
-                                dbc.Col(dbc.Input(id="'filter_file_tags",
-                                    placeholder="Search.. (e.g. 'CT')")),
-                                dbc.Col(dbc.Button("Filter", id="'filter_file_tags_btn"))
+                                dbc.Col(dbc.Input(id="filter_file_tags",
+                                    placeholder="Search file tags.. (e.g. 'CT')")),
+                                dbc.Col(dbc.Button("Filter", id="filter_file_tags_btn"))
                             ], class_name="mb-3"),
 
                             # Display a table of the directory's files
-                            html.Div(get_files_table(directory), id='files_table'),
+                            dbc.Spinner(html.Div(get_files_table(directory), id='files_table')),
                     ])], class_name="mb-3"),
 
                     # Display a preview of the first file's content
