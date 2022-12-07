@@ -14,13 +14,22 @@ def card_view_projects():
         try:
             projects = connection.get_all_projects()
             number_of_projects = len(projects)
+
         except:
             return dbc.Alert("Projects could not be retrieved.")
+
     project_list = []
-    for p in projects:
+    # Only show 8 projects on landing page
+    limit = 8
+    for index, p in enumerate(projects):
         project_list.append(dbc.ListGroupItem([dcc.Link(
             p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
-            dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}", style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+            dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}",
+                     style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+
+        if index == limit:
+            break
+
     card = dbc.Card(
         dbc.CardBody(
             [
@@ -34,6 +43,7 @@ def card_view_projects():
                            href=f"/projects/", outline=False, color='success'),
             ]
         ))
+
     return card
 
 
@@ -42,12 +52,13 @@ def card_view_upload():
         dbc.CardBody(
             [
                 html.H4("Upload", className="card-title"),
-                html.P(f"Upload Medical Files. Currently we support DICOM, JPEG, Nifti and JSON.",
+                html.P(f"Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
                        className="card-subtitle"),
                 dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
                            href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
             ]
         ),)
+        
     return card
 
 

@@ -1,8 +1,11 @@
+import json
 from typing import Optional
 
 import dash_bootstrap_components as dbc
+import pandas as pd
 from dash import callback
 from dash import ctx
+from dash import dash_table
 from dash import dcc
 from dash import html
 from dash import Input
@@ -10,12 +13,14 @@ from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
+from dash.exceptions import PreventUpdate
 from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import pil_to_b64
+
 
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
@@ -24,24 +29,45 @@ register_page(__name__, title='Directory - PACS2go',
 # Preview first image within the directory
 def get_single_file_preview(directory: Directory):
     file = directory.get_all_files()[0]
-    if file.format == 'JPEG':
-        image = html.Img(id="my-img", className="image", width="100%",
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
+        content = html.Img(id="my-img", className="image", width="100%",
                          src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
-        return html.Div([html.H4("Preview:"), image], className="w-25 h-25")
+    elif file.format == 'JSON':
+        # Display contents of a JSON file as string
+        f = open(file.data)
+        content = json.dumps(json.load(f))
+
+    elif file.format == 'CSV':
+        df = pd.read_csv(file.data)
+        content = dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
     else:
         return html.Div()
+        
+    return dbc.Card([
+        dbc.CardHeader("Preview the first file of this directory:"),
+        dbc.CardBody(content, className="w-25 h-25")])
 
 
-def get_files_table(directory: Directory):
+
+def get_files_table(directory: Directory, filter: str = ''):
     rows = []
+    files = directory.get_all_files()
     # Get file information as rows for table
-    for f in directory.get_all_files():
-        rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                     ), html.Td(f.format), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+    # No filter applied
+    if len(filter)==0:
+        for f in files:
+            rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                     ), html.Td(f.tags)]))
+    # Filtering
+    elif len(filter)>0 and filter.lower() in directory.contained_file_tags.lower():
+        for f in files:
+            if filter.lower() in f.tags.lower():
+                rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                        ), html.Td(f.tags)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("File Size"), ]))
+            html.Tr([html.Th("File Name"), html.Th("File Tags")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -49,7 +75,7 @@ def get_files_table(directory: Directory):
     # Put together file table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
-    return html.Div([html.H4("Files:"), table])
+    return table
 
 
 def modal_delete(directory: Directory):
@@ -101,19 +127,29 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     if ctx.triggered_id == "delete_directory_and_close":
         try:
             with get_connection() as connection:
-                project = connection.get_project(project_name)
-
-                if project:
-                    directory = project.get_directory(directory_name)
-                    # Delete Directory
-                    directory.delete_directory()
-                    # Redirect to project after deletion
-                    return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_directory_delete")
+                directory = connection.get_directory(
+                    project_name, directory_name)
+                # Delete Directory
+                directory.delete_directory()
+                # Redirect to project after deletion
+                return not is_open, dcc.Location(href=f"/project/{project_name}", id="redirect_after_directory_delete")
 
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
-        return is_open, no_update
+        raise PreventUpdate
+
+
+@callback(Output('files_table', 'children'), Input('filter_file_tags_btn', 'n_clicks'),
+          State('filter_file_tags', 'value'), State('directory', 'data'), State('project', 'data'))
+def filter_files_table(btn, filter, directory_name, project_name):
+    # Apply filter to the files table
+    if ctx.triggered_id == 'filter_file_tags_btn':
+        with get_connection() as connection:
+            return get_files_table(connection.get_directory(project_name, directory_name), filter)        
+    else:
+        raise PreventUpdate
+        
 
 
 #################
@@ -125,15 +161,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
     try:
         if project_name and directory_name:
             with get_connection() as connection:
-                project = connection.get_project(project_name)
-
-                if project:
-                    directory = project.get_directory(directory_name)
-                    return html.Div([
-                        # dcc Store components for project and directory name strings
-                        dcc.Store(id='directory', data=directory.name),
-                        dcc.Store(id='project', data=project.name),
-                        dbc.Row([
+                directory = connection.get_directory(
+                    project_name, directory_name)
+                return html.Div([
+                    # dcc Store components for project and directory name strings
+                    dcc.Store(id='directory', data=directory.name),
+                    dcc.Store(id='project', data=project_name),
+                    dbc.Row([
                             dbc.Col(
                                 html.H1(f"Directory {directory.name}", style={
                                         'textAlign': 'left', })),
@@ -144,18 +178,30 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                     # Button to access the File Viewer (viewer.py)
                                     dbc.Button([html.I(className="bi bi-play me-2"),
                                                 "Viewer"], color="success",
-                                               href=f"/viewer/{project.name}/{directory.name}/none"),
+                                               href=f"/viewer/{project_name}/{directory.name}/none"),
                                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-                        ], className="mb-3"),
-                        # Link back to project
-                        dcc.Link(
-                            html.H4(f"Belongs to project: {project.name}"), href=f"/project/{project_name}", 
-                            className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                        # Display a table of all the project's directories
-                        get_files_table(directory),
-                        # Display a preview of the first file's content
-                        get_single_file_preview(directory),
-                    ])
+                            ], className="mb-3"),
+                    # Link back to project
+                    dcc.Link(
+                        html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
+                        className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
+                    dbc.Card([
+                        dbc.CardHeader('Files'),
+                        dbc.CardBody([
+                            # Filter file tags
+                            dbc.Row([
+                                dbc.Col(dbc.Input(id="filter_file_tags",
+                                    placeholder="Search file tags.. (e.g. 'CT')")),
+                                dbc.Col(dbc.Button("Filter", id="filter_file_tags_btn"))
+                            ], class_name="mb-3"),
+
+                            # Display a table of the directory's files
+                            dbc.Spinner(html.Div(get_files_table(directory), id='files_table')),
+                    ])], class_name="mb-3"),
+
+                    # Display a preview of the first file's content
+                    get_single_file_preview(directory),
+                ])
         else:
             raise Exception("No project and directory name was given.")
     except:

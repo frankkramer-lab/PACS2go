@@ -4,22 +4,24 @@ from typing import Optional
 
 import dash_bootstrap_components as dbc
 import numpy as np
+import pandas as pd
 from dash import callback
+from dash import dash_table
 from dash import dcc
-from dash import get_app
 from dash import html
 from dash import Input
+from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
-# from dash_slicer import VolumeSlicer
-# from nilearn import image
 from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import pil_to_b64
+# from dash_slicer import VolumeSlicer
+# from nilearn import image
 
 
 register_page(__name__, title='Viewer - PACS2go',
@@ -27,21 +29,19 @@ register_page(__name__, title='Viewer - PACS2go',
 
 
 def get_file_list(project_name: str, directory_name: str) -> List[File]:
-    with get_connection() as connection:
-        # Get current project (passed through url/path)
-        project = connection.get_project(project_name)
-
-        if project:
-            directory = project.get_directory(directory_name)
+    try:
+        with get_connection() as connection:
+            # Get current project (passed through url/path)
+            directory = connection.get_directory(project_name, directory_name)
             # Return list of all the files in the directory
             return directory.get_all_files()
 
-        else:
-            raise Exception("No project found.")
+    except:
+        raise Exception("No directory found.")
 
 
 def show_file(file: File):
-    if file.format == 'JPEG':
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
         # Display JPEG contents as html Img
         content = html.Img(id="my-img", className="image",
                            src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
@@ -50,6 +50,10 @@ def show_file(file: File):
         # Display contents of a JSON file as string
         f = open(file.data)
         content = json.dumps(json.load(f))
+
+    elif file.format == 'CSV':
+        df = pd.read_csv(file.data)
+        content = dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
 
     elif file.format == 'NIFTI':
         # TODO: implement dash-slicer --> check if dash version is compatible (CURRENT PROBLEM: graph is empty)
@@ -79,10 +83,12 @@ def show_file(file: File):
     data = dbc.Card(
         dbc.CardBody(
             [
-                html.H6(f"File Name: {file.name}"),
-                html.H6(f"File Format: {file.format}"),
-                html.H6(
-                    f"File Size: {round(file.size/1024,2)} KB ({file.size} Bytes)"),
+                html.H6([html.B("File Name: "), f"{file.name}"]),
+                html.H6([html.B("File Format: "),f"{file.format}"]),
+                html.H6([html.B("File Content Type: "),f"{file.content_type}"]),
+                html.H6([html.B("File Tags: "),f"{file.tags}"]),
+                html.H6([html.B("File Size: "),
+                    f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.Div([content]),
             ],))
 
@@ -123,15 +129,15 @@ def file_card_view():
 @callback([Output('current_image', 'children')], [Input('image-dropdown', 'value')],
           State('directory', 'data'), State('project', 'data'))
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
-    with get_connection() as connection:
-        project = connection.get_project(project_name)
-
-        if project:
-            # get File object of the file that was chosen in the dropdown
-            directory = project.get_directory(directory_name)
-            file = directory.get_file(chosen_file_name)
+    try:
+        with get_connection() as connection:
+            # Get file
+            file = connection.get_file(project_name, directory_name, chosen_file_name)
+            # Return visualization of file details if file exists
             return [show_file(file)]
-
+    except:
+        # Show nothing if file does not exist.
+        return [dbc.Alert("No file was chosen.", color='warning')]
 
 #################
 #  Page Layout  #
@@ -141,14 +147,14 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     try:
         if directory_name and project_name and file_name:
-            # get list of files
+            # Get list of files
             files = get_file_list(project_name, directory_name)
             return html.Div([
                 # dcc Store components for project and directory name strings
                 dcc.Store(id='directory', data=directory_name),
                 dcc.Store(id='project', data=project_name),
                 dcc.Link(
-                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}", 
+                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
                     className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
                 # Get Dropdown with file names
                 files_dropdown(files, file_name),

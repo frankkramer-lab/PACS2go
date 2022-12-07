@@ -50,6 +50,19 @@ class Connection():
         else:
             raise ValueError(self.kind)
 
+    def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
+        if self.kind == "XNAT":
+            self._xnat_connection.get_directory(project_name, directory_name)
+        else:
+            raise ValueError(self.kind)
+
+    def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
+        if self.kind == "XNAT":
+            self._xnat_connection.get_file(
+                project_name, directory_name, file_name)
+        else:
+            raise ValueError(self.kind)
+
 
 class Project():
     def __init__(self, connection: Connection, name: str) -> None:
@@ -67,6 +80,25 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
+    def set_description(self, description_string: str) -> None:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.set_description(description_string)
+        else:
+            raise ValueError(self.connection._kind)
+
+    @property
+    def keywords(self) -> str:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.keywords
+        else:
+            raise ValueError(self.connection._kind)
+
+    def set_keywords(self, keywords_string: str) -> None:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.set_keywords(keywords_string)
+        else:
+            raise ValueError(self.connection._kind)
+
     @property
     def owners(self) -> List[str]:
         if self.connection._kind == "XNAT":
@@ -78,6 +110,12 @@ class Project():
     def your_user_role(self) -> str:
         if self.connection._kind == "XNAT":
             return self._xnat_project.your_user_role
+        else:
+            raise ValueError(self.connection._kind)
+
+    def exists(self) -> bool:
+        if self.connection._kind == "XNAT":
+            return self._xnat_project.exists()
         else:
             raise ValueError(self.connection._kind)
 
@@ -99,9 +137,9 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
-    def insert(self, file_path: str, directory_name: str = '') -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         if self.connection._kind == "XNAT":
-            return self._xnat_project.insert(file_path, directory_name)
+            return self._xnat_project.insert(file_path, directory_name, tags_string)
         else:
             raise ValueError(self.connection._kind)
 
@@ -114,6 +152,26 @@ class Directory():
             self._xnat_directory = XNATDirectory(project, name)
         else:
             raise ValueError(self.project.connection._kind)
+
+    @property
+    def contained_file_tags(self) -> str:
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.contained_file_tags
+        else:
+            raise ValueError(self.connection._kind)
+
+    @property
+    def number_of_files(self) -> str:
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.number_of_files
+        else:
+            raise ValueError(self.connection._kind)
+
+    def exists(self) -> bool:
+        if self.project.connection._kind == "XNAT":
+            return self._xnat_directory.exists()
+        else:
+            raise ValueError(self.connection._kind)
 
     def delete_directory(self) -> None:
         if self.project.connection._kind == "XNAT":
@@ -151,6 +209,20 @@ class File():
             raise ValueError(self.directory.project.connection._kind)
 
     @property
+    def content_type(self) -> str:
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.content_type
+        else:
+            raise ValueError(self.directory.project.connection._kind)
+
+    @property
+    def tags(self) -> str:
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.tags
+        else:
+            raise ValueError(self.directory.project.connection._kind)
+
+    @property
     def size(self) -> int:
         if self.directory.project.connection._kind == "XNAT":
             return self._xnat_file.size
@@ -163,6 +235,12 @@ class File():
             return self._xnat_file.data
         else:
             raise ValueError(self.directory.project.connection._kind)
+
+    def exists(self) -> bool:
+        if self.directory.project.connection._kind == "XNAT":
+            return self._xnat_file.exists()
+        else:
+            raise ValueError(self.connection._kind)
 
     def delete_file(self) -> None:
         if self.directory.project.connection._kind == "XNAT":

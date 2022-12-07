@@ -13,7 +13,7 @@ from xnat_pacs_data_interface import XNATProject
 class TestConnection(unittest.TestCase):
     user = 'admin'
     pwd = 'admin'
-    server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
+    server = 'http://localhost:8888'
     wrong_user = 'a'
     wrong_pwd = 'a'
 
@@ -36,7 +36,7 @@ class TestDataInterface(unittest.TestCase):
     zip_file_test = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
     user = 'admin'
     pwd = 'admin'
-    server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
+    server = 'http://localhost:8888'
 
     # connect to XNAT for all tests (executed for each testrun)
     def run(self, result=None):
@@ -52,7 +52,8 @@ class TestDataInterface(unittest.TestCase):
             self.directory = self.project.insert_zip_into_project(
                 self.zip_file_setup)
             # data to test delete functionalities
-            self.to_be_deleted_project = XNATProject(connection, str(uuid.uuid4()))
+            self.to_be_deleted_project = XNATProject(
+                connection, str(uuid.uuid4()))
             self.to_be_deleted_directory = self.project.insert_zip_into_project(
                 self.zip_file_setup)
             self.to_be_deleted_file = self.project.insert_file_into_project(
@@ -64,14 +65,19 @@ class TestDataInterface(unittest.TestCase):
     def tearDownClass(self):
         # Delete all test data
         with XNAT(self.server, self.user, self.pwd) as connection:
-            self.project.delete_project()
-            p = connection.get_project(str(self.to_be_created_project_name))
-            p.delete_project()
+            if self.project.exists():
+                self.project.delete_project()
+            try:
+                p = connection.get_project(str(self.to_be_created_project_name))
+                p.delete_project()
+            except:
+                pass
 
     def test_create_project(self):
         # Checks if a project with a certain name is really created
         len_before = len(self.connection.get_all_projects())
-        project = XNATProject(self.connection, str(self.to_be_created_project_name))
+        project = XNATProject(self.connection, str(
+            self.to_be_created_project_name))
         self.assertIn(str(project.name), [
                       p.name for p in self.connection.get_all_projects()])
         self.assertEqual(
@@ -203,6 +209,25 @@ class TestDataInterface(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "Directory does not exist/has already been deleted."):
             d.delete_directory()
 
+    def test_get_file_from_connection(self):
+        file = self.connection.get_file('test_1','test','e6876fb2-14e0-49ee-aea9-d90f72c6805e.jpeg')
+        self.assertTrue(file.exists())
+
+    def test_get_non_existent_file_from_connection(self):
+        with self.assertRaises(Exception):
+            file = self.connection.get_file('test_1','test','thisdoesnotexist')
+
+
+    def test_get_directory_from_connection(self):
+        # Check if both get_directory methods work the same
+        directory = self.connection.get_directory('test_1', 'test')
+        directory_2 = XNATProject(self.connection,'test_1').get_directory('test')
+        self.assertEqual(directory._xnat_resource_object.id(), directory_2._xnat_resource_object.id())
+
+    def test_get_non_existent_directory_from_connection(self):
+        with self.assertRaises(Exception):
+            directory = self.connection.get_directory('test_1', 'testasdfasefgerhr')
+        
 
 if __name__ == '__main__':
     unittest.main()

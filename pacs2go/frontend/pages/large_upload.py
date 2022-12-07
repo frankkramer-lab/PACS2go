@@ -48,7 +48,8 @@ def get_upload_component(id: str):
     return du.Upload(
         id=id,
         max_file_size=1024,  # 1GB
-        filetypes=['zip', 'jpeg', 'jpg', 'dcm', 'json', 'nii'],
+        filetypes=['zip', 'jpeg', 'jpg', 'dcm',
+                   'json', 'nii', 'png', 'tiff', 'csv'],
         upload_id=uuid.uuid1(),  # Unique session id
         text='Drag and Drop your file right here! Or click here to select a file!',
         text_completed='Ready for XNAT Upload: ',
@@ -77,8 +78,13 @@ def uploader(passed_project: Optional[str]):
                            placeholder="Directory Name (optional)"),
                  dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
         ]),
+        dbc.Row(dbc.Col(
+                [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
+                 dbc.Input(id="upload_file_tags",
+                           placeholder="File tags like \'CT, Dermatology,...\' (optional)"),
+                 dbc.FormText("Tags will be added to every file.")], className="mb-3")),
         dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
-                         'Accepted formats include DICOM, NIFTI, JPEG and JSON.'])),
+                         'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
         dbc.Row(
             [
                 get_upload_component(id='dash-uploader'),
@@ -118,28 +124,37 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
     Input('click-upload', 'n_clicks'),
     State('project_name', 'value'),
     State('directory_name', 'value'),
-    State('filename-storage', 'data')
+    State('filename-storage', 'data'),
+    State('upload_file_tags', 'value'),
 )
-def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str):
+def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str):
     if ctx.triggered_id == "click-upload":
         if project_name:
             # Project name shall not contain whitespaces
             project_name = str(project_name).replace(" ", "_")
             try:
                 with get_connection() as connection:
-                    if dir_name:
+                    if dir_name and tags:
+                        Project(connection, project_name).insert(
+                            filename, dir_name, tags)
+                    
+                    elif tags:
+                        # If the user entered no diretory name but tags
+                        Project(connection, project_name).insert(
+                            filename, tags)
+                    elif dir_name:
+                        # If the user entered a diretory name but no tags
                         Project(connection, project_name).insert(
                             filename, dir_name)
-
                     else:
-                        # If dir_name is an empty string
+                        # If the user entered no diretory name or tags
                         Project(connection, project_name).insert(filename)
 
                     # Remove tempdir after successful upload to XNAT
                     shutil.rmtree(dirpath)
                 return dbc.Alert([f"The upload was successful! ",
-                                  dcc.Link(f"Click here to go to {project_name}.",
-                                           href=f"/project/{project_name}",
+                                  dcc.Link(f"Click here to go to the directory {dir_name}.",
+                                           href=f"/dir/{project_name}/{dir_name}",
                                            className="fw-bold text-decoration-none",
                                            style={'color': colors['links']})], color="success")
 
