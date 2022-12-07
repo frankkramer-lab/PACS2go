@@ -373,3 +373,9 @@ class XNATFile():
 
         else:
             raise Exception("File does not exist/has already been deleted.")
+
+
+# with XNAT('http://localhost:8888', 'admin', 'admin') as connection:
+#     files = connection.get_directory('Test_Project_Searchability','test1').get_all_files()
+#     for f in files:
+#         print(f.name,f.tags, f.size)

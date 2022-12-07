@@ -222,7 +222,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
         return is_open, no_update
 
 
-@callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children')],
+@callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children'), Output('details_card','children')],
           [Input('edit_project', 'n_clicks'),
            Input('close_modal_edit', 'n_clicks'),
            Input('edit_and_close', 'n_clicks')],
@@ -234,7 +234,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
 def modal_edit_project_callback(open, close, edit_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
     if ctx.triggered_id == "edit_project" or ctx.triggered_id == "close_modal_edit":
-        return not is_open, no_update
+        return not is_open, no_update, no_update
     # User does everything "right"
     elif ctx.triggered_id == "edit_and_close":
         try:
@@ -246,10 +246,10 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
                 if keywords:
                     # Set new keywords
                     project.set_keywords(keywords)
-                return not is_open, no_update
+                return not is_open, no_update, get_details(project)
         except Exception as err:
             # TODO: differentiate between different exceptions
-            return is_open, dbc.Alert(str(err), color="danger")
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
     else:
         raise PreventUpdate
 
@@ -296,7 +296,7 @@ def layout(project_name: Optional[str] = None):
                         # Project Information (owners,..)
                         dbc.Card([
                             dbc.CardHeader("Details"),
-                            dbc.CardBody(get_details(project))], class_name="mb-3"),
+                            dbc.CardBody(get_details(project), id="details_card")], class_name="mb-3"),
                         dbc.Card([
                             dbc.CardHeader('Directories'),
                             dbc.CardBody([
