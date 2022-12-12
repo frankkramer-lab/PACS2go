@@ -90,6 +90,7 @@ def show_file(file: File):
                 html.H6([html.B("File Size: "),
                     f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.Div([content]),
+                html.Div([dbc.Button("Download File", id="btn_download"),dcc.Download(id="download-file"), dcc.Store(data=file.data,id='file_data')], className="mt-3")
             ],))
 
     return data
@@ -138,6 +139,14 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
     except:
         # Show nothing if file does not exist.
         return [dbc.Alert("No file was chosen.", color='warning')]
+
+@callback(
+    Output("download-file", "data"),
+    Input("btn_download", "n_clicks"), State("file_data", "data"),
+    prevent_initial_call=True,
+)
+def func(n_clicks, file_data):
+    return dcc.send_file(file_data)
 
 #################
 #  Page Layout  #

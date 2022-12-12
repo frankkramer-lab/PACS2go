@@ -172,6 +172,9 @@ class XNATProject():
 
             return directories
 
+    def download(self) -> None:
+        pass
+
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
         # File path leads to a single file
         if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
@@ -326,6 +329,9 @@ class XNATDirectory():
 
         return files
 
+    def download(self) -> None:
+        pass
+
 
 class XNATFile():
     def __init__(self, directory: XNATDirectory, file_name: str) -> None:
@@ -366,6 +372,9 @@ class XNATFile():
     def exists(self) -> bool:
         return self._xnat_file_object.exists()
 
+    def download(self) -> str:
+        return self.data
+
     # Delete file
     def delete_file(self) -> None:
         if self.exists():
@@ -379,3 +388,5 @@ class XNATFile():
 #     files = connection.get_directory('Test_Project_Searchability','test1').get_all_files()
 #     for f in files:
 #         print(f.name,f.tags, f.size)
+#         f.download()
+#         break
