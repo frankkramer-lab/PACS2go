@@ -119,7 +119,7 @@ class Project():
         else:
             raise ValueError(self.connection._kind)
 
-    def download(self) -> bool:
+    def download(self) -> str:
         if self.connection._kind == "XNAT":
             return self._xnat_project.download()
         else:
@@ -197,7 +197,7 @@ class Directory():
         else:
             raise ValueError(self.project.connection._kind)
 
-    def download(self) -> bool:
+    def download(self) -> str:
         if self.project.connection._kind == "XNAT":
             return self._xnat_directory.download()
         else:
@@ -254,7 +254,7 @@ class File():
         else:
             raise ValueError(self.connection._kind)
 
-    def download(self) -> bool:
+    def download(self) -> str:
         if self.directory.project.connection._kind == "XNAT":
             return self._xnat_file.download()
         else:

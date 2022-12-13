@@ -172,7 +172,7 @@ class XNATProject():
 
             return directories
 
-    def download(self) -> None:
+    def download(self) -> str:
         pass
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
@@ -329,8 +329,9 @@ class XNATDirectory():
 
         return files
 
-    def download(self) -> None:
-        pass
+    def download(self, destination: str) -> str:
+        # Download directory as zip file and return download location
+         return self._xnat_resource_object.get(destination)
 
 
 class XNATFile():
@@ -372,8 +373,14 @@ class XNATFile():
     def exists(self) -> bool:
         return self._xnat_file_object.exists()
 
-    def download(self) -> str:
-        return self.data
+    def download(self, destination = '') -> str:
+        if destination == '':
+            # If no download destination was given, download to a temporary directory (this is done in self.data)
+            return self.data
+
+        else:
+            # Otherwise download file to given destination
+            return self._xnat_file_object.get_copy(destination + self.name)
 
     # Delete file
     def delete_file(self) -> None:
@@ -385,8 +392,6 @@ class XNATFile():
 
 
 # with XNAT('http://localhost:8888', 'admin', 'admin') as connection:
-#     files = connection.get_directory('Test_Project_Searchability','test1').get_all_files()
-#     for f in files:
-#         print(f.name,f.tags, f.size)
-#         f.download()
-#         break
+#     dir = connection.get_directory('Test_Project_Searchability','test3')
+#     with TemporaryDirectory() as tempdir:
+#         print(dir.download(tempdir))
