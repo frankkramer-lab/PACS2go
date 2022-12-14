@@ -1,3 +1,4 @@
+from tempfile import TemporaryDirectory
 from typing import Optional
 
 import dash_bootstrap_components as dbc
@@ -155,6 +156,12 @@ def insert_data(project: Project):
     return html.Div(dbc.Button([html.I(className="bi bi-cloud-upload me-2"),
                     "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
 
+def download_project_data():
+    return html.Div([
+        dbc.Button([
+            html.I(className="bi bi-download me-2"), "Download"], id="btn_download_project",size="md"),
+        dbc.Spinner(dcc.Download(id="download_project"))])
+
 
 #################
 #   Callbacks   #
@@ -270,6 +277,24 @@ def filter_files_table(btn, filter, project_name):
         raise PreventUpdate
 
 
+@callback(
+    Output("download_project", "data"),
+    Input("btn_download_project", "n_clicks"), State("project_store", "data"), 
+    prevent_initial_call=True,
+)
+def func(n_clicks, project_name):
+    if ctx.triggered_id == 'btn_download_project':
+        with get_connection() as connection:
+            project = connection.get_project(project_name)
+            if project:
+                with TemporaryDirectory() as tempdir:
+                    # Get directory as zip to a tempdir and then send it to browser
+                    zipped_project_data = project.download(tempdir)
+                    return dcc.send_file(zipped_project_data)
+    else:
+        raise PreventUpdate
+
+
 #################
 #  Page Layout  #
 #################
@@ -290,8 +315,9 @@ def layout(project_name: Optional[str] = None):
                             dbc.Col(
                                 [insert_data(project),
                                  modal_edit_project(project),
+                                 download_project_data(),
                                  modal_delete(project),
-                                 modal_delete_data(project), ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+                                 modal_delete_data(project)], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                         ], className="mb-3"),
                         # Project Information (owners,..)
                         dbc.Card([

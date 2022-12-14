@@ -172,8 +172,19 @@ class XNATProject():
 
             return directories
 
-    def download(self) -> str:
-        pass
+    def download(self, destination: str) -> str:
+        # Create a zip file for the project
+        zip_destination = os.path.join(destination, f'{self.name}.zip')
+
+        with TemporaryDirectory() as tempdir:
+            # Iterate over directories to download them and write them to the project zip
+            for d in self.get_all_directories():
+                directory_filename = d.download(tempdir)
+
+                with zipfile.ZipFile(zip_destination, 'a') as zip:
+                    zip.write(directory_filename ,os.path.relpath(directory_filename, tempdir))
+
+        return zip_destination
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
         # File path leads to a single file
@@ -331,7 +342,7 @@ class XNATDirectory():
 
     def download(self, destination: str) -> str:
         # Download directory as zip file and return download location
-         return self._xnat_resource_object.get(destination)
+        return self._xnat_resource_object.get(destination)
 
 
 class XNATFile():
@@ -373,7 +384,7 @@ class XNATFile():
     def exists(self) -> bool:
         return self._xnat_file_object.exists()
 
-    def download(self, destination = '') -> str:
+    def download(self, destination='') -> str:
         if destination == '':
             # If no download destination was given, download to a temporary directory (this is done in self.data)
             return self.data
@@ -391,7 +402,3 @@ class XNATFile():
             raise Exception("File does not exist/has already been deleted.")
 
 
-# with XNAT('http://localhost:8888', 'admin', 'admin') as connection:
-#     dir = connection.get_directory('Test_Project_Searchability','test3')
-#     with TemporaryDirectory() as tempdir:
-#         print(dir.download(tempdir))
