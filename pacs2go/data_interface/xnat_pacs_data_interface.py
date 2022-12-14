@@ -182,7 +182,8 @@ class XNATProject():
                 directory_filename = d.download(tempdir)
 
                 with zipfile.ZipFile(zip_destination, 'a') as zip:
-                    zip.write(directory_filename ,os.path.relpath(directory_filename, tempdir))
+                    zip.write(directory_filename, os.path.relpath(
+                        directory_filename, tempdir))
 
         return zip_destination
 
@@ -384,7 +385,7 @@ class XNATFile():
     def exists(self) -> bool:
         return self._xnat_file_object.exists()
 
-    def download(self, destination='') -> str:
+    def download(self, destination: str = '') -> str:
         if destination == '':
             # If no download destination was given, download to a temporary directory (this is done in self.data)
             return self.data
@@ -400,5 +401,3 @@ class XNATFile():
 
         else:
             raise Exception("File does not exist/has already been deleted.")
-
-
