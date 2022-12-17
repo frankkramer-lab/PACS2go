@@ -1,4 +1,5 @@
 import json
+from tempfile import TemporaryDirectory
 from typing import Optional
 
 import dash_bootstrap_components as dbc
@@ -149,6 +150,24 @@ def filter_files_table(btn, filter, directory_name, project_name):
             return get_files_table(connection.get_directory(project_name, directory_name), filter)        
     else:
         raise PreventUpdate
+
+
+@callback(
+    Output("download_directory", "data"),
+    Input("btn_download_dir", "n_clicks"), State("directory", "data"),  State("project", "data"), 
+    prevent_initial_call=True,
+)
+def func(n_clicks, directory_name, project_name):
+    if ctx.triggered_id == 'btn_download_dir':
+        with get_connection() as connection:
+            directory = connection.get_directory(project_name, directory_name)
+            if directory:
+                with TemporaryDirectory() as tempdir:
+                    # Get directory as zip to a tempdir and then send it to browser
+                    zipped_dir = directory.download(tempdir)
+                    return dcc.send_file(zipped_dir)
+    else:
+        raise PreventUpdate
         
 
 
@@ -175,10 +194,14 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 [
                                     # Modal for directory deletion
                                     modal_delete(directory),
-                                    # Button to access the File Viewer (viewer.py)
-                                    dbc.Button([html.I(className="bi bi-play me-2"),
-                                                "Viewer"], color="success",
+                                    html.Div([       
+                                        # Button to access the File Viewer (viewer.py)
+                                        dbc.Button([html.I(className="bi bi-play me-2"),
+                                                "Viewer"], color="success", size="md",
                                                href=f"/viewer/{project_name}/{directory.name}/none"),
+                                        dbc.Button([html.I(className="bi bi-download me-2"),
+                                                "Download"], id="btn_download_dir",size="md", class_name="mx-2"),
+                                                dcc.Download(id="download_directory")])
                                 ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                             ], className="mb-3"),
                     # Link back to project
