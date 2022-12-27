@@ -1,6 +1,8 @@
 import base64
 from io import BytesIO
 
+import dash
+
 from pacs2go.data_interface.pacs_data_interface import Connection
 
 colors = {
@@ -10,6 +12,7 @@ colors = {
     'links': '#2d9e2b'
 }
 
+## LOGIN utils
 
 def get_connection():
     server = 'http://xnat-web:8080'
@@ -18,6 +21,15 @@ def get_connection():
     connection_type = "XNAT"
     return Connection(server, user, pwd, connection_type)
 
+restricted_page = {}
+
+def require_login(page):
+    for pg in dash.page_registry:
+        if page == pg:
+            restricted_page[dash.page_registry[pg]['path']] = True
+
+
+## IMAGE REPRESENATION utils
 
 # from: https://stackoverflow.com/questions/60712647/displaying-pil-images-in-dash-plotly
 # usage: html.Img(id="my-img",className="image", width="100%",  src="data:image/png;base64, " + pil_to_b64(pil_img))

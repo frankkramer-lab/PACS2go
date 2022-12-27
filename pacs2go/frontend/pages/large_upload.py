@@ -16,6 +16,7 @@ from dash import register_page
 from dash.dependencies import Input
 from dash.dependencies import Output
 from dash.dependencies import State
+from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
@@ -174,6 +175,8 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
 
 
 def layout(project_name: Optional[str] = None):
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
     return [html.H1(
         children='PACS2go 2.0 - Uploader',
         style={

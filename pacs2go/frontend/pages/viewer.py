@@ -15,6 +15,7 @@ from dash import Output
 from dash import register_page
 from dash import State
 from PIL import Image
+from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import colors
@@ -154,6 +155,8 @@ def func(n_clicks, file_data):
 
 
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
     try:
         if directory_name and project_name and file_name:
             # Get list of files

@@ -7,3 +7,4 @@ dash-uploader==0.6.0
 packaging==21.0 # necessary for dash-uploader 0.6.0
 dash-slicer==0.3.0
 nilearn==0.9.2
+flask-login==0.6.2

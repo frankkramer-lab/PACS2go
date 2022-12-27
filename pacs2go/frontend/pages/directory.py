@@ -16,6 +16,7 @@ from dash import register_page
 from dash import State
 from dash.exceptions import PreventUpdate
 from PIL import Image
+from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.frontend.helpers import colors
@@ -177,6 +178,8 @@ def func(n_clicks, directory_name, project_name):
 
 
 def layout(project_name: Optional[str] = None, directory_name: Optional[str] = None):
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
     try:
         if project_name and directory_name:
             with get_connection() as connection:
