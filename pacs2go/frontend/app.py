@@ -23,9 +23,17 @@ from flask_login import UserMixin
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import restricted_page
 
-# Flask Login based on https://community.plotly.com/t/dash-app-pages-with-flask-login-flow-using-flask/69507
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file
+load_dotenv()
+
+# Credit: Flask Login based on https://community.plotly.com/t/dash-app-pages-with-flask-login-flow-using-flask/69507
 # Exposing the Flask Server to enable configuring it for logging in
 server = Flask(__name__)
+
+# Updating the Flask Server configuration with Secret Key to encrypt the user session cookie
+server.config.update(SECRET_KEY=os.getenv("SECRET_KEY"))
 
 
 @server.route('/login', methods=['POST'])
@@ -54,9 +62,6 @@ app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages", use_pages=Tru
 VALID_USERNAME_PASSWORD = {"admin": "admin", "test": "test"}
 
 
-# Updating the Flask Server configuration with Secret Key to encrypt the user session cookie
-server.config.update(SECRET_KEY=os.getenv("SECRET_KEY"))
-
 # Login manager object will be used to login / logout users
 login_manager = LoginManager()
 login_manager.init_app(server)
@@ -82,7 +87,6 @@ app.layout = html.Div(
     [
         # navigation bar on top
         dcc.Location(id="url"),
-        html.Div(id="user-status-header"),
         dbc.NavbarSimple(
             children=[
                 dbc.NavLink(
@@ -91,6 +95,7 @@ app.layout = html.Div(
                     "Projects", href=page_registry['pacs2go.frontend.pages.project_list']['path'], className="fw-lighter"),
                 dbc.NavLink(
                     "Upload", href=page_registry['pacs2go.frontend.pages.large_upload']['path'], className="fw-lighter"),
+                html.Div(id="user-status-header"),
             ],
             brand="PACS2go",
             brand_href="/",
@@ -118,22 +123,22 @@ def update_authentication_status(path, n):
         else:
             return '', '/login'
 
-    # test if user is logged in
+    # Test if user is logged in
     if current_user.is_authenticated:
         if path == '/login':
             return dcc.Link("logout", href="/logout"), '/'
-        return dcc.Link("logout", href="/logout"), no_update
+        return dbc.NavLink("Logout", href="/logout"), no_update
     else:
-        # if page is restricted, redirect to login and save path
+        # If page is restricted, redirect to login and save path
         if path in restricted_page:
             session['url'] = path
-            return dcc.Link("login", href="/login"), '/login'
+            return dbc.NavLink("Login", href="/login"), '/login'
 
-    # if path not login and logout display login link
+    # If path not login and logout display login link
     if current_user and path not in ['/login', '/logout']:
-        return dcc.Link("login", href="/login"), no_update
+        return dbc.NavLink("Login", href="/login"), no_update
 
-    # if path login and logout hide links
+    # If path login and logout hide links
     if path in ['/login', '/logout']:
         return '', no_update
 
