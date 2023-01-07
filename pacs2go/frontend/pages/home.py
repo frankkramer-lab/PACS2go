@@ -70,11 +70,12 @@ def card_view_upload():
 def layout():
     if not current_user.is_authenticated:
         return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
-    return [
-        html.H1('Welcome to PACS2go 2.0'),
-        html.Div('Exchange medical files.'),
-        dbc.Row([
-            dbc.Col(card_view_projects(),),
-            dbc.Col(card_view_upload(),),
-        ], class_name="my-3")
-    ]
+    else:
+        return [
+            html.H1('Welcome to PACS2go 2.0'),
+            html.Div('Exchange medical files.'),
+            dbc.Row([
+                dbc.Col(card_view_projects(),),
+                dbc.Col(card_view_upload(),),
+            ], class_name="my-3")
+        ]

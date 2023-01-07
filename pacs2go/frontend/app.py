@@ -1,4 +1,5 @@
 import os
+import requests
 
 import dash_bootstrap_components as dbc
 from dash import ALL
@@ -22,6 +23,7 @@ from flask_login import UserMixin
 
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import restricted_page
+from pacs2go.frontend.helpers import server_url
 
 from dotenv import load_dotenv
 
@@ -35,32 +37,13 @@ server = Flask(__name__)
 # Updating the Flask Server configuration with Secret Key to encrypt the user session cookie
 server.config.update(SECRET_KEY=os.getenv("SECRET_KEY"))
 
-
-@server.route('/login', methods=['POST'])
-def login_button_click():
-    if request.form:
-        username = request.form['username']
-        password = request.form['password']
-        if VALID_USERNAME_PASSWORD.get(username) is None:
-            return """invalid username and/or password <a href='/login'>login here</a>"""
-        if VALID_USERNAME_PASSWORD.get(username) == password:
-            login_user(User(username))
-            if 'url' in session:
-                if session['url']:
-                    url = session['url']
-                    session['url'] = None
-                    return redirect(url)  # redirect to target url
-            return redirect('/')  # redirect to home
-        return """invalid username and/or password <a href='/login'>login here</a>"""
-
-
+# Dash App
 app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages", use_pages=True, server=server,
            external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True)
 
-# Keep this out of source code repository - save in a file or a database
-#  passwords should be encrypted
-VALID_USERNAME_PASSWORD = {"admin": "admin", "test": "test"}
-
+#################
+#     Login     #
+#################
 
 # Login manager object will be used to login / logout users
 login_manager = LoginManager()
@@ -69,19 +52,99 @@ login_manager.login_view = "/login"
 
 
 class User(UserMixin):
-    # User data model. It has to have at least self.id as a minimum
-    def __init__(self, username):
+    def __init__(self, username, session_id):
         self.id = username
+        self.session_id = session_id
+
+    def get_id(self):
+        return self.id
+
+    def is_authenticated(self):
+        # Send request to XNAT server to check if user is authenticated https://wiki.xnat.org/display/XAPI/User+Management+API
+        response = requests.get(server_url + "/xapi/users/" + self.id)
+        if response.status_code == 200:
+            # User was found, return True
+            return True
+        else:
+            # User not found, return False
+            return False
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+
+
+class XNATAuthBackend:
+    def authenticate(self, username, password):
+        # Send request to XNAT server to authenticate user
+        data = {"username": username, "password": password}
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        response = requests.post(
+            server_url + "/data/services/auth", data=data, headers=headers)
+        if response.status_code == 200:
+            # Login was successful
+            session_id = response.text
+            return User(username, session_id)
+        else:
+            # Login failed
+            return None
+
+    def get_user(self, username):
+        # Check if user is logged in
+        session_id = session.get("session_id")
+        if session_id is not None:
+            # User is logged in, return user object
+            return User(username, session_id)
+        else:
+            # User is not logged in
+            return None
+
+
+server.config["AUTH_TYPE"] = "XNAT"
+login_manager.session_protection = "strong"
+login_manager.auth_backend = XNATAuthBackend()
+
+
+@server.route('/login', methods=['POST'])
+def login_button_click():
+    if request.form:
+        username = request.form['username']
+        password = request.form['password']
+        # Authenication via XNATAuthBackend
+        user = login_manager.auth_backend.authenticate(username, password)
+        if user is not None:
+            session["session_id"] = user.session_id
+            login_user(user)
+            if 'url' in session:
+                if session['url']:
+                    url = session['url']
+                    session['url'] = None
+                    return redirect(url)  # Redirect to target url
+            return redirect('/')  # Redirect to home
+        else:
+            return redirect('/login')
+    else:
+        redirect('/login')
 
 
 @login_manager.user_loader
 def load_user(username):
-    """This function loads the user by user id. Typically this looks up the user from a user database.
-    We won't be registering or looking up users in this example, since we'll just login using LDAP server.
-    So we'll simply return a User object with the passed in username.
-    """
-    return User(username)
+    # Called when flask_login's 'current_user' is used
+    session_id = session.get("session_id")
+    user = User(username, session_id)
+    # Check if user is authenticated, if yes return user otherwise 'None' must be returned
+    if user.is_authenticated:
+        return user
+    else:
+        return None
 
+
+#################
+#   App Layout  #
+#################
 
 app.layout = html.Div(
     [
@@ -109,6 +172,10 @@ app.layout = html.Div(
 )
 
 
+#################
+#   Callbacks   #
+#################
+
 @app.callback(
     Output("user-status-header", "children"),
     Output('url', 'pathname'),
@@ -116,7 +183,7 @@ app.layout = html.Div(
     Input({'index': ALL, 'type': 'redirect'}, 'n_intervals')
 )
 def update_authentication_status(path, n):
-    # logout redirect
+    # Logout redirect
     if n:
         if not n[0]:
             return '', no_update

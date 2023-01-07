@@ -5,6 +5,8 @@ import dash
 
 from pacs2go.data_interface.pacs_data_interface import Connection
 
+server_url = "http://xnat-web:8080"
+
 colors = {
     'background': '#FFFFFF',
     'text': '#000000',
@@ -15,11 +17,10 @@ colors = {
 ## LOGIN utils
 
 def get_connection():
-    server = 'http://xnat-web:8080'
     user = "admin"
     pwd = "admin"
     connection_type = "XNAT"
-    return Connection(server, user, pwd, connection_type)
+    return Connection(server_url, user, pwd, connection_type)
 
 restricted_page = {}
 
