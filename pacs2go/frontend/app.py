@@ -5,12 +5,15 @@ import dash_bootstrap_components as dbc
 from dash import ALL
 from dash import Dash
 from dash import dcc
+from dash import callback
+from dash import ctx
 from dash import html
 from dash import Input
 from dash import no_update
 from dash import Output
 from dash import page_container
 from dash import page_registry
+from dash.exceptions import PreventUpdate
 from flask import Flask
 from flask import redirect
 from flask import request
@@ -18,7 +21,6 @@ from flask import session
 from flask_login import current_user
 from flask_login import login_user
 from flask_login import LoginManager
-from flask_login import logout_user
 from flask_login import UserMixin
 
 from pacs2go.frontend.helpers import colors
@@ -125,7 +127,7 @@ def login_button_click():
                     return redirect(url)  # Redirect to target url
             return redirect('/')  # Redirect to home
         else:
-            return redirect('/login')
+            return redirect('/login/')
     else:
         redirect('/login')
 
@@ -208,6 +210,13 @@ def update_authentication_status(path, n):
     # If path login and logout hide links
     if path in ['/login', '/logout']:
         return '', no_update
+
+@app.callback(Output("output-state", "children"),Input("url", "pathname"))
+def login_feedback(path):
+    if path == '/login/':
+        return dbc.Alert("Wrong username or password.", color="danger")
+    else:
+        raise PreventUpdate
 
 
 if __name__ == '__main__':
