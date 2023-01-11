@@ -111,6 +111,7 @@ login_manager.auth_backend = XNATAuthBackend()
 
 
 @server.route('/login', methods=['POST'])
+@server.route('/login/', methods=['POST'])
 def login_button_click():
     if request.form:
         username = request.form['username']
@@ -194,7 +195,7 @@ def update_authentication_status(path, n):
 
     # Test if user is logged in
     if current_user.is_authenticated:
-        if path == '/login':
+        if path == '/login' or path == '/login/':
             return dcc.Link("logout", href="/logout"), '/'
         return dbc.NavLink("Logout", href="/logout"), no_update
     else:

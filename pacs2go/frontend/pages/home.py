@@ -72,7 +72,7 @@ def layout():
         return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
     else:
         return [
-            html.H1('Welcome to PACS2go 2.0'),
+            html.H1(f'Welcome to PACS2go 2.0, {current_user.id}!'),
             html.Div('Exchange medical files.'),
             dbc.Row([
                 dbc.Col(card_view_projects(),),

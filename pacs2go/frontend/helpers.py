@@ -25,6 +25,9 @@ def get_connection():
 restricted_page = {}
 
 def require_login(page):
+    # Without this only the home address ending in "/" requires a login
+    restricted_page[''] = True
+    # All pages require login
     for pg in dash.page_registry:
         if page == pg:
             restricted_page[dash.page_registry[pg]['path']] = True
