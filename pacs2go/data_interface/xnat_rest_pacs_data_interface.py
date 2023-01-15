@@ -171,7 +171,8 @@ class XNATProject():
         if response.status_code == 200:
             owners = []
             for o in response.json()['ResultSet']['Result']:
-                owners.append(o['login'])
+                if o['displayname'] == 'Owners':
+                    owners.append(o['login'])
             return owners
         else:
             raise Exception(
@@ -179,7 +180,15 @@ class XNATProject():
 
     @property
     def your_user_role(self) -> str:
-        pass
+        response = requests.get(
+            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.cookies)
+        if response.status_code == 200:
+            for o in response.json()['ResultSet']['Result']:
+                if o['login'] == self.connection.user:
+                    return o['displayname']
+        else:
+            raise Exception(
+                "Something went wrong trying to retrieve your user role. " + str(response.status_code))
 
     def exists(self) -> bool:
         response = requests.get(

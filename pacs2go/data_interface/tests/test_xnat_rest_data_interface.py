@@ -65,6 +65,7 @@ class TestDataInterface(unittest.TestCase):
     def test_getproject(self):
         # Checks if a project with a certain name is really created
         p = self.connection.get_project("test_keywords_2")
+        # print(p.owners, p.your_user_role)
         #print(p.name)
 
     def test_getallprojects(self):
