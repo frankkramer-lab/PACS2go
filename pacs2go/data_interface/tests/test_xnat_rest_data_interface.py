@@ -1,6 +1,6 @@
 import unittest
 
-from xnat_rest_pacs_data_interface import XNAT
+from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
 
 
 class TestConnection(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestDataInterface(unittest.TestCase):
     def test_getproject(self):
         # Checks if a project with a certain name is really created
         p = self.connection.get_project("test_keywords_2")
-        print(p)
+        print(p.name)
 
 
 if __name__ == '__main__':
