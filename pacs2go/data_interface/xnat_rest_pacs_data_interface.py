@@ -162,11 +162,20 @@ class XNATProject():
             self._metadata['data_fields']['keywords'] = keywords_string
         else:
             raise Exception(
-                "Something went wrong trying to change the keywords string." + str(response.status_code))
+                "Something went wrong trying to change the keywords string. " + str(response.status_code))
 
     @property
     def owners(self) -> List[str]:
-        pass
+        response = requests.get(
+            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.cookies)
+        if response.status_code == 200:
+            owners = []
+            for o in response.json()['ResultSet']['Result']:
+                owners.append(o['login'])
+            return owners
+        else:
+            raise Exception(
+                "Something went wrong trying to retrieve the owners of this project. " + str(response.status_code))
 
     @property
     def your_user_role(self) -> str:
