@@ -82,6 +82,13 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(
             len_before + 1, len(self.connection.get_all_projects()))
 
+    def test_setprojectdescription_and_setprojectkeywords(self):
+        new_description = "hehe this is a new description"
+        self.project.set_description(new_description)
+        self.assertEqual(self.project.description, new_description)
+        new_keywords = "MRI, CT, etc"
+        self.project.set_keywords(new_keywords)
+        self.assertEqual(self.project.keywords, new_keywords)
 
 
 if __name__ == '__main__':

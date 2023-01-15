@@ -43,7 +43,7 @@ class XNAT():
             # User was found, return username
             return response.text
         else:
-            # User not found, return False
+            # User not found
             raise Exception("User not found." + str(response.status_code))
 
     def __enter__(self) -> 'XNAT':
@@ -54,38 +54,31 @@ class XNAT():
         pass
 
     def create_project(self, name: str) -> Optional['XNATProject']:
-        # A Project with the name 'name' does not exist yet, create one
         headers = {'Content-Type': 'application/xml'}
         project_data = f"""
             <projectData>
             <ID>{name}</ID>
             <name>{name}</name>
             <description>This is a new project.</description>
+            <keywords> Set keywords here. </keywords>
             </projectData>
             """
-        response = requests.post(self.server + "/data/projects", headers=headers, data=project_data, cookies=self.cookies)
+        response = requests.post(self.server + "/data/projects",
+                                 headers=headers, data=project_data, cookies=self.cookies)
         if response.status_code == 200:
-            print("Project created successfully")
             return XNATProject(self, name)
         else:
             raise Exception(
                 "Something went wrong trying to create a new project." + str(response.status_code))
 
     def get_project(self, name: str) -> Optional['XNATProject']:
-        response = requests.get(
-            self.server + f"/data/projects/{name}", cookies=self.cookies)
-        if response.status_code == 200:
-            return XNATProject(self, name, just_get=True)
-        else:
-            # User not found, return False
-            raise Exception(
-                f"Project '{name}' not found." + str(response.status_code))
+        return XNATProject(self, name, only_get_no_create=True)
 
     def get_all_projects(self) -> List['XNATProject']:
         response = requests.get(
             self.server + "/xapi/users/projects", cookies=self.cookies)
         if response.status_code == 200:
-            # User was found, return username
+            # Project list retrieval was successfull
             project_names = response.json()
             if len(project_names) == 0:
                 # No projects yet
@@ -99,7 +92,7 @@ class XNAT():
 
             return projects
         else:
-            # User not found, return False
+            # Project list not found
             raise Exception("Projects not found." + str(response.status_code))
 
 #     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
@@ -110,38 +103,66 @@ class XNAT():
 
 
 class XNATProject():
-    def __init__(self, connection: XNAT, name: str, just_get: bool = False) -> None:
+    def __init__(self, connection: XNAT, name: str, only_get_no_create: bool = False) -> None:
         self.connection = connection
         self.cookies = self.connection.cookies
         self.name = name
 
-        if just_get is False:
-            # just_get is used to internally optimize the number of XNAT API calls
-            response = requests.get(
-                self.connection.server + f"/data/projects/{self.name}", cookies=self.cookies)
-            if response.status_code != 200:
-                # Project in XNAT does not exist yet, so it is inserted into XNAT
-                self.connection.create_project(self.name)
+        response = requests.get(
+            self.connection.server + f"/data/projects/{self.name}?format=json", cookies=self.cookies)
+        if response.status_code == 200:
+            # Project was successfully retrieved
+            self._metadata = response.json()['items'][0]
+        elif response.status_code != 200 and only_get_no_create is False:
+            # No project could be retrieved -> we want to create one with the given name
+            p = self.connection.create_project(self.name)
+            self._metadata = p._metadata
+        elif only_get_no_create is True:
+            # No project could be retrieved and we do not wish to create one
+            raise Exception(
+                f"Project '{name}' not found." + str(response.status_code))
 
     @property
     def description(self) -> str:
-        response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}", cookies=self.cookies)
-        if response.status_code == 200:
-            return response.json()['description']
-        else:
-            raise Exception(
-                'Something went wrong trying to retrieve the description' + str(response.status_code))
+        return self._metadata['data_fields']['description']
 
     def set_description(self, description_string: str) -> None:
-        pass
+        headers = {'Content-Type': 'application/xml'}
+        project_data = f"""
+            <projectData>
+            <description>{description_string}</description>
+            </projectData>
+            """
+        # Put new description
+        response = requests.put(
+            self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.cookies)
+        if response.status_code == 200:
+            print(response.text)
+            self._metadata['data_fields']['description'] = description_string
+        else:
+            raise Exception(
+                "Something went wrong trying to change the description string." + str(response.status_code))
 
     @property
     def keywords(self) -> str:
-        pass
+        return self._metadata['data_fields']['keywords']
 
     def set_keywords(self, keywords_string: str) -> None:
-        pass
+        headers = {'Content-Type': 'application/xml'}
+        project_data = f"""
+            <projectData>
+            <keywords>{keywords_string}</keywords>
+            </projectData>
+            """
+        # Put new keywords
+        response = requests.put(
+            self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.cookies)
+        if response.status_code == 200:
+            print(response.text)
+            self._metadata['data_fields']['keywords'] = keywords_string
+        else:
+            raise Exception(
+                "Something went wrong trying to change the keywords string." + str(response.status_code))
 
     @property
     def owners(self) -> List[str]:
