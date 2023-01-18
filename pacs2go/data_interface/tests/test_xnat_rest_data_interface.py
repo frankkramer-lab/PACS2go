@@ -1,7 +1,7 @@
 import unittest
 import uuid
 
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT, XNATProject
+from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT, XNATProject, XNATDirectory
 
 
 class TestConnection(unittest.TestCase):
@@ -42,12 +42,13 @@ class TestDataInterface(unittest.TestCase):
         # create test data
         with XNAT(server=self.server, username=self.user, password=self.pwd, kind="XNAT") as connection:
             self.project = XNATProject(connection, str(uuid.uuid4()))
-            #self.directory = self.project.insert_zip_into_project(self.zip_file_setup)
-            # data to test delete functionalities
+            # self.directory = self.project.insert_zip_into_project(self.zip_file_setup)
+            #self.file = self.project.insert(self.file_path, self.directory.name)
+            #data to test delete functionalities
             #self.to_be_deleted_project = XNATProject(connection, str(uuid.uuid4()))
             #self.to_be_deleted_directory = self.project.insert_zip_into_project(self.zip_file_setup)
             #self.to_be_deleted_file = self.project.insert_file_into_project(self.file_path)
-            # name of a project to test create functionality, stored centrally to ensure deletion after test
+            #name of a project to test create functionality, stored centrally to ensure deletion after test
             self.to_be_created_project_name = uuid.uuid4()
 
     @classmethod
@@ -90,6 +91,24 @@ class TestDataInterface(unittest.TestCase):
         new_keywords = "MRI, CT, etc"
         self.project.set_keywords(new_keywords)
         self.assertEqual(self.project.keywords, new_keywords)
+
+    def test_getdirectoryandfile(self):
+        p = self.connection.get_project("test_keywords_2")
+        #d = p.get_directory("test2")
+        # d = self.connection.get_directory('test_keywords_2', 'test2')
+        d = XNATDirectory(p, "test2")
+        # print(d.contained_file_tags, d.number_of_files)
+        f = d.get_all_files()[0]
+
+    def test_getalldirectories(self):
+        p = self.connection.get_project("test_keywords_2")
+        #d = p.get_all_directories()
+        #print(d[0].name)
+
+    def test_fileinsert(self):
+        p = self.connection.get_project("test_keywords_2")
+        file = self.project.insert_file_into_project(self.file_path, 'test3')
+        print(file.size)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,13 @@
+import datetime
+import json
+import os
+from tempfile import TemporaryDirectory
 from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Union
+import uuid
+import zipfile
 
 import requests
 
@@ -14,9 +20,11 @@ class XNAT():
         if password != None:
             data = {"username": username, "password": password}
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            # Authenticate user via REST API
             response = requests.post(
                 server + "/data/services/auth", data=data, headers=headers)
             if response.status_code != 200:
+                # Non successful authentication
                 raise Exception(
                     "Something went wrong connecting to XNAT. " + str(response.text))
             else:
@@ -95,8 +103,8 @@ class XNAT():
             # Project list not found
             raise Exception("Projects not found." + str(response.status_code))
 
-#     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
-#         pass
+    def get_directory(self, project_name: str, directory_name: str) -> Optional['XNATDirectory']:
+        return XNATDirectory(self.get_project(project_name), directory_name)
 
 #     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
 #         pass
@@ -105,6 +113,7 @@ class XNAT():
 class XNATProject():
     def __init__(self, connection: XNAT, name: str, only_get_no_create: bool = False) -> None:
         self.connection = connection
+        self.server = self.connection.server
         self.cookies = self.connection.cookies
         self.name = name
 
@@ -117,7 +126,7 @@ class XNATProject():
             # No project could be retrieved -> we want to create one with the given name
             p = self.connection.create_project(self.name)
             self._metadata = p._metadata
-        elif only_get_no_create is True:
+        else:
             # No project could be retrieved and we do not wish to create one
             raise Exception(
                 f"Project '{name}' not found." + str(response.status_code))
@@ -208,74 +217,250 @@ class XNATProject():
             raise Exception(
                 'Something went wrong trying to delete the project.' + str(response.status_code))
 
+    def get_directory(self, name) -> 'XNATDirectory':
+        return XNATDirectory(self, name)
 
-#     def get_directory(self, name) -> 'Directory':
-#         pass
+    def get_all_directories(self) -> Sequence['XNATDirectory']:
+        response = requests.get(
+            self.server + f"/data/projects/{self.name}/resources", cookies=self.cookies)
+        if response.status_code == 200:
+            # Directory list retrieval was successfull
+            dir_results = response.json()['ResultSet']['Result']
+            if len(dir_results) == 0:
+                # No projects yet
+                return []
 
-#     def get_all_directories(self) -> Sequence['Directory']:
-#         pass
+            directories = []
+            for d in dir_results:
+                # Create List of all Project objectss
+                directory = self.get_directory(d['label'])
+                directories.append(directory)
 
-#     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
-#         pass
+            return directories
+        else:
+            raise Exception(
+                "No directories could be retrieved. " + str(response.status_code))
+
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
+        # File path leads to a single file
+        if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
+            return self.insert_file_into_project(file_path, directory_name, tags_string)
+
+        # File path equals a zip file
+        elif zipfile.is_zipfile(file_path):
+            return self.insert_zip_into_project(file_path, directory_name, tags_string)
+
+        else:
+            raise Exception("The input is neither a file nor a zip.")
+
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string='') -> 'XNATDirectory':
+        # Extract zip data and feed it to insert_file_project
+        if zipfile.is_zipfile(file_path):
+            if directory_name == '':
+                # If no xnat resource directory is given, a new directory with the current timestamp is created
+                # This must be done here for zips bc otherwise all files end up in different directories
+                directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+            else:
+                # XNAT can't handle whitespaces in names -> replace them with underscores
+                directory_name = directory_name.replace(" ", "_")
+
+            with TemporaryDirectory() as tempdir:
+                with zipfile.ZipFile(file_path) as z:
+                    z.extractall(tempdir)
+                    dir_path = os.path.join(tempdir, os.listdir(tempdir)[0])
+
+                    # Get all files, even those within a lower-level directory
+                    onlyfiles = []
+                    for (dirpath, dirnames, filenames) in os.walk(dir_path):
+                        onlyfiles.extend(filenames)
+
+                    # Insert files
+                    for f in onlyfiles:
+                        self.insert_file_into_project(
+                            os.path.join(dir_path, f), directory_name, tags_string)
+
+            return XNATDirectory(self, directory_name)
+
+        else:
+            raise Exception("The input is not a zipfile.")
+
+   # Single file upload to given project
+    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '') -> 'XNATFile':
+        if os.path.exists(file_path):
+            # File names are unique, duplicate file names can not be inserted
+            file_id = str(uuid.uuid4())
+
+            # Lowercase file_path so things like '.PNG' aren't a problem
+            lower_file_path = file_path.lower()
+
+            allowed_file_suffixes = (
+                '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
+
+            if directory_name == '':
+                # If no xnat resource directory is given, a new directory with the current timestamp is created
+                directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+            else:
+                # XNAT can't handle whitespaces in names -> replace them with underscores
+                directory_name = directory_name.replace(" ", "_")
+
+            if lower_file_path.endswith(allowed_file_suffixes):
+                headers = {'Content-Type': 'mulutipart/form-data'}
+                meta_data = f"""
+                    <FileData>
+                       <Name>{file_id}</Name>
+                    </FileData>
+                    """
+                with open(file_path, "rb") as file:
+                    response = requests.post(
+                        self.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}", files = {'upload_file': file}, cookies=self.cookies)
+                if response.status_code == 200:
+                    return XNATFile(XNATDirectory(self, directory_name), file_id)
+                else:
+                    raise Exception(
+                        f"The file [{self.name}] could not be retrieved. " + str(response.status_code))
+
+            else:
+                raise Exception("This file type is not supported.")
+
+        else:
+            raise Exception("The input is not a file.")
 
 
-# class Directory():
-#     def __init__(self, project: Project, name: str) -> None:
-#         pass
+class XNATDirectory():
+    def __init__(self, project: XNATProject, name: str) -> None:
+        self.name = name
+        self.project = project
+        self.cookies = self.project.cookies
+        self.server = self.project.server
+        # Get all the projects directories, single GET is only possible for exists() (due to XNAT API behavior)
+        response = requests.get(
+            self.server + f"/data/projects/{self.project.name}/resources", cookies=self.cookies)
+        if response.status_code == 200:
+            all_dirs = response.json()['ResultSet']['Result']
+            try:
+                self._metadata = next(
+                    item for item in all_dirs if item["label"] == self.name)
+            except:
+                raise Exception(
+                    f"A Directory with this name ({self.name}) does not exist. ")
+        else:
+            raise Exception(
+                f"Directories could not be accessed. " + str(response.status_code))
 
-#     @property
-#     def contained_file_tags(self) -> str:
-#         pass
+    @property
+    def contained_file_tags(self) -> str:
+        return self._metadata['tags']
 
-#     @property
-#     def number_of_files(self) -> str:
-#         pass
+    @property
+    def number_of_files(self) -> str:
+        return self._metadata['file_count']
 
-#     def exists(self) -> bool:
-#         pass
+    def exists(self) -> bool:
+        response = requests.get(
+            self.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.cookies)
+        if response.status_code == 200:
+            return True
+        else:
+            return False
 
-#     def delete_directory(self) -> None:
-#         pass
+    def delete_directory(self) -> None:
+        response = requests.delete(
+            self.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.cookies)
+        if response.status_code != 200:
+            raise Exception(
+                "Something went wrong trying to delete this directory. " + str(response.status_code))
 
-#     def get_file(self, file_name: str) -> 'File':
-#         pass
+    def get_file(self, file_name: str) -> 'XNATFile':
+        return XNATFile(self, file_name)
 
-#     def get_all_files(self) -> List['File']:
-#         pass
+    def get_all_files(self) -> List['XNATFile']:
+        response = requests.get(
+            self.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json", cookies=self.cookies)
+        if response.status_code == 200:
+            # Directory list retrieval was successfull
+            file_results = response.json()['ResultSet']['Result']
+            if len(file_results) == 0:
+                # No projects yet
+                return []
 
-#     def download(self, destination: str) -> str:
-#         pass
+            files = []
+            for f in file_results:
+                # Create List of all Project objectss
+                file = self.get_file(f['Name'])
+                files.append(file)
+
+            return files
+        else:
+            raise Exception("No files could be retrieved. " +
+                            str(response.status_code))
+
+    def download(self, destination: str) -> str:
+        pass
 
 
-# class File():
-#     def __init__(self, directory: Directory, name: str) -> None:
-#         pass
+class XNATFile():
+    def __init__(self, directory: XNATDirectory, name: str) -> None:
+        self.directory = directory
+        self.name = name
+        self.cookies = self.directory.cookies
+        self.server = self.directory.server
 
-#     @property
-#     def format(self) -> str:
-#         pass
+        response = requests.get(
+            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.cookies)
+        if response.status_code == 200:
+            all_files = response.json()['ResultSet']['Result']
+            try:
+                self._metadata = next(
+                    item for item in all_files if item["Name"] == self.name)
+            except:
+                raise Exception(
+                    f"A File with this filename ({self.name}) does not exist. ")
+        else:
+            raise Exception(
+                f"Files could not be accessed. " + str(response.status_code))
 
-#     @property
-#     def content_type(self) -> str:
-#         pass
+    @property
+    def format(self) -> str:
+        return self._metadata['file_format']
 
-#     @property
-#     def tags(self) -> str:
-#         pass
+    @property
+    def content_type(self) -> str:
+        return self._metadata['file_content']
 
-#     @property
-#     def size(self) -> int:
-#         pass
+    @property
+    def tags(self) -> str:
+        return self._metadata['file_tags']
 
-#     @property
-#     def data(self) -> str:
-#         pass
+    @property
+    def size(self) -> int:
+        return self._metadata['Size']
 
-#     def exists(self) -> bool:
-#         pass
+    @property
+    def data(self) -> str:
+        response = requests.get(
+            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+        if response.status_code == 200:
+            return response
+        else:
+            raise Exception(
+                f"The file [{self.name}] could not be retrieved. " + str(response.status_code))
 
-#     def download(self, destination: str = '') -> str:
-#         pass
+    def exists(self) -> bool:
+        response = requests.get(
+            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+        if response.status_code == 200:
+            True
+        else:
+            False
 
-#     def delete_file(self) -> None:
-#         pass
+    def download(self, destination: str = '') -> str:
+        pass
+
+    def delete_file(self) -> None:
+        response = requests.delete(
+            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+        if response.status_code != 200:
+            raise Exception(
+                "Something went wrong trying to delete this file. " + str(response.status_code))
