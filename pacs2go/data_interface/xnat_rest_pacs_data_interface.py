@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import pathlib
 from tempfile import TemporaryDirectory
 from typing import List
 from typing import Optional
@@ -146,7 +147,6 @@ class XNATProject():
         response = requests.put(
             self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.cookies)
         if response.status_code == 200:
-            print(response.text)
             self._metadata['data_fields']['description'] = description_string
         else:
             raise Exception(
@@ -167,7 +167,6 @@ class XNATProject():
         response = requests.put(
             self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.cookies)
         if response.status_code == 200:
-            print(response.text)
             self._metadata['data_fields']['keywords'] = keywords_string
         else:
             raise Exception(
@@ -288,15 +287,6 @@ class XNATProject():
    # Single file upload to given project
     def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '') -> 'XNATFile':
         if os.path.exists(file_path):
-            # File names are unique, duplicate file names can not be inserted
-            file_id = str(uuid.uuid4())
-
-            # Lowercase file_path so things like '.PNG' aren't a problem
-            lower_file_path = file_path.lower()
-
-            allowed_file_suffixes = (
-                '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
-
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
                 directory_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -305,21 +295,51 @@ class XNATProject():
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
 
-            if lower_file_path.endswith(allowed_file_suffixes):
-                headers = {'Content-Type': 'mulutipart/form-data'}
-                meta_data = f"""
-                    <FileData>
-                       <Name>{file_id}</Name>
-                    </FileData>
-                    """
+            # Accepted File formats/suffixes
+            allowed_file_suffixes = (
+                '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
+            image_file_suffixes = (
+                '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff')
+
+            # File format metadata for the REST query parameter
+            file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
+                           '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
+
+            # Lowercase file_path so things like '.PNG' aren't a problem
+            lower_file_path = file_path.lower()
+            # Get the file's suffix
+            suffix = pathlib.Path(lower_file_path).suffix
+
+            # Only continue if file format/suffix is an accepted one 
+            if suffix in allowed_file_suffixes:
+                # File names are unique, duplicate file names can not be inserted
+                file_id = str(uuid.uuid4())
+                # Add file suffix to generated unique file_id
+                file_id = file_id + suffix
+
+                # Get correct content tag for REST query parameter
+                if suffix in image_file_suffixes:
+                    file_content = 'Image'
+                else:
+                    file_content = 'Metadata'
+
+                # Update tags_string to include format, content and passed tags_string
+                tags_string = f"{file_content}, {file_format[suffix]}, {tags_string}"
+
+                # REST query parameter string to set metadata
+                parameter = f"format={file_format[suffix]}&tags={tags_string}&content={file_content}"
+
+                # Open passed file and POST to XNAT endpoint
                 with open(file_path, "rb") as file:
                     response = requests.post(
-                        self.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}", files = {'upload_file': file}, cookies=self.cookies)
+                        self.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=self.cookies)
+
                 if response.status_code == 200:
+                    # Return inserted file
                     return XNATFile(XNATDirectory(self, directory_name), file_id)
                 else:
                     raise Exception(
-                        f"The file [{self.name}] could not be retrieved. " + str(response.status_code))
+                        f"The file [{self.name}] could not be uploaded. " + str(response.status_code))
 
             else:
                 raise Exception("This file type is not supported.")
@@ -442,7 +462,7 @@ class XNATFile():
         response = requests.get(
             self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
         if response.status_code == 200:
-            return response
+            return response.content
         else:
             raise Exception(
                 f"The file [{self.name}] could not be retrieved. " + str(response.status_code))
