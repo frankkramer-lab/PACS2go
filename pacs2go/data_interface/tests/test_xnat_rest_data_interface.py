@@ -1,4 +1,5 @@
 import random
+import time
 import unittest
 import uuid
 from PIL import Image
@@ -167,9 +168,11 @@ class TestDataInterface(unittest.TestCase):
         # Checks if file image data can be retrieved from XNAT
         f = random.choice(self.directory.get_all_files())
         im = Image.open(f.data)
-        #self.assertEqual(im.format, f.format)
+        # Correct format
+        self.assertEqual(im.format, f.format)
         # not equal for some reason, len(im.fp.read() is always 623byte smaller (metadata perhabs?)
-        # self.assertEqual(len(im.fp.read()) + 623, f.size)
+        self.assertEqual(len(im.fp.read()) + 623, f.size)
+
 
 
 

@@ -455,14 +455,18 @@ class XNATFile():
 
     @property
     def size(self) -> int:
-        return self._metadata['Size']
+        return int(self._metadata['Size'])
 
     @property
     def data(self) -> str:
         response = requests.get(
             self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
         if response.status_code == 200:
-            return response.content
+            with TemporaryDirectory() as tempdir:
+                with open(tempdir + self.name, "wb") as binary_file:
+                    # Write bytes to temp file
+                    binary_file.write(response.content)
+                return tempdir + self.name
         else:
             raise Exception(
                 f"The file [{self.name}] could not be retrieved. " + str(response.status_code))
