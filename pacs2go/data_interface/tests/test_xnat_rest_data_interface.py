@@ -2,6 +2,7 @@ import random
 import time
 import unittest
 import uuid
+from zipfile import ZipFile
 from PIL import Image
 
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT, XNATProject, XNATDirectory
@@ -44,25 +45,27 @@ class TestDataInterface(unittest.TestCase):
     def setUpClass(self):
         # create test data
         with XNAT(server=self.server, username=self.user, password=self.pwd, kind="XNAT") as connection:
-            self.project = XNATProject(connection, str(uuid.uuid4()))
-            self.directory = self.project.insert_zip_into_project(self.zip_file_setup)
-            self.file = self.project.insert(self.file_path, self.directory.name)
-            #data to test delete functionalities
-            self.to_be_deleted_project = XNATProject(connection, str(uuid.uuid4()))
-            self.to_be_deleted_directory = self.project.insert_zip_into_project(self.zip_file_setup)
-            self.to_be_deleted_file = self.project.insert_file_into_project(self.file_path)
-            #name of a project to test create functionality, stored centrally to ensure deletion after test
-            self.to_be_created_project_name = uuid.uuid4()
+            self.project = XNATProject(connection, str(uuid.uuid4())+"_test1")
+            self.directory = self.project.insert_zip_into_project(
+                self.zip_file_setup)
+            self.file = self.project.insert(
+                self.file_path, self.directory.name)
+            # data to test delete functionalities
+            self.to_be_deleted_project = XNATProject(
+                connection, str(uuid.uuid4()))
+            self.to_be_deleted_directory = self.project.insert_zip_into_project(
+                self.zip_file_setup)
+            self.to_be_deleted_file = self.project.insert_file_into_project(
+                self.file_path)
+            # name of a project to test create functionality, stored centrally to ensure deletion after test
+            self.to_be_created_project_name = str(uuid.uuid4())+"_test1"
 
     @classmethod
     def tearDownClass(self):
         # Delete all test data
-        with XNAT(server=self.server, username=self.user, password=self.pwd, kind="XNAT") as connection:
             if self.project.exists():
                 self.project.delete_project()
             try:
-                p = connection.get_project(str(self.to_be_created_project_name))
-                p.delete_project()
                 self.to_be_deleted_project.delete_project()
             except:
                 pass
@@ -72,11 +75,12 @@ class TestDataInterface(unittest.TestCase):
         len_before = len(self.connection.get_all_projects())
         project = XNATProject(self.connection, str(
             self.to_be_created_project_name))
-        #print(project.description)
+        # print(project.description)
         self.assertIn(str(project.name), [
                       p.name for p in self.connection.get_all_projects()])
         self.assertEqual(
             len_before + 1, len(self.connection.get_all_projects()))
+        project.delete_project()
 
     def test_setprojectdescription_and_setprojectkeywords(self):
         new_description = "hehe this is a new description"
@@ -95,12 +99,13 @@ class TestDataInterface(unittest.TestCase):
         self.assertIn(
             file.name, [f.name for f in file.directory.get_all_files()])
         # Project should have 1 new directory
-        self.assertEqual(len_before + 1, len(self.project.get_all_directories()))
+        self.assertEqual(
+            len_before + 1, len(self.project.get_all_directories()))
         # New directory should have 1 file
         self.assertEqual(1, len(file.directory.get_all_files()))
         # Tags should be set accordingly to specified tags_string
         self.assertIn('new', file.tags)
-    
+
     def test_insert(self):
         # Checks if the general insert function behaves as expected (= upload zip as directory and file into directory)
         dir = self.project.insert(self.zip_file_test, 'test_general_insert_1')
@@ -114,6 +119,24 @@ class TestDataInterface(unittest.TestCase):
         # Checks if wrong input raises the expected Exception
         with self.assertRaisesRegex(Exception, "The input is neither a file nor a zip."):
             self.project.insert('hello', 'test_general_insert_2')
+
+    def test_insert_zip(self):
+        # Checks if correct number of files was uploaded and if a new directory was created
+        len_before = len(self.project.get_all_directories())
+        with ZipFile(self.zip_file_test) as zipfile:
+            number_of_files_before = len(zipfile.namelist())
+        start_time = time.time()
+        directory = self.project.insert_zip_into_project(
+            self.zip_file_test, 'test_zip_insert_1')
+        end_time = time.time()
+        duration = end_time - start_time
+        print("Duration of zip upload: " + str(duration))
+        self.assertEqual(
+            len_before + 1, len(self.project.get_all_directories()))
+        self.assertIn(directory.name, [
+                      r.name for r in self.project.get_all_directories()])
+        self.assertEqual(number_of_files_before,
+                         len(directory.get_all_files()))
 
     def test_delete_file(self):
         # Checks if single file is deleted from directory
@@ -130,7 +153,7 @@ class TestDataInterface(unittest.TestCase):
         file.delete_file()
         with self.assertRaisesRegex(Exception, "Something went wrong trying to delete this file. 404"):
             file.delete_file()
-    
+
     def test_delete_diretory(self):
         # Check if single directory is deleted from project
         self.assertIn(self.to_be_deleted_directory.name, [
@@ -147,7 +170,7 @@ class TestDataInterface(unittest.TestCase):
     #     print()
     #     with self.assertRaises(Exception):
     #         d.delete_directory()
-    
+
     def test_delete_project(self):
         # Checks if a project is deleted
         len_before = len(self.connection.get_all_projects())
@@ -163,7 +186,7 @@ class TestDataInterface(unittest.TestCase):
         p.delete_project()
         with self.assertRaisesRegex(Exception, "Something went wrong trying to delete the project.400"):
             p.delete_project()
-        
+
     def test_file_retrieval(self):
         # Checks if file image data can be retrieved from XNAT
         f = random.choice(self.directory.get_all_files())
@@ -172,8 +195,6 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(im.format, f.format)
         # not equal for some reason, len(im.fp.read() is always 623byte smaller (metadata perhabs?)
         self.assertEqual(len(im.fp.read()) + 623, f.size)
-
-
 
 
 if __name__ == '__main__':

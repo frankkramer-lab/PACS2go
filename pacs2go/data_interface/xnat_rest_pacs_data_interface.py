@@ -310,7 +310,7 @@ class XNATProject():
             # Get the file's suffix
             suffix = pathlib.Path(lower_file_path).suffix
 
-            # Only continue if file format/suffix is an accepted one 
+            # Only continue if file format/suffix is an accepted one
             if suffix in allowed_file_suffixes:
                 # File names are unique, duplicate file names can not be inserted
                 file_id = str(uuid.uuid4())
