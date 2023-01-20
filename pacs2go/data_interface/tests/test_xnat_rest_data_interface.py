@@ -1,4 +1,5 @@
 import random
+from tempfile import TemporaryDirectory
 import time
 import unittest
 import uuid
@@ -90,7 +91,22 @@ class TestDataInterface(unittest.TestCase):
         self.project.set_keywords(new_keywords)
         self.assertEqual(self.project.keywords, new_keywords)
 
-    def test_fileinsert(self):
+    def test_insert(self):
+        # Checks if the general insert function behaves as expected (= upload zip as directory and file into directory)
+        dir = self.project.insert(self.zip_file_test, 'test_general_insert_1')
+        self.assertIn(dir.name, [
+                      r.name for r in self.project.get_all_directories()])
+        file = self.project.insert(self.file_path, dir.name)
+        self.assertIn(
+            file.name, [f.name for f in dir.get_all_files()])
+
+    def test_insert_invalid_input(self):
+        # Checks if wrong input raises the expected Exception
+        with self.assertRaisesRegex(Exception, "The input is neither a file nor a zip."):
+            self.project.insert('hello', 'test_general_insert_2')
+
+    
+    def test_insert_file(self):
         # Tests if upload of single file is successful
         len_before = len(self.project.get_all_directories())
         file = self.project.insert_file_into_project(
@@ -105,20 +121,6 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(1, len(file.directory.get_all_files()))
         # Tags should be set accordingly to specified tags_string
         self.assertIn('new', file.tags)
-
-    def test_insert(self):
-        # Checks if the general insert function behaves as expected (= upload zip as directory and file into directory)
-        dir = self.project.insert(self.zip_file_test, 'test_general_insert_1')
-        self.assertIn(dir.name, [
-                      r.name for r in self.project.get_all_directories()])
-        file = self.project.insert(self.file_path, dir.name)
-        self.assertIn(
-            file.name, [f.name for f in dir.get_all_files()])
-
-    def test_insert_invalid_input(self):
-        # Checks if wrong input raises the expected Exception
-        with self.assertRaisesRegex(Exception, "The input is neither a file nor a zip."):
-            self.project.insert('hello', 'test_general_insert_2')
 
     def test_insert_zip(self):
         # Checks if correct number of files was uploaded and if a new directory was created
@@ -144,6 +146,7 @@ class TestDataInterface(unittest.TestCase):
         self.assertIn(file.name, [
                       f.name for f in file.directory.get_all_files()])
         file.delete_file()
+        self.assertEqual(False, file.exists())
         self.assertNotIn(file.name, [
                          f.name for f in file.directory.get_all_files()])
 
@@ -161,15 +164,6 @@ class TestDataInterface(unittest.TestCase):
         self.to_be_deleted_directory.delete_directory()
         self.assertNotIn(self.to_be_deleted_directory.name, [
                          r.name for r in self.project.get_all_directories()])
-
-    # def test_double_delete_directory(self):
-    #     # Checks if double deleting a directory results in an expected Exception
-    #     file = self.project.insert(self.file_path)
-    #     d = file.directory
-    #     d.delete_directory()
-    #     print()
-    #     with self.assertRaises(Exception):
-    #         d.delete_directory()
 
     def test_delete_project(self):
         # Checks if a project is deleted
@@ -196,6 +190,23 @@ class TestDataInterface(unittest.TestCase):
         # not equal for some reason, len(im.fp.read() is always 623byte smaller (metadata perhabs?)
         self.assertEqual(len(im.fp.read()) + 623, f.size)
 
+    def test_dir_download(self):
+        with TemporaryDirectory() as tempdir:
+            loc = self.directory.download(tempdir)
+        # print(loc)
+
+    def test_file_download(self):
+        with TemporaryDirectory() as tempdir:
+            loc = self.file.download(tempdir)
+        # print(loc)
+
+    # def test_project_download(self):
+    #     with TemporaryDirectory() as tempdir:
+    #         loc = self.project.download(tempdir)
+    #     # print(loc)
+
+
 
 if __name__ == '__main__':
     unittest.main()
+
