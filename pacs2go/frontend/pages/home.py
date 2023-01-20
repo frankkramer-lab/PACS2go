@@ -14,7 +14,6 @@ def card_view_projects():
     connection = get_connection()
     try:
         projects = connection.get_all_projects()
-        print(projects)
         number_of_projects = len(projects)
 
     except Exception as err:

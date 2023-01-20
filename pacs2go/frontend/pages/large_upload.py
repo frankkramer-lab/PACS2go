@@ -19,7 +19,6 @@ from dash.dependencies import Output
 from dash.dependencies import State
 from flask_login import current_user
 
-from pacs2go.data_interface.pacs_data_interface import Directory, File, Project
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 
@@ -153,7 +152,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                     # If the user entered no diretory name or tags
                     new_location = project.insert(file_path=filename)
                     
-                if os.path.isfile(filename):
+                if not filename.endswith('.zip'):
                     dir_name = new_location.directory.name
                 else:
                     dir_name = new_location.name
