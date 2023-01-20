@@ -11,13 +11,14 @@ register_page(__name__, title='PACS2go 2.0', path='/')
 
 
 def card_view_projects():
-    with get_connection() as connection:
-        try:
-            projects = connection.get_all_projects()
-            number_of_projects = len(projects)
+    connection = get_connection()
+    try:
+        projects = connection.get_all_projects()
+        print(projects)
+        number_of_projects = len(projects)
 
-        except:
-            return dbc.Alert("Projects could not be retrieved.")
+    except Exception as err:
+        return dbc.Alert("Projects could not be retrieved." + str(err))
 
     project_list = []
     # Only show 8 projects on landing page

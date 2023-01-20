@@ -1,5 +1,7 @@
 import base64
 from io import BytesIO
+from flask_login import current_user
+from flask import session
 
 import dash
 
@@ -17,10 +19,13 @@ colors = {
 ## LOGIN utils
 
 def get_connection():
-    user = "admin"
-    pwd = "admin"
-    connection_type = "XNAT"
-    return Connection(server_url, user, pwd, connection_type)
+    if current_user.is_authenticated:
+        user = current_user.id
+        session_id = session.get("session_id")
+        connection_type = "XNAT"
+        return Connection(server=server_url, username="admin", password="admin", kind=connection_type)
+    else:
+        pass
 
 restricted_page = {}
 

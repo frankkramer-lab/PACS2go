@@ -86,7 +86,7 @@ class XNAT():
             raise Exception(
                 "Something went wrong trying to create a new project." + str(response.status_code))
 
-    def get_project(self, name: str) -> Optional['XNATProject']:
+    def get_project(self, name: str) -> 'XNATProject':
         return XNATProject(self, name, only_get_no_create=True)
 
     def get_all_projects(self) -> List['XNATProject']:
@@ -111,29 +111,27 @@ class XNAT():
             # Project list not found
             raise Exception("Projects not found." + str(response.status_code))
 
-    def get_directory(self, project_name: str, directory_name: str) -> Optional['XNATDirectory']:
+    def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
         return XNATDirectory(self.get_project(project_name), directory_name)
 
-    def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['XNATFile']:
+    def get_file(self, project_name: str, directory_name: str, file_name: str) -> 'XNATFile':
         return XNATFile(XNATDirectory(XNATProject(self, project_name), directory_name), file_name)
 
 
 class XNATProject():
     def __init__(self, connection: XNAT, name: str, only_get_no_create: bool = False) -> None:
         self.connection = connection
-        self.server = self.connection.server
-        self.cookies = self.connection.cookies
         self.name = name
 
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}?format=json", cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}?format=json", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Project was successfully retrieved
             # Get returned metadata to optimize number of XNAT REST calls (description and keywords don't require extra call)
             self._metadata = response.json()['items'][0]
 
-        elif response.status_code != 200 and only_get_no_create is False:
+        elif response.status_code == 404 and only_get_no_create is False:
             # No project could be retrieved -> we want to create one with the given name
             p = self.connection.create_project(self.name)
             self._metadata = p._metadata
@@ -159,7 +157,7 @@ class XNATProject():
 
         # Put new description
         response = requests.put(
-            self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.connection.cookies)
 
         if response.status_code == 200:
             self._metadata['data_fields']['description'] = description_string
@@ -183,7 +181,7 @@ class XNATProject():
 
         # Put new keywords
         response = requests.put(
-            self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}", headers=headers, data=project_data, cookies=self.connection.cookies)
 
         if response.status_code == 200:
             self._metadata['data_fields']['keywords'] = keywords_string
@@ -194,7 +192,7 @@ class XNATProject():
     @property
     def owners(self) -> List[str]:
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Retrieve only users with the role 'Owners'
@@ -210,7 +208,7 @@ class XNATProject():
     @property
     def your_user_role(self) -> str:
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Get the autheticated user's role in a project
@@ -223,7 +221,7 @@ class XNATProject():
 
     def exists(self) -> bool:
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}", cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             return True
@@ -247,7 +245,7 @@ class XNATProject():
 
     def delete_project(self) -> None:
         response = requests.delete(
-            self.connection.server + f"/data/projects/{self.name}", cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}", cookies=self.connection.cookies)
 
         if response.status_code != 200:
             raise Exception(
@@ -258,7 +256,7 @@ class XNATProject():
 
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         response = requests.get(
-            self.server + f"/data/projects/{self.name}/resources", cookies=self.cookies)
+            self.connection.server + f"/data/projects/{self.name}/resources", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
@@ -371,7 +369,7 @@ class XNATProject():
                 # Open passed file and POST to XNAT endpoint
                 with open(file_path, "rb") as file:
                     response = requests.post(
-                        self.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=self.cookies)
+                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=self.connection.cookies)
 
                 if response.status_code == 200:
                     # Return inserted file
@@ -391,12 +389,10 @@ class XNATDirectory():
     def __init__(self, project: XNATProject, name: str) -> None:
         self.name = name
         self.project = project
-        self.cookies = self.project.cookies
-        self.server = self.project.server
 
         # Get all the projects directories, single GET is only possible for exists() (due to XNAT API behavior)
         response = requests.get(
-            self.server + f"/data/projects/{self.project.name}/resources", cookies=self.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             all_dirs = response.json()['ResultSet']['Result']
@@ -421,7 +417,7 @@ class XNATDirectory():
 
     def exists(self) -> bool:
         response = requests.get(
-            self.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             return True
@@ -430,7 +426,7 @@ class XNATDirectory():
 
     def delete_directory(self) -> None:
         response = requests.delete(
-            self.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.project.connection.cookies)
 
         if response.status_code != 200:
             # Note: In contrast to projects and files, double deleting the same resource still results in a 200 code
@@ -442,7 +438,7 @@ class XNATDirectory():
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
-            self.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json", cookies=self.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
@@ -466,7 +462,7 @@ class XNATDirectory():
     def download(self, destination: str) -> str:
         # https://wiki.xnat.org/display/XAPI/How+To+Download+Files+via+the+XNAT+REST+API
         response = requests.get(
-            self.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=zip", cookies=self.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=zip", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             # Store the retrieved compressed archive (containing all files) in the specified destination
@@ -477,19 +473,18 @@ class XNATDirectory():
             return path
 
         else:
-            raise Exception(f"Something went wrong trying to download this directory {self.name}. " + str(response.status_code))
+            raise Exception(
+                f"Something went wrong trying to download this directory {self.name}. " + str(response.status_code))
 
 
 class XNATFile():
     def __init__(self, directory: XNATDirectory, name: str) -> None:
         self.directory = directory
         self.name = name
-        self.cookies = self.directory.cookies
-        self.server = self.directory.server
 
         # Get all files from this file's directory, single file not possible to retrieve metadata
         response = requests.get(
-            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.cookies)
+            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
             all_files = response.json()['ResultSet']['Result']
@@ -523,7 +518,7 @@ class XNATFile():
     @property
     def data(self) -> str:
         response = requests.get(
-            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
             with TemporaryDirectory() as tempdir:
@@ -539,7 +534,7 @@ class XNATFile():
 
     def exists(self) -> bool:
         response = requests.get(
-            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
             return True
@@ -548,7 +543,7 @@ class XNATFile():
 
     def download(self, destination: str = '') -> str:
         response = requests.get(
-            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
             path = os.path.join(destination, self.name)
@@ -559,7 +554,7 @@ class XNATFile():
 
     def delete_file(self) -> None:
         response = requests.delete(
-            self.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.cookies)
+            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
 
         if response.status_code != 200:
             raise Exception(
