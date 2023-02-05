@@ -31,9 +31,9 @@ register_page(__name__, title='Directory - PACS2go',
 # Preview first image within the directory
 def get_single_file_preview(directory: Directory):
     file = directory.get_all_files()[0]
-    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
         content = html.Img(id="my-img", className="image", width="100%",
-                         src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+                           src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
     elif file.format == 'JSON':
         # Display contents of a JSON file as string
         f = open(file.data)
@@ -41,14 +41,14 @@ def get_single_file_preview(directory: Directory):
 
     elif file.format == 'CSV':
         df = pd.read_csv(file.data)
-        content = dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
+        content = dash_table.DataTable(df.to_dict(
+            'records'), [{"name": i, "id": i} for i in df.columns])
     else:
         return html.Div()
-        
+
     return dbc.Card([
         dbc.CardHeader("Preview the first file of this directory:"),
         dbc.CardBody(content, className="w-25 h-25")])
-
 
 
 def get_files_table(directory: Directory, filter: str = ''):
@@ -56,20 +56,20 @@ def get_files_table(directory: Directory, filter: str = ''):
     files = directory.get_all_files()
     # Get file information as rows for table
     # No filter applied
-    if len(filter)==0:
+    if len(filter) == 0:
         for f in files:
             rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                     ), html.Td(f.tags)]))
+                                         ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
     # Filtering
-    elif len(filter)>0 and filter.lower() in directory.contained_file_tags.lower():
+    elif len(filter) > 0 and filter.lower() in directory.contained_file_tags.lower():
         for f in files:
             if filter.lower() in f.tags.lower():
                 rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                        ), html.Td(f.tags)]))
+                                             ), html.Td(f.format), html.Td(f.tags), html.Td(f.size)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("File Tags")]))
+            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -128,14 +128,13 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     # Delete Button in the Modal View
     if ctx.triggered_id == "delete_directory_and_close":
         try:
-            with get_connection() as connection:
-                directory = connection.get_directory(
-                    project_name, directory_name)
-                # Delete Directory
-                directory.delete_directory()
-                # Redirect to project after deletion
-                return not is_open, dcc.Location(href=f"/project/{project_name}", id="redirect_after_directory_delete")
-
+            connection = get_connection()
+            directory = connection.get_directory(
+                project_name, directory_name)
+            # Delete Directory
+            directory.delete_directory()
+            # Redirect to project after deletion
+            return not is_open, dcc.Location(href=f"/project/{project_name}", id="redirect_after_directory_delete")
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
     else:
@@ -147,29 +146,35 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
 def filter_files_table(btn, filter, directory_name, project_name):
     # Apply filter to the files table
     if ctx.triggered_id == 'filter_file_tags_btn':
-        with get_connection() as connection:
-            return get_files_table(connection.get_directory(project_name, directory_name), filter)        
+        try:
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            return get_files_table(directory, filter)
+        except Exception as err:
+            return dbc.Alert(f"{err}", color="danger")
     else:
         raise PreventUpdate
 
 
 @callback(
     Output("download_directory", "data"),
-    Input("btn_download_dir", "n_clicks"), State("directory", "data"),  State("project", "data"), 
+    Input("btn_download_dir", "n_clicks"), State(
+        "directory", "data"),  State("project", "data"),
     prevent_initial_call=True,
 )
 def func(n_clicks, directory_name, project_name):
     if ctx.triggered_id == 'btn_download_dir':
-        with get_connection() as connection:
+        try:
+            connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
-            if directory:
-                with TemporaryDirectory() as tempdir:
-                    # Get directory as zip to a tempdir and then send it to browser
-                    zipped_dir = directory.download(tempdir)
-                    return dcc.send_file(zipped_dir)
+            with TemporaryDirectory() as tempdir:
+                # Get directory as zip to a tempdir and then send it to browser
+                zipped_dir = directory.download(tempdir)
+                return dcc.send_file(zipped_dir)
+        except Exception as err:
+            return dbc.Alert(f"{err}", color="danger")
     else:
         raise PreventUpdate
-        
 
 
 #################
@@ -180,55 +185,58 @@ def func(n_clicks, directory_name, project_name):
 def layout(project_name: Optional[str] = None, directory_name: Optional[str] = None):
     if not current_user.is_authenticated:
         return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
-    try:
-        if project_name and directory_name:
-            with get_connection() as connection:
-                directory = connection.get_directory(
-                    project_name, directory_name)
-                return html.Div([
-                    # dcc Store components for project and directory name strings
-                    dcc.Store(id='directory', data=directory.name),
-                    dcc.Store(id='project', data=project_name),
+    if project_name and directory_name:
+        try:
+            connection = get_connection()
+            directory = connection.get_directory(
+                project_name, directory_name)
+        except Exception as err:
+            return dbc.Alert(f"{err}", color="danger")
+        return html.Div([
+            # dcc Store components for project and directory name strings
+            dcc.Store(id='directory', data=directory.name),
+            dcc.Store(id='project', data=project_name),
+            dbc.Row([
+                    dbc.Col(
+                        html.H1(f"Directory {directory.name}", style={
+                                'textAlign': 'left', })),
+                    dbc.Col(
+                        [
+                            # Modal for directory deletion
+                            modal_delete(directory),
+                            html.Div([
+                                # Button to access the File Viewer (viewer.py)
+                                dbc.Button([html.I(className="bi bi-play me-2"),
+                                            "Viewer"], color="success", size="md",
+                                            href=f"/viewer/{project_name}/{directory.name}/none"),
+                                dbc.Button([html.I(className="bi bi-download me-2"),
+                                            "Download"], id="btn_download_dir", size="md", class_name="mx-2"),
+                                dcc.Download(id="download_directory")])
+                        ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+                    ], className="mb-3"),
+            # Link back to project
+            dcc.Link(
+                html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
+                className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
+            dbc.Card([
+                dbc.CardHeader('Files'),
+                dbc.CardBody([
+                    # Filter file tags
                     dbc.Row([
-                            dbc.Col(
-                                html.H1(f"Directory {directory.name}", style={
-                                        'textAlign': 'left', })),
-                            dbc.Col(
-                                [
-                                    # Modal for directory deletion
-                                    modal_delete(directory),
-                                    html.Div([       
-                                        # Button to access the File Viewer (viewer.py)
-                                        dbc.Button([html.I(className="bi bi-play me-2"),
-                                                "Viewer"], color="success", size="md",
-                                               href=f"/viewer/{project_name}/{directory.name}/none"),
-                                        dbc.Button([html.I(className="bi bi-download me-2"),
-                                                "Download"], id="btn_download_dir",size="md", class_name="mx-2"),
-                                                dcc.Download(id="download_directory")])
-                                ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-                            ], className="mb-3"),
-                    # Link back to project
-                    dcc.Link(
-                        html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
-                        className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                    dbc.Card([
-                        dbc.CardHeader('Files'),
-                        dbc.CardBody([
-                            # Filter file tags
-                            dbc.Row([
-                                dbc.Col(dbc.Input(id="filter_file_tags",
-                                    placeholder="Search file tags.. (e.g. 'CT')")),
-                                dbc.Col(dbc.Button("Filter", id="filter_file_tags_btn"))
-                            ], class_name="mb-3"),
+                        dbc.Col(dbc.Input(id="filter_file_tags",
+                            placeholder="Search file tags.. (e.g. 'CT')")),
+                        dbc.Col(dbc.Button(
+                            "Filter", id="filter_file_tags_btn"))
+                    ], class_name="mb-3"),
 
-                            # Display a table of the directory's files
-                            dbc.Spinner(html.Div(get_files_table(directory), id='files_table')),
-                    ])], class_name="mb-3"),
+                    # Display a table of the directory's files
+                    dbc.Spinner(html.Div(get_files_table(
+                        directory), id='files_table')),
+                ])], class_name="mb-3"),
 
-                    # Display a preview of the first file's content
-                    get_single_file_preview(directory),
-                ])
-        else:
-            raise Exception("No project and directory name was given.")
-    except:
-        return dbc.Alert("No Directory found", color="danger")
+            # Display a preview of the first file's content
+            get_single_file_preview(directory),
+        ])
+    else:
+        raise Exception("No project and directory name was given.")
+    

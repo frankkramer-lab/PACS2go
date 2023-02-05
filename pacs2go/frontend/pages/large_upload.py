@@ -35,13 +35,17 @@ du.configure_upload(get_app(), UPLOAD_FOLDER_ROOT)
 
 def get_project_names() -> List[str]:
     # Get List of all project names as html Options
-    with get_connection() as connection:
+    try:
+        connection = get_connection()
         project_list = []
 
         for p in connection.get_all_projects():
             project_list.append(html.Option(value=p.name))
 
         return project_list
+    
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
 
 
 def get_upload_component(id: str):

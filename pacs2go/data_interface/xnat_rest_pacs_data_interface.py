@@ -33,6 +33,7 @@ class XNAT():
                 # Return SessionID
                 self.session_id = response.text
                 self.cookies = {"JSESSIONID": self.session_id}
+                print(self.cookies)
                 # print(requests.get(self.server + "/xapi/users/username",cookies=self.cookies).text)
 
         elif session_id != None:
@@ -62,8 +63,12 @@ class XNAT():
         return self
 
     def __exit__(self, type, value, traceback) -> None:
-        # TODO: invalidate Session_id
-        pass
+        response = requests.post(
+                self.server + "/data/JSESSION/", cookies=self.cookies)
+        if response.status_code != 200:
+            raise Exception("Unable to invalidate session Id.")
+        else:
+            print("XNAT session was successfully invalidated.")
 
     def create_project(self, name: str) -> Optional['XNATProject']:
         headers = {'Content-Type': 'application/xml'}
@@ -432,8 +437,8 @@ class XNATDirectory():
             raise Exception(
                 "Something went wrong trying to delete this directory. " + str(response.status_code))
 
-    def get_file(self, file_name: str) -> 'XNATFile':
-        return XNATFile(self, file_name)
+    def get_file(self, file_name: str, format:str = None, content_type:str = None, tags:str = None, size:int = None) -> 'XNATFile':
+        return XNATFile(self, file_name, format, content_type, tags, size)
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
@@ -447,10 +452,10 @@ class XNATDirectory():
                 return []
 
             files = []
-            for f in file_results:
+            for file in file_results:
                 # Create List of all Project objectss
-                file = self.get_file(f['Name'])
-                files.append(file)
+                file_object = self.get_file(file['Name'], format=file['file_format'], content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
+                files.append(file_object)
 
             return files
 
@@ -477,26 +482,29 @@ class XNATDirectory():
 
 
 class XNATFile():
-    def __init__(self, directory: XNATDirectory, name: str) -> None:
+    def __init__(self, directory: XNATDirectory, name: str, format:str = None, content_type:str = None, tags:str = None, size:int = None) -> None:
         self.directory = directory
         self.name = name
 
-        # Get all files from this file's directory, single file not possible to retrieve metadata
-        response = requests.get(
-            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.directory.project.connection.cookies)
-
-        if response.status_code == 200:
-            all_files = response.json()['ResultSet']['Result']
-            try:
-                # Find correct file
-                self._metadata = next(
-                    item for item in all_files if item["Name"] == self.name)
-            except:
-                raise Exception(
-                    f"A File with this filename ({self.name}) does not exist. ")
+        if format and content_type and tags and size:
+            self._metadata = {'file_format': format, 'file_content': content_type, 'file_tags': tags, 'Size':size}
         else:
-            raise Exception(
-                f"Files could not be accessed. " + str(response.status_code))
+            # Get all files from this file's directory, because retrieving the metadata of a single file via a GET is not possible
+            response = requests.get(
+                self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.directory.project.connection.cookies)
+
+            if response.status_code == 200:
+                all_files = response.json()['ResultSet']['Result']
+                try:
+                    # Find correct file
+                    self._metadata = next(
+                        item for item in all_files if item["Name"] == self.name)
+                except:
+                    raise Exception(
+                        f"A File with this filename ({self.name}) does not exist. ")
+            else:
+                raise Exception(
+                    f"Files could not be accessed. " + str(response.status_code))
 
     @property
     def format(self) -> str:
@@ -520,6 +528,7 @@ class XNATFile():
             self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
+            # Write returned bytes to a temporary file
             with TemporaryDirectory() as tempdir:
                 path = tempdir + self.name
                 with open(path, "wb") as binary_file:

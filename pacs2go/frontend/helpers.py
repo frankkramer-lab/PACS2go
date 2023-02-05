@@ -20,7 +20,6 @@ def get_connection():
     if current_user.is_authenticated:
         user = current_user.id
         session_id = session.get("session_id")
-        print(session_id)
         connection_type = "XNAT"
         return Connection(server=server_url, username=user, session_id=session_id, kind=connection_type)
     else:

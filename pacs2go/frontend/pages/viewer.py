@@ -31,15 +31,14 @@ register_page(__name__, title='Viewer - PACS2go',
 
 def get_file_list(project_name: str, directory_name: str) -> List[File]:
     try:
-        with get_connection() as connection:
-            # Get current project (passed through url/path)
-            directory = connection.get_directory(project_name, directory_name)
-            # Return list of all the files in the directory
-            return directory.get_all_files()
+        connection = get_connection()
+        # Get current project (passed through url/path)
+        directory = connection.get_directory(project_name, directory_name)
+        # Return list of all the files in the directory
+        return directory.get_all_files()
 
-    except:
-        raise Exception("No directory found.")
-
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
 
 def show_file(file: File):
     if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
@@ -132,11 +131,11 @@ def file_card_view():
           State('directory', 'data'), State('project', 'data'))
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
     try:
-        with get_connection() as connection:
-            # Get file
-            file = connection.get_file(project_name, directory_name, chosen_file_name)
-            # Return visualization of file details if file exists
-            return [show_file(file)]
+        connection = get_connection()
+        # Get file
+        file = connection.get_file(project_name, directory_name, chosen_file_name)
+        # Return visualization of file details if file exists
+        return [show_file(file)]
     except:
         # Show nothing if file does not exist.
         return [dbc.Alert("No file was chosen.", color='warning')]
@@ -157,25 +156,27 @@ def func(n_clicks, file_data):
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     if not current_user.is_authenticated:
         return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
-    try:
-        if directory_name and project_name and file_name:
+
+    if directory_name and project_name and file_name:
+        try:
             # Get list of files
             files = get_file_list(project_name, directory_name)
-            return html.Div([
-                # dcc Store components for project and directory name strings
-                dcc.Store(id='directory', data=directory_name),
-                dcc.Store(id='project', data=project_name),
-                dcc.Link(
-                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
-                    className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                # Get Dropdown with file names
-                files_dropdown(files, file_name),
-                # Show file details of chosen file
-                file_card_view(),
-            ])
+        except Exception as err:
+            return dbc.Alert(str(err), color="danger")
+        return html.Div([
+            # dcc Store components for project and directory name strings
+            dcc.Store(id='directory', data=directory_name),
+            dcc.Store(id='project', data=project_name),
+            dcc.Link(
+                html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
+                className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
+            # Get Dropdown with file names
+            files_dropdown(files, file_name),
+            # Show file details of chosen file
+            file_card_view(),
+        ])
 
-        else:
-            return dbc.Alert("No Project or Directory specified.", color="danger")
+    else:
+        return dbc.Alert("No Project or Directory specified.", color="danger")
 
-    except Exception as err:
-        return dbc.Alert("No Directory found " + str(err), color="danger")
+
