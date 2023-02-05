@@ -11,6 +11,15 @@ import zipfile
 
 import requests
 
+# Accepted File formats/suffixes
+allowed_file_suffixes = (
+    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
+image_file_suffixes = (
+    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff')
+
+# File format metadata
+file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
+                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
 
 class XNAT():
     def __init__(self, server: str, username: str, password: str = None, session_id: str = None, kind: str = None) -> None:
@@ -33,7 +42,6 @@ class XNAT():
                 # Return SessionID
                 self.session_id = response.text
                 self.cookies = {"JSESSIONID": self.session_id}
-                print(self.cookies)
                 # print(requests.get(self.server + "/xapi/users/username",cookies=self.cookies).text)
 
         elif session_id != None:
@@ -335,16 +343,6 @@ class XNATProject():
             else:
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
-
-            # Accepted File formats/suffixes
-            allowed_file_suffixes = (
-                '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
-            image_file_suffixes = (
-                '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff')
-
-            # File format metadata for the REST query parameter
-            file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-                           '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
 
             # Lowercase file_path so things like '.PNG' aren't a problem
             lower_file_path = file_path.lower()
