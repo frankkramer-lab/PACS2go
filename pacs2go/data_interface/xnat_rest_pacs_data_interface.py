@@ -19,7 +19,8 @@ image_file_suffixes = (
 
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
+               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
+
 
 class XNAT():
     def __init__(self, server: str, username: str, password: str = None, session_id: str = None, kind: str = None) -> None:
@@ -72,7 +73,7 @@ class XNAT():
 
     def __exit__(self, type, value, traceback) -> None:
         response = requests.post(
-                self.server + "/data/JSESSION/", cookies=self.cookies)
+            self.server + "/data/JSESSION/", cookies=self.cookies)
         if response.status_code != 200:
             raise Exception("Unable to invalidate session Id.")
         else:
@@ -301,7 +302,7 @@ class XNATProject():
         else:
             raise Exception("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string='') -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction:bool = True, xnat_compressed_upload: bool = True) -> 'XNATDirectory':
         # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
@@ -313,22 +314,38 @@ class XNATProject():
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
 
-            with TemporaryDirectory() as tempdir:
-                with zipfile.ZipFile(file_path) as z:
-                    z.extractall(tempdir)
-                    dir_path = os.path.join(tempdir, os.listdir(tempdir)[0])
+            if xnat_compressed_upload:
+                # Open passed file and POST to XNAT endpoint with compressed upload (files will be extracted automatically)
+                with open(file_path, "rb") as file:
+                    response = requests.post(
+                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files?extract={zip_extraction}&tags={tags_string}", files={'file.zip': file}, cookies=self.connection.cookies)
 
-                    # Get all files, even those within a lower-level directory
-                    onlyfiles = []
-                    for (dirpath, dirnames, filenames) in os.walk(dir_path):
-                        onlyfiles.extend(filenames)
+                if response.status_code == 200:
+                    # Return inserted file
+                    return XNATDirectory(self, directory_name)
+                else:
+                    raise Exception(
+                        f"The file [{self.name}] could not be uploaded. " + str(response.status_code))
 
-                    # Insert files
-                    for f in onlyfiles:
-                        self.insert_file_into_project(
-                            os.path.join(dir_path, f), directory_name, tags_string)
+            else:
+                # Not using the xnat compressed upload means all files are extracted and uploaded individually including content_type and file format
+                with TemporaryDirectory() as tempdir:
+                    with zipfile.ZipFile(file_path) as z:
+                        z.extractall(tempdir)
+                        dir_path = os.path.join(
+                            tempdir, os.listdir(tempdir)[0])
 
-            return XNATDirectory(self, directory_name)
+                        # Get all files, even those within a lower-level directory
+                        onlyfiles = []
+                        for (dirpath, dirnames, filenames) in os.walk(dir_path):
+                            onlyfiles.extend(filenames)
+
+                        # Insert files
+                        for f in onlyfiles:
+                            self.insert_file_into_project(
+                                os.path.join(dir_path, f), directory_name, tags_string)
+
+                return XNATDirectory(self, directory_name)
 
         else:
             raise Exception("The input is not a zipfile.")
@@ -435,7 +452,7 @@ class XNATDirectory():
             raise Exception(
                 "Something went wrong trying to delete this directory. " + str(response.status_code))
 
-    def get_file(self, file_name: str, format:str = None, content_type:str = None, tags:str = None, size:int = None) -> 'XNATFile':
+    def get_file(self, file_name: str, format: str = None, content_type: str = None, tags: str = None, size: int = None) -> 'XNATFile':
         return XNATFile(self, file_name, format, content_type, tags, size)
 
     def get_all_files(self) -> List['XNATFile']:
@@ -452,7 +469,8 @@ class XNATDirectory():
             files = []
             for file in file_results:
                 # Create List of all Project objectss
-                file_object = self.get_file(file['Name'], format=file['file_format'], content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
+                file_object = self.get_file(file['Name'], format=file['file_format'],
+                                            content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
                 files.append(file_object)
 
             return files
@@ -480,12 +498,13 @@ class XNATDirectory():
 
 
 class XNATFile():
-    def __init__(self, directory: XNATDirectory, name: str, format:str = None, content_type:str = None, tags:str = None, size:int = None) -> None:
+    def __init__(self, directory: XNATDirectory, name: str, format: str = None, content_type: str = None, tags: str = None, size: int = None) -> None:
         self.directory = directory
         self.name = name
 
         if format and content_type and tags and size:
-            self._metadata = {'file_format': format, 'file_content': content_type, 'file_tags': tags, 'Size':size}
+            self._metadata = {
+                'file_format': format, 'file_content': content_type, 'file_tags': tags, 'Size': size}
         else:
             # Get all files from this file's directory, because retrieving the metadata of a single file via a GET is not possible
             response = requests.get(
@@ -493,6 +512,7 @@ class XNATFile():
 
             if response.status_code == 200:
                 all_files = response.json()['ResultSet']['Result']
+                print(all_files)
                 try:
                     # Find correct file
                     self._metadata = next(
@@ -506,10 +526,19 @@ class XNATFile():
 
     @property
     def format(self) -> str:
+        if "." in self.name:
+            extension = "." + self.name.split(".")[-1]
+            return file_format.get(extension.lower(), "Unknown")
         return self._metadata['file_format']
 
     @property
     def content_type(self) -> str:
+        if "." in self.name:
+            extension = "." + self.name.split(".")[-1]
+            if extension in image_file_suffixes:
+                return 'Image'
+            else:
+                return 'Metadata'
         return self._metadata['file_content']
 
     @property
@@ -523,7 +552,7 @@ class XNATFile():
     @property
     def data(self) -> str:
         response = requests.get(
-            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
+            self.directory.project.connection.server + self._metadata['URI'], cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
             # Write returned bytes to a temporary file

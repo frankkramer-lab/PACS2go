@@ -136,9 +136,9 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
         file = connection.get_file(project_name, directory_name, chosen_file_name)
         # Return visualization of file details if file exists
         return [show_file(file)]
-    except:
+    except Exception as err:
         # Show nothing if file does not exist.
-        return [dbc.Alert("No file was chosen.", color='warning')]
+        return [dbc.Alert(f"No file was chosen. {err}", color='warning')]
 
 @callback(
     Output("download-file", "data"),

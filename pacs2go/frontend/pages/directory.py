@@ -238,5 +238,4 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             get_single_file_preview(directory),
         ])
     else:
-        raise Exception("No project and directory name was given.")
-    
+        return dbc.Alert("No project and directory name was given.", color="danger")
