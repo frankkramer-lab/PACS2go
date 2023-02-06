@@ -1,12 +1,14 @@
 import random
-from tempfile import TemporaryDirectory
 import time
 import unittest
 import uuid
+from tempfile import TemporaryDirectory
 from zipfile import ZipFile
+
 from PIL import Image
 
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT, XNATProject, XNATDirectory
+from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
+from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATProject
 
 
 class TestConnection(unittest.TestCase):
@@ -209,4 +211,3 @@ class TestDataInterface(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

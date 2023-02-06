@@ -1,13 +1,13 @@
-from datetime import timedelta
 import os
-import requests
+from datetime import timedelta
 
 import dash_bootstrap_components as dbc
+import requests
 from dash import ALL
-from dash import Dash
-from dash import dcc
 from dash import callback
 from dash import ctx
+from dash import Dash
+from dash import dcc
 from dash import html
 from dash import Input
 from dash import no_update
@@ -15,6 +15,7 @@ from dash import Output
 from dash import page_container
 from dash import page_registry
 from dash.exceptions import PreventUpdate
+from dotenv import load_dotenv
 from flask import Flask
 from flask import redirect
 from flask import request
@@ -28,8 +29,6 @@ from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import restricted_page
 from pacs2go.frontend.helpers import server_url
 
-from dotenv import load_dotenv
-
 # Load environment variables from the .env file
 load_dotenv()
 
@@ -39,6 +38,7 @@ server = Flask(__name__)
 
 # Updating the Flask Server configuration with Secret Key to encrypt the user session cookie
 server.config.update(SECRET_KEY=os.getenv("SECRET_KEY"))
+server.config['REMEMBER_COOKIE_DURATION'] = timedelta(minutes=10)
 
 # Dash App
 app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages", use_pages=True, server=server,
@@ -79,7 +79,6 @@ class User(UserMixin):
         return False
 
 
-
 class XNATAuthBackend:
     def authenticate(self, username, password):
         # Send request to XNAT server to authenticate user
@@ -107,14 +106,16 @@ class XNATAuthBackend:
 
 
 server.config["AUTH_TYPE"] = "XNAT"
-login_manager.session_protection = "strong"
+# TODO: production: https://flask-login.readthedocs.io/en/latest/#session-protection set to "strong"
+login_manager.session_protection = None
 login_manager.auth_backend = XNATAuthBackend()
+
 
 @server.before_request
 def make_session_permanent():
     session.permanent = True
     # Defualt permanent_session_lifetime is 31days
-    server.permanent_session_lifetime = timedelta(minutes=5)
+    server.permanent_session_lifetime = timedelta(minutes=10)
 
 
 @server.route('/login', methods=['POST'])
@@ -219,7 +220,8 @@ def update_authentication_status(path, n):
     if path in ['/login', '/logout']:
         return '', no_update
 
-@app.callback(Output("output-state", "children"),Input("url", "pathname"))
+
+@app.callback(Output("output-state", "children"), Input("url", "pathname"))
 def login_feedback(path):
     if path == '/login/':
         return dbc.Alert("Wrong username or password.", color="danger")

@@ -8,24 +8,22 @@ from typing import Optional
 import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
+import pydicom
 from dash import callback
 from dash import dash_table
 from dash import dcc
 from dash import html
 from dash import Input
-from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
-from PIL import Image
 from flask_login import current_user
+from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import pil_to_b64
-
-import pydicom
 # from dash_slicer import VolumeSlicer
 # from nilearn import image
 
@@ -45,8 +43,9 @@ def get_file_list(project_name: str, directory_name: str) -> List[File]:
     except Exception as err:
         return dbc.Alert(str(err), color="danger")
 
+
 def show_file(file: File):
-    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
         # Display JPEG contents as html Img
         encoded_image = base64.b64encode(file.data).decode("utf-8")
         content = html.Img(id="my-img", className="image", width="100%",
@@ -82,7 +81,8 @@ def show_file(file: File):
     elif file.format == 'DICOM':
         # Display of DICOM file
         dcm = pydicom.dcmread(io.BytesIO(file.data))
-        new_image = dcm.pixel_array.astype(float) # Convert the values into float
+        new_image = dcm.pixel_array.astype(
+            float)  # Convert the values into float
 
         # White-Black leveling
         image_correct_bw = (np.maximum(new_image, 0) / new_image.max()) * 255.0
@@ -97,7 +97,8 @@ def show_file(file: File):
             html.H5(f"Study Date: {dcm.StudyDate}"),
             html.H5(f"Study Description: {dcm.StudyDescription}"),
             # ... (add any other relevant information that you want to display)
-            html.Img(id="my-img", className="image", width="100%", src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
+            html.Img(id="my-img", className="image", width="100%",
+                     src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
         ]))
 
     else:
@@ -110,13 +111,15 @@ def show_file(file: File):
         dbc.CardBody(
             [
                 html.H6([html.B("File Name: "), f"{file.name}"]),
-                html.H6([html.B("File Format: "),f"{file.format}"]),
-                html.H6([html.B("File Content Type: "),f"{file.content_type}"]),
-                html.H6([html.B("File Tags: "),f"{file.tags}"]),
+                html.H6([html.B("File Format: "), f"{file.format}"]),
+                html.H6([html.B("File Content Type: "),
+                        f"{file.content_type}"]),
+                html.H6([html.B("File Tags: "), f"{file.tags}"]),
                 html.H6([html.B("File Size: "),
-                    f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
+                         f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.Div([content]),
-                html.Div([dbc.Button("Download File", id="btn_download"),dcc.Download(id="download-file"), dcc.Store(data=file.name,id='file_name')], className="mt-3")
+                html.Div([dbc.Button("Download File", id="btn_download"), dcc.Download(
+                    id="download-file"), dcc.Store(data=file.name, id='file_name')], className="mt-3")
             ],))
 
     return data
@@ -159,19 +162,22 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
     try:
         connection = get_connection()
         # Get file
-        file = connection.get_file(project_name, directory_name, chosen_file_name)
+        file = connection.get_file(
+            project_name, directory_name, chosen_file_name)
         # Return visualization of file details if file exists
         return [show_file(file)]
     except Exception as err:
         # Show nothing if file does not exist.
         return [dbc.Alert(f"No file was chosen. {err}", color='warning')]
 
+
 @callback(
     Output("download-file", "data"),
-    Input("btn_download", "n_clicks"), State("file_name", "data"), State('directory', 'data'), State('project', 'data'),
+    Input("btn_download", "n_clicks"), State("file_name", "data"), State(
+        'directory', 'data'), State('project', 'data'),
     prevent_initial_call=True,
 )
-def func(n_clicks, file_name,dir,project):
+def func(n_clicks, file_name, dir, project):
     with TemporaryDirectory() as tempdir:
         try:
             connection = get_connection()
@@ -181,7 +187,7 @@ def func(n_clicks, file_name,dir,project):
             return dcc.send_file(temp_dest)
         except:
             dbc.Alert("Download unsuccessful.", color='warning')
-    
+
 
 #################
 #  Page Layout  #
@@ -213,5 +219,3 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
 
     else:
         return dbc.Alert("No Project or Directory specified.", color="danger")
-
-

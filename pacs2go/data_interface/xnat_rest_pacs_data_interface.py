@@ -1,13 +1,13 @@
 import datetime
 import os
 import pathlib
+import uuid
+import zipfile
 from tempfile import TemporaryDirectory
 from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Union
-import uuid
-import zipfile
 
 import requests
 
@@ -302,7 +302,7 @@ class XNATProject():
         else:
             raise Exception("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction:bool = True, xnat_compressed_upload: bool = True) -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = True) -> 'XNATDirectory':
         # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
@@ -514,7 +514,7 @@ class XNATFile():
             if response.status_code == 200:
                 all_files = response.json()['ResultSet']['Result']
                 try:
-                    # Find correct file and extract metadata 
+                    # Find correct file and extract metadata
                     self._metadata = next(
                         item for item in all_files if item["Name"] == self.name)
                 except:
@@ -535,7 +535,6 @@ class XNATFile():
             return file_format.get(extension.lower(), "Unknown")
         else:
             return 'N/A'
-        
 
     @property
     def content_type(self) -> str:
@@ -551,7 +550,6 @@ class XNATFile():
                 return 'Metadata'
         else:
             return 'N/A'
-
 
     @property
     def tags(self) -> str:
@@ -600,7 +598,8 @@ class XNATFile():
                 binary_file.write(response.content)
             return path
         else:
-            raise Exception("Download was not possible." + str(response.status_code))
+            raise Exception("Download was not possible." +
+                            str(response.status_code))
 
     def delete_file(self) -> None:
         response = requests.delete(

@@ -17,7 +17,6 @@ from dash import Output
 from dash import register_page
 from dash import State
 from dash.exceptions import PreventUpdate
-from PIL import Image
 from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import Directory
@@ -216,7 +215,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 # Button to access the File Viewer (viewer.py)
                                 dbc.Button([html.I(className="bi bi-play me-2"),
                                             "Viewer"], color="success", size="md",
-                                            href=f"/viewer/{project_name}/{directory.name}/none"),
+                                           href=f"/viewer/{project_name}/{directory.name}/none"),
                                 dbc.Button([html.I(className="bi bi-download me-2"),
                                             "Download"], id="btn_download_dir", size="md", class_name="mx-2"),
                                 dcc.Download(id="download_directory")])
