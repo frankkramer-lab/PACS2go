@@ -1,5 +1,3 @@
-from typing import List
-
 import dash_bootstrap_components as dbc
 from dash import callback
 from dash import ctx
@@ -11,6 +9,7 @@ from dash import Output
 from dash import register_page
 from dash import State
 from dash.exceptions import PreventUpdate
+from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
@@ -23,14 +22,17 @@ register_page(__name__, title='Projects - PACS2go', path='/projects')
 
 
 def get_projects_table(filter: str = ''):
-    # Get list of all project names, specific user roles and number of directories per project
-    rows = []
-    with get_connection() as connection:
+    try:
+        # Get list of all project names, specific user roles and number of directories per project
+        connection = get_connection()
+        rows = []
         for p in connection.get_all_projects():
             if filter.lower() in p.keywords.lower() or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
                     p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords)]))
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
 
     table_header = [
         html.Thead(
@@ -109,12 +111,12 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         # Project name cannot contain whitespaces
         project_name = str(project_name).replace(" ", "_")
         try:
-            with get_connection() as connection:
-                # Try to create project
-                project = Project(connection, project_name)
-                project.set_description(description)
-                project.set_keywords(keywords)
-                return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_creation")
+            connection = get_connection()
+            # Try to create project
+            project = Project(connection, project_name)
+            project.set_description(description)
+            project.set_keywords(keywords)
+            return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_creation")
         except Exception as err:
             # TODO: differentiate between different exceptions
             return is_open, dbc.Alert(str(err), color="danger")
@@ -137,6 +139,8 @@ def filter_projects_table(btn, filter):
 #################
 
 def layout():
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
     return html.Div(children=[
         # Header including page title and create button
         html.Div([

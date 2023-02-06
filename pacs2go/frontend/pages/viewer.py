@@ -1,19 +1,23 @@
+import base64
+import io
 import json
+from tempfile import TemporaryDirectory
 from typing import List
 from typing import Optional
 
 import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
+import pydicom
 from dash import callback
 from dash import dash_table
 from dash import dcc
 from dash import html
 from dash import Input
-from dash import no_update
 from dash import Output
 from dash import register_page
 from dash import State
+from flask_login import current_user
 from PIL import Image
 
 from pacs2go.data_interface.pacs_data_interface import File
@@ -30,30 +34,35 @@ register_page(__name__, title='Viewer - PACS2go',
 
 def get_file_list(project_name: str, directory_name: str) -> List[File]:
     try:
-        with get_connection() as connection:
-            # Get current project (passed through url/path)
-            directory = connection.get_directory(project_name, directory_name)
-            # Return list of all the files in the directory
-            return directory.get_all_files()
+        connection = get_connection()
+        # Get current project (passed through url/path)
+        directory = connection.get_directory(project_name, directory_name)
+        # Return list of all the files in the directory
+        return directory.get_all_files()
 
-    except:
-        raise Exception("No directory found.")
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
 
 
 def show_file(file: File):
-    if file.format == 'JPEG' or file.format == 'PNG' or file.format=='TIFF':
+    if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
         # Display JPEG contents as html Img
-        content = html.Img(id="my-img", className="image",
-                           src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+        encoded_image = base64.b64encode(file.data).decode("utf-8")
+        content = html.Img(id="my-img", className="image", width="100%",
+                           src=f"data:image/png;base64,{encoded_image}")
 
     elif file.format == 'JSON':
-        # Display contents of a JSON file as string
-        f = open(file.data)
-        content = json.dumps(json.load(f))
+        # Display contents of a JSON file
+        json_str = file.data.decode("utf-8")
+        json_data = json.loads(json_str)
+        content = html.Pre(json.dumps(json_data, indent=2))
 
     elif file.format == 'CSV':
-        df = pd.read_csv(file.data)
-        content = dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
+        # Display CSV as data table
+        csv_str = file.data.decode("utf-8")
+        df = pd.read_csv(io.StringIO(csv_str))
+        content = dash_table.DataTable(df.to_dict(
+            'records'), [{"name": i, "id": i} for i in df.columns])
 
     elif file.format == 'NIFTI':
         # TODO: implement dash-slicer --> check if dash version is compatible (CURRENT PROBLEM: graph is empty)
@@ -70,9 +79,27 @@ def show_file(file: File):
             "At this current version NIFTI files can not be displayed.", color="danger")
 
     elif file.format == 'DICOM':
-        # Display of DICOM files is currently not implemented
-        content = dbc.Alert(
-            "At this current version DICOM files can not be displayed.", color="danger")
+        # Display of DICOM file
+        dcm = pydicom.dcmread(io.BytesIO(file.data))
+        new_image = dcm.pixel_array.astype(
+            float)  # Convert the values into float
+
+        # White-Black leveling
+        image_correct_bw = (np.maximum(new_image, 0) / new_image.max()) * 255.0
+
+        # Convert to PIL
+        image_correct_bw = np.uint8(image_correct_bw)
+        final_image = Image.fromarray(image_correct_bw)
+
+        content = dbc.Card(dbc.CardBody([
+            html.H3(f"DICOM Information"),
+            html.H5(f"Patient Name: {dcm.PatientName}"),
+            html.H5(f"Study Date: {dcm.StudyDate}"),
+            html.H5(f"Study Description: {dcm.StudyDescription}"),
+            # ... (add any other relevant information that you want to display)
+            html.Img(id="my-img", className="image", width="100%",
+                     src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
+        ]))
 
     else:
         # Handle all other file formats that are at this point not displayable
@@ -84,13 +111,15 @@ def show_file(file: File):
         dbc.CardBody(
             [
                 html.H6([html.B("File Name: "), f"{file.name}"]),
-                html.H6([html.B("File Format: "),f"{file.format}"]),
-                html.H6([html.B("File Content Type: "),f"{file.content_type}"]),
-                html.H6([html.B("File Tags: "),f"{file.tags}"]),
+                html.H6([html.B("File Format: "), f"{file.format}"]),
+                html.H6([html.B("File Content Type: "),
+                        f"{file.content_type}"]),
+                html.H6([html.B("File Tags: "), f"{file.tags}"]),
                 html.H6([html.B("File Size: "),
-                    f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
+                         f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.Div([content]),
-                html.Div([dbc.Button("Download File", id="btn_download"),dcc.Download(id="download-file"), dcc.Store(data=file.data,id='file_data')], className="mt-3")
+                html.Div([dbc.Button("Download File", id="btn_download"), dcc.Download(
+                    id="download-file"), dcc.Store(data=file.name, id='file_name')], className="mt-3")
             ],))
 
     return data
@@ -131,22 +160,34 @@ def file_card_view():
           State('directory', 'data'), State('project', 'data'))
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
     try:
-        with get_connection() as connection:
-            # Get file
-            file = connection.get_file(project_name, directory_name, chosen_file_name)
-            # Return visualization of file details if file exists
-            return [show_file(file)]
-    except:
+        connection = get_connection()
+        # Get file
+        file = connection.get_file(
+            project_name, directory_name, chosen_file_name)
+        # Return visualization of file details if file exists
+        return [show_file(file)]
+    except Exception as err:
         # Show nothing if file does not exist.
-        return [dbc.Alert("No file was chosen.", color='warning')]
+        return [dbc.Alert(f"No file was chosen. {err}", color='warning')]
+
 
 @callback(
     Output("download-file", "data"),
-    Input("btn_download", "n_clicks"), State("file_data", "data"),
+    Input("btn_download", "n_clicks"), State("file_name", "data"), State(
+        'directory', 'data'), State('project', 'data'),
     prevent_initial_call=True,
 )
-def func(n_clicks, file_data):
-    return dcc.send_file(file_data)
+def func(n_clicks, file_name, dir, project):
+    with TemporaryDirectory() as tempdir:
+        try:
+            connection = get_connection()
+            file = connection.get_file(project, dir, file_name)
+            temp_dest = file.download(destination=tempdir)
+            print(file_name, temp_dest)
+            return dcc.send_file(temp_dest)
+        except:
+            dbc.Alert("Download unsuccessful.", color='warning')
+
 
 #################
 #  Page Layout  #
@@ -154,25 +195,27 @@ def func(n_clicks, file_data):
 
 
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
-    try:
-        if directory_name and project_name and file_name:
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+
+    if directory_name and project_name and file_name:
+        try:
             # Get list of files
             files = get_file_list(project_name, directory_name)
-            return html.Div([
-                # dcc Store components for project and directory name strings
-                dcc.Store(id='directory', data=directory_name),
-                dcc.Store(id='project', data=project_name),
-                dcc.Link(
-                    html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
-                    className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
-                # Get Dropdown with file names
-                files_dropdown(files, file_name),
-                # Show file details of chosen file
-                file_card_view(),
-            ])
+        except Exception as err:
+            return dbc.Alert(str(err), color="danger")
+        return html.Div([
+            # dcc Store components for project and directory name strings
+            dcc.Store(id='directory', data=directory_name),
+            dcc.Store(id='project', data=project_name),
+            dcc.Link(
+                html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
+                className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
+            # Get Dropdown with file names
+            files_dropdown(files, file_name),
+            # Show file details of chosen file
+            file_card_view(),
+        ])
 
-        else:
-            return dbc.Alert("No Project or Directory specified.", color="danger")
-
-    except Exception as err:
-        return dbc.Alert("No Directory found " + str(err), color="danger")
+    else:
+        return dbc.Alert("No Project or Directory specified.", color="danger")

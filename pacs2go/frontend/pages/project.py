@@ -12,6 +12,7 @@ from dash import Output
 from dash import register_page
 from dash import State
 from dash.exceptions import PreventUpdate
+from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
@@ -181,14 +182,14 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
 
     if ctx.triggered_id == "delete_and_close":
         try:
-            with get_connection() as connection:
-                project = connection.get_project(project_name)
+            connection = get_connection()
+            project = connection.get_project(project_name)
 
-                if project:
-                    project.delete_project()
+            if project:
+                project.delete_project()
 
-                # Redirect to project list after deletion
-                return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_delete")
+            # Redirect to project list after deletion
+            return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_delete")
 
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
@@ -211,16 +212,16 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
     # Delete Button in Modal View
     if ctx.triggered_id == "delete_data_and_close":
         try:
-            with get_connection() as connection:
-                project = connection.get_project(project_name)
-                if project:
-                    dirs = project.get_all_directories()
-                    if len(dirs) == 0:
-                        return is_open,  dbc.Alert("Project is empty", color="danger")
-                    else:
-                        for d in dirs:
-                            d.delete_directory()
-                        return not is_open, no_update
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            if project:
+                dirs = project.get_all_directories()
+                if len(dirs) == 0:
+                    return is_open,  dbc.Alert("Project is empty", color="danger")
+                else:
+                    for d in dirs:
+                        d.delete_directory()
+                    return not is_open, no_update
 
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
@@ -245,15 +246,15 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
     # User does everything "right"
     elif ctx.triggered_id == "edit_and_close":
         try:
-            with get_connection() as connection:
-                project = connection.get_project(project_name)
-                if description:
-                    # Set new description
-                    project.set_description(description)
-                if keywords:
-                    # Set new keywords
-                    project.set_keywords(keywords)
-                return not is_open, no_update, get_details(project)
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            if description:
+                # Set new description
+                project.set_description(description)
+            if keywords:
+                # Set new keywords
+                project.set_keywords(keywords)
+            return not is_open, no_update, get_details(project)
         except Exception as err:
             # TODO: differentiate between different exceptions
             return is_open, dbc.Alert(str(err), color="danger"), no_update
@@ -269,8 +270,11 @@ def filter_files_table(btn, filter, project_name):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn':
         if filter or filter == "":
-            with get_connection() as connection:
+            try:
+                connection = get_connection()
                 return get_directories_table(connection.get_project(project_name), filter)
+            except Exception as err:
+                return dbc.Alert(f"{err}", color="danger")
         else:
             raise PreventUpdate
     else:
@@ -284,13 +288,15 @@ def filter_files_table(btn, filter, project_name):
 )
 def func(n_clicks, project_name):
     if ctx.triggered_id == 'btn_download_project':
-        with get_connection() as connection:
+        try:
+            connection = get_connection()
             project = connection.get_project(project_name)
-            if project:
-                with TemporaryDirectory() as tempdir:
-                    # Get directory as zip to a tempdir and then send it to browser
-                    zipped_project_data = project.download(tempdir)
-                    return dcc.send_file(zipped_project_data)
+            with TemporaryDirectory() as tempdir:
+                # Get directory as zip to a tempdir and then send it to browser
+                zipped_project_data = project.download(tempdir)
+                return dcc.send_file(zipped_project_data)
+        except Exception as err:
+            return dbc.Alert(f"{err}", color="danger")
     else:
         raise PreventUpdate
 
@@ -300,48 +306,49 @@ def func(n_clicks, project_name):
 #################
 
 def layout(project_name: Optional[str] = None):
-    try:
-        if project_name:
-            with get_connection() as connection:
-                project = connection.get_project(project_name)
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+    if project_name:
+        try:
+            connection = get_connection()
+            project = connection.get_project(project_name)
+        except Exception as err:
+            return dbc.Alert(f"No Project found. + {err}", color="danger")
+        return html.Div([
+            dcc.Store(id='project_store', data=project.name),
+            # Header including page title and action buttons
+            dbc.Row([
+                dbc.Col(html.H1(f"Project {project.name}", style={
+                        'textAlign': 'left', })),
+                dbc.Col(
+                    [insert_data(project),
+                        modal_edit_project(project),
+                        download_project_data(),
+                        modal_delete(project),
+                        modal_delete_data(project)], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+            ], className="mb-3"),
+            # Project Information (owners,..)
+            dbc.Card([
+                dbc.CardHeader("Details"),
+                dbc.CardBody(get_details(project), id="details_card")], class_name="mb-3"),
+            dbc.Card([
+                dbc.CardHeader('Directories'),
+                dbc.CardBody([
+                    # Filter file tags
+                    dbc.Row([
+                        dbc.Col(dbc.Input(id="filter_directory_tags",
+                            placeholder="Search keywords.. (e.g. 'CT')")),
+                        dbc.Col(dbc.Button(
+                            "Filter", id="filter_directory_tags_btn"))
+                    ], class_name="mb-3"),
+                    # Directories Table
+                    html.Div(get_directories_table(
+                        project), id='directory_table'),
+                ])], class_name="mb-3"),
 
-                if project:
-                    return html.Div([
-                        dcc.Store(id='project_store', data=project.name),
-                        # Header including page title and action buttons
-                        dbc.Row([
-                            dbc.Col(html.H1(f"Project {project.name}", style={
-                                    'textAlign': 'left', })),
-                            dbc.Col(
-                                [insert_data(project),
-                                 modal_edit_project(project),
-                                 download_project_data(),
-                                 modal_delete(project),
-                                 modal_delete_data(project)], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-                        ], className="mb-3"),
-                        # Project Information (owners,..)
-                        dbc.Card([
-                            dbc.CardHeader("Details"),
-                            dbc.CardBody(get_details(project), id="details_card")], class_name="mb-3"),
-                        dbc.Card([
-                            dbc.CardHeader('Directories'),
-                            dbc.CardBody([
-                                # Filter file tags
-                                dbc.Row([
-                                    dbc.Col(dbc.Input(id="filter_directory_tags",
-                                        placeholder="Search keywords.. (e.g. 'CT')")),
-                                    dbc.Col(dbc.Button(
-                                        "Filter", id="filter_directory_tags_btn"))
-                                ], class_name="mb-3"),
-                                # Directories Table
-                                html.Div(get_directories_table(
-                                    project), id='directory_table'),
-                            ])], class_name="mb-3"),
+        ])
 
-                    ])
+    else:
+        return dbc.Alert("No Project found.", color="danger")
 
-                else:
-                    return dbc.Alert("No Project found.", color="danger")
 
-    except Exception as err:
-        return dbc.Alert(f"No Project found. + {err}", color="danger")

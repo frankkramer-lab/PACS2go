@@ -2,6 +2,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc
 from dash import html
 from dash import register_page
+from flask_login import current_user
 
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
@@ -10,13 +11,13 @@ register_page(__name__, title='PACS2go 2.0', path='/')
 
 
 def card_view_projects():
-    with get_connection() as connection:
-        try:
-            projects = connection.get_all_projects()
-            number_of_projects = len(projects)
+    connection = get_connection()
+    try:
+        projects = connection.get_all_projects()
+        number_of_projects = len(projects)
 
-        except:
-            return dbc.Alert("Projects could not be retrieved.")
+    except Exception as err:
+        return dbc.Alert("Projects could not be retrieved." + str(err))
 
     project_list = []
     # Only show 8 projects on landing page
@@ -67,11 +68,14 @@ def card_view_upload():
 #################
 
 def layout():
-    return [
-        html.H1('Welcome to PACS2go 2.0'),
-        html.Div('Exchange medical files.'),
-        dbc.Row([
-            dbc.Col(card_view_projects(),),
-            dbc.Col(card_view_upload(),),
-        ], class_name="my-3")
-    ]
+    if not current_user.is_authenticated:
+        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+    else:
+        return [
+            html.H1(f'Welcome to PACS2go 2.0, {current_user.id}!'),
+            html.Div('Exchange medical files.'),
+            dbc.Row([
+                dbc.Col(card_view_projects(),),
+                dbc.Col(card_view_upload(),),
+            ], class_name="my-3")
+        ]
