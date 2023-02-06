@@ -503,18 +503,18 @@ class XNATFile():
         self.name = name
 
         if format and content_type and tags and size:
+            # Format etc will be passed in case of the Directory's get_all_files method, this will speed up the metadata extraction process
             self._metadata = {
                 'file_format': format, 'file_content': content_type, 'file_tags': tags, 'Size': size}
         else:
-            # Get all files from this file's directory, because retrieving the metadata of a single file via a GET is not possible
+            # Get all files from this file's directory (retrieving the metadata of a single file via a GET is not possible)
             response = requests.get(
                 self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.directory.project.connection.cookies)
 
             if response.status_code == 200:
                 all_files = response.json()['ResultSet']['Result']
-                print(all_files)
                 try:
-                    # Find correct file
+                    # Find correct file and extract metadata 
                     self._metadata = next(
                         item for item in all_files if item["Name"] == self.name)
                 except:
@@ -526,46 +526,59 @@ class XNATFile():
 
     @property
     def format(self) -> str:
-        if "." in self.name:
+        if self._metadata['file_format'] != '':
+            # If file format is either passed or stored in XNAT
+            return self._metadata['file_format']
+        elif "." in self.name:
+            # Retrieve information from file name
             extension = "." + self.name.split(".")[-1]
             return file_format.get(extension.lower(), "Unknown")
-        return self._metadata['file_format']
+        else:
+            return 'N/A'
+        
 
     @property
     def content_type(self) -> str:
-        if "." in self.name:
+        if self._metadata['file_content'] != '':
+            # If content type is either passed or stored in XNAT
+            return self._metadata['file_content']
+        elif "." in self.name:
+            # Retrieve information from file name
             extension = "." + self.name.split(".")[-1]
             if extension in image_file_suffixes:
                 return 'Image'
             else:
                 return 'Metadata'
-        return self._metadata['file_content']
+        else:
+            return 'N/A'
+
 
     @property
     def tags(self) -> str:
-        return self._metadata['file_tags']
+        if self._metadata['file_tags'] != '':
+            return self._metadata['file_tags']
+        else:
+            return 'No tags'
 
     @property
     def size(self) -> int:
         return int(self._metadata['Size'])
 
     @property
-    def data(self) -> str:
+    def data(self) -> bytes:
+        # Uses retrieved URI as endpoint
+        # Useful for xnat compressed uploads where endpoint contains more than just filename (folders etc)
+        # Example: '/data/projects/8412ac46-3752-4c3a-a2e1-73d9fa63e9e5_test1/resources/1118/files/jpegs_25/Case-3-A14-39214-1868.jpg'
         response = requests.get(
             self.directory.project.connection.server + self._metadata['URI'], cookies=self.directory.project.connection.cookies)
 
         if response.status_code == 200:
-            # Write returned bytes to a temporary file
-            with TemporaryDirectory() as tempdir:
-                path = tempdir + self.name
-                with open(path, "wb") as binary_file:
-                    # Write bytes to temp file
-                    binary_file.write(response.content)
-                return tempdir + self.name
+            # Return bytes
+            return response.content
 
         else:
             raise Exception(
-                f"The file [{self.name}] could not be retrieved. " + str(response.status_code))
+                f"The file data for [{self.name}] could not be retrieved. " + str(response.status_code))
 
     def exists(self) -> bool:
         response = requests.get(
@@ -586,6 +599,8 @@ class XNATFile():
                 # Write bytes to file
                 binary_file.write(response.content)
             return path
+        else:
+            raise Exception("Download was not possible." + str(response.status_code))
 
     def delete_file(self) -> None:
         response = requests.delete(

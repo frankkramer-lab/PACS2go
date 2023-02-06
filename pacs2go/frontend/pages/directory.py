@@ -1,3 +1,5 @@
+import base64
+import io
 import json
 from tempfile import TemporaryDirectory
 from typing import Optional
@@ -31,16 +33,22 @@ register_page(__name__, title='Directory - PACS2go',
 # Preview first image within the directory
 def get_single_file_preview(directory: Directory):
     file = directory.get_all_files()[0]
+    file = directory.get_file(file.name)
     if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
+        # Display jpeg, png or tiff bytes as image
+        encoded_image = base64.b64encode(file.data).decode("utf-8")
         content = html.Img(id="my-img", className="image", width="100%",
-                           src="data:image/png;base64, " + pil_to_b64(Image.open(file.data)))
+                           src=f"data:image/png;base64,{encoded_image}")
     elif file.format == 'JSON':
-        # Display contents of a JSON file as string
-        f = open(file.data)
-        content = json.dumps(json.load(f))
+        # Display contents of a JSON file
+        json_str = file.data.decode("utf-8")
+        json_data = json.loads(json_str)
+        content = html.Pre(json.dumps(json_data, indent=2))
 
     elif file.format == 'CSV':
-        df = pd.read_csv(file.data)
+        # Display CSV as data table
+        csv_str = file.data.decode("utf-8")
+        df = pd.read_csv(io.StringIO(csv_str))
         content = dash_table.DataTable(df.to_dict(
             'records'), [{"name": i, "id": i} for i in df.columns])
     else:
