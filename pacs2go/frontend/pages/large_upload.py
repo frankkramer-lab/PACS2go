@@ -40,7 +40,8 @@ def get_project_names() -> List[str]:
         project_list = []
 
         for p in connection.get_all_projects():
-            project_list.append(html.Option(value=p.name))
+            if p.your_user_role != 'Collaborators':
+                project_list.append(html.Option(value=p.name))
 
         return project_list
     

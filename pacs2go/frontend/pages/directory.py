@@ -88,33 +88,34 @@ def get_files_table(directory: Directory, filter: str = ''):
 
 
 def modal_delete(directory: Directory):
-    # Modal view for directory deletion
-    return html.Div([
-        # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-trash me-2"),
-                    "Delete Directory"], id="delete_directory", size="md", color="danger"),
-        # Actual modal view
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle(
-                    f"Delete Directory {directory.name}")),
-                dbc.ModalBody([
-                    html.Div(id="delete-directory-content"),
-                    dbc.Label(
-                        "Are you sure you want to delete this directory and all its data?"),
-                ]),
-                dbc.ModalFooter([
-                    # Button which triggers the deletion of the directory
-                    dbc.Button("Delete Directory",
-                               id="delete_directory_and_close", color="danger"),
-                    # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_delete_directory"),
-                ]),
-            ],
-            id="modal_delete_directory",
-            is_open=False,
-        ),
-    ])
+    if directory.project.your_user_role == 'Owners':
+        # Modal view for directory deletion
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-trash me-2"),
+                        "Delete Directory"], id="delete_directory", size="md", color="danger"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Delete Directory {directory.name}")),
+                    dbc.ModalBody([
+                        html.Div(id="delete-directory-content"),
+                        dbc.Label(
+                            "Are you sure you want to delete this directory and all its data?"),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the deletion of the directory
+                        dbc.Button("Delete Directory",
+                                id="delete_directory_and_close", color="danger"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_delete_directory"),
+                    ]),
+                ],
+                id="modal_delete_directory",
+                is_open=False,
+            ),
+        ])
 
 
 #################

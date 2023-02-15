@@ -26,7 +26,8 @@ def get_details(project: Project):
     description = "Description: " + project.description
     keywords = "Keywords: " + project.keywords
     owners = "Owners: " + ', '.join(project.owners)
-    return [html.H6(owners), html.H6(description), html.H6(keywords)]
+    user_role = "You're part of the '" + project.your_user_role.capitalize() + "' user group."
+    return [html.H6(owners), html.H6(description), html.H6(keywords), html.H6(user_role)]
 
 
 def get_directories_table(project: Project, filter: str = ''):
@@ -52,110 +53,114 @@ def get_directories_table(project: Project, filter: str = ''):
 
 
 def modal_delete(project: Project):
-    # Modal view for project deletion
-    return html.Div([
-        # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-trash me-2"),
-                    "Delete Project"], id="delete_project", size="md", color="danger"),
-        # Actual modal view
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle(
-                    f"Delete Project {project.name}")),
-                dbc.ModalBody([
-                    html.Div(id="delete-project-content"),
-                    dbc.Label(
-                        "Are you sure you want to delete this project and all its data?"),
-                    dbc.Input(id="project", value=project.name, disabled=True),
-                ]),
-                dbc.ModalFooter([
-                    # Button which triggers the deletion of a project (see modal_and_project_creation)
-                    dbc.Button("Delete Project",
-                               id="delete_and_close", color="danger"),
-                    # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_delete"),
-                ]),
-            ],
-            id="modal_delete",
-            is_open=False,
-        ),
-    ])
+    if project.your_user_role == 'Owners':
+        # Modal view for project deletion
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-trash me-2"),
+                        "Delete Project"], id="delete_project", size="md", color="danger"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Delete Project {project.name}")),
+                    dbc.ModalBody([
+                        html.Div(id="delete-project-content"),
+                        dbc.Label(
+                            "Are you sure you want to delete this project and all its data?"),
+                        dbc.Input(id="project", value=project.name, disabled=True),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the deletion of a project (see modal_and_project_creation)
+                        dbc.Button("Delete Project",
+                                id="delete_and_close", color="danger"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_delete"),
+                    ]),
+                ],
+                id="modal_delete",
+                is_open=False,
+            ),
+        ])
 
 
 def modal_delete_data(project: Project):
     # Modal view for deleting all directories of a project
-    return html.Div([
-        # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-trash me-2"),
-                    "Delete All Directories"], id="delete_project_data", size="md", color="danger"),
-        # Actual modal view
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle(
-                    f"Delete All Project {project.name} Directories")),
-                dbc.ModalBody([
-                    html.Div(id="delete-project-data-content"),
-                    dbc.Label(
-                        "Are you sure you want to delete all directories of this project? This will empty the entire project."),
-                    dbc.Input(id="project_2",
-                              value=project.name, disabled=True),
-                ]),
-                dbc.ModalFooter([
-                    # Button which triggers the directory deletion (see modal_and_project_creation)
-                    dbc.Button("Delete All Directories",
-                               id="delete_data_and_close", color="danger"),
-                    # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_delete_data"),
-                ]),
-            ],
-            id="modal_delete_data",
-            is_open=False,
-        ),
-    ])
+    if project.your_user_role == 'Owners':
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-trash me-2"),
+                        "Delete All Directories"], id="delete_project_data", size="md", color="danger"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Delete All Project {project.name} Directories")),
+                    dbc.ModalBody([
+                        html.Div(id="delete-project-data-content"),
+                        dbc.Label(
+                            "Are you sure you want to delete all directories of this project? This will empty the entire project."),
+                        dbc.Input(id="project_2",
+                                value=project.name, disabled=True),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the directory deletion (see modal_and_project_creation)
+                        dbc.Button("Delete All Directories",
+                                id="delete_data_and_close", color="danger"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_delete_data"),
+                    ]),
+                ],
+                id="modal_delete_data",
+                is_open=False,
+            ),
+        ])
 
 
 def modal_edit_project(project: Project):
-    # Modal view for project deletion
-    return html.Div([
-        # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-pencil me-2"),
-                    "Edit Project"], id="edit_project", size="md", color="success"),
-        # Actual modal view
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle(
-                    f"Edit Project {project.name}")),
-                dbc.ModalBody([
-                    html.Div(id='edit-project-content'),
-                    dbc.Label(
-                        "Please enter a new description for your project.", class_name="mt-2"),
-                    # Input Text Field for project name
-                    dbc.Input(id="new_project_description",
-                              placeholder=project.description, value=project.description),
-                    dbc.Label(
-                        "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
-                    # Input Text Field for project name
-                    dbc.Input(id="new_project_keywords",
-                              placeholder=project.keywords, value=project.keywords),
-                ]),
-                dbc.ModalFooter([
-                    # Button which triggers the creation of a project (see modal_and_project_creation)
-                    dbc.Button("Save changes",
-                               id="edit_and_close", color="success"),
-                    # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_edit")
-                ]),
-            ],
-            id="modal_edit_project",
-            is_open=False,
-        ),
-    ])
+    if project.your_user_role == 'Owners':
+        # Modal view for project deletion
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-pencil me-2"),
+                        "Edit Project"], id="edit_project", size="md", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Edit Project {project.name}")),
+                    dbc.ModalBody([
+                        html.Div(id='edit-project-content'),
+                        dbc.Label(
+                            "Please enter a new description for your project.", class_name="mt-2"),
+                        # Input Text Field for project name
+                        dbc.Input(id="new_project_description",
+                                placeholder=project.description, value=project.description),
+                        dbc.Label(
+                            "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
+                        # Input Text Field for project name
+                        dbc.Input(id="new_project_keywords",
+                                placeholder=project.keywords, value=project.keywords),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Save changes",
+                                id="edit_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_edit")
+                    ]),
+                ],
+                id="modal_edit_project",
+                is_open=False,
+            ),
+        ])
 
 
 def insert_data(project: Project):
-    # Link to Upload functionality with a set project name
-    return html.Div(dbc.Button([html.I(className="bi bi-cloud-upload me-2"),
-                    "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
+    if project.your_user_role == 'Owners' or project.your_user_role == 'Members': 
+        # Link to Upload functionality with a set project name
+        return html.Div(dbc.Button([html.I(className="bi bi-cloud-upload me-2"),
+                        "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
 
 def download_project_data():
     return html.Div([

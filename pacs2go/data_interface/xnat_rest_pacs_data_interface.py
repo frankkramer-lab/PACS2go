@@ -105,7 +105,7 @@ class XNAT():
 
     def get_all_projects(self) -> List['XNATProject']:
         response = requests.get(
-            self.server + "/xapi/users/projects", cookies=self.cookies) #TODO : this only returns projects user has edit access to
+            self.server + "/xapi/access/projects", cookies=self.cookies) #TODO : this only returns projects user has edit access to
 
         if response.status_code == 200:
             # Project list retrieval was successfull
@@ -117,8 +117,10 @@ class XNAT():
             projects = []
             for p in project_names:
                 # Create List of all Project objectss
-                project = self.get_project(p)
-                projects.append(project)
+                print(p)
+                if 'name' in p:
+                    project = self.get_project(p['name'])
+                    projects.append(project)
 
             return projects
         else:
