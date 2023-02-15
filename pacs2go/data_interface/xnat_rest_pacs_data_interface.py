@@ -38,7 +38,7 @@ class XNAT():
 
             if response.status_code != 200:
                 # Non successful authentication
-                raise Exception(
+                raise HTTPException(
                     "Something went wrong connecting to XNAT. " + str(response.text))
             else:
                 # Return SessionID
@@ -50,7 +50,7 @@ class XNAT():
             self.session_id = session_id
             self.cookies = {"JSESSIONID": self.session_id}
         else:
-            raise Exception(
+            raise ValueError(
                 "You must eiter specify a password or a session_id to authenticate.")
 
     @property
@@ -67,7 +67,7 @@ class XNAT():
             return response.text
         else:
             # User not found
-            raise Exception("User not found." + str(response.status_code))
+            raise HTTPException("User not found." + str(response.status_code))
 
     def __enter__(self) -> 'XNAT':
         return self
@@ -76,7 +76,7 @@ class XNAT():
         response = requests.post(
             self.server + "/data/JSESSION/", cookies=self.cookies)
         if response.status_code != 200:
-            raise Exception("Unable to invalidate session Id.")
+            raise HTTPException("Unable to invalidate session Id.")
         else:
             print("XNAT session was successfully invalidated.")
 
@@ -97,7 +97,7 @@ class XNAT():
             # If successful return XNATProject object
             return XNATProject(self, name)
         else:
-            raise Exception(
+            raise HTTPException(
                 "Something went wrong trying to create a new project." + str(response.status_code))
 
     def get_project(self, name: str) -> 'XNATProject':
@@ -105,7 +105,7 @@ class XNAT():
 
     def get_all_projects(self) -> List['XNATProject']:
         response = requests.get(
-            self.server + "/xapi/users/projects", cookies=self.cookies)
+            self.server + "/xapi/users/projects", cookies=self.cookies) #TODO : this only returns projects user has edit access to
 
         if response.status_code == 200:
             # Project list retrieval was successfull
@@ -123,7 +123,7 @@ class XNAT():
             return projects
         else:
             # Project list not found
-            raise Exception("Projects not found." + str(response.status_code))
+            raise HTTPException("Projects not found." + str(response.status_code))
 
     def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
         return XNATDirectory(self.get_project(project_name), directory_name)
@@ -175,6 +175,8 @@ class XNATProject():
 
         if response.status_code == 200:
             self._metadata['data_fields']['description'] = description_string
+        elif response.status_code == 403:
+            raise Forbidden("You do not possess the rights to change the project description.")
         else:
             raise HTTPException(
                 "Something went wrong trying to change the description string." + str(response.status_code))
@@ -199,6 +201,8 @@ class XNATProject():
 
         if response.status_code == 200:
             self._metadata['data_fields']['keywords'] = keywords_string
+        elif response.status_code == 403:
+            raise Forbidden("You do not possess the rights to change the project keywords.")
         else:
             raise HTTPException(
                 "Something went wrong trying to change the keywords string. " + str(response.status_code))
