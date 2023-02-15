@@ -355,5 +355,3 @@ def layout(project_name: Optional[str] = None):
 
     else:
         return dbc.Alert("No Project found.", color="danger")
-
-

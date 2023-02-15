@@ -10,7 +10,9 @@ from typing import Sequence
 from typing import Union
 
 import requests
-from werkzeug.exceptions import HTTPException, Forbidden, NotFound
+from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import NotFound
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (
@@ -105,7 +107,7 @@ class XNAT():
 
     def get_all_projects(self) -> List['XNATProject']:
         response = requests.get(
-            self.server + "/xapi/access/projects", cookies=self.cookies) #TODO : this only returns projects user has edit access to
+            self.server + "/xapi/access/projects", cookies=self.cookies)
 
         if response.status_code == 200:
             # Project list retrieval was successfull
@@ -117,7 +119,6 @@ class XNAT():
             projects = []
             for p in project_names:
                 # Create List of all Project objectss
-                print(p)
                 if 'name' in p:
                     project = self.get_project(p['name'])
                     projects.append(project)

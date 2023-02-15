@@ -63,14 +63,7 @@ class User(UserMixin):
         return self.id
 
     def is_authenticated(self):
-        # Send request to XNAT server to check if user is authenticated https://wiki.xnat.org/display/XAPI/User+Management+API
-        response = requests.get(server_url + "/xapi/users/" + self.id)
-        if response.status_code == 200:
-            # User was found, return True
-            return True
-        else:
-            # User not found, return False
-            return False
+        return True
 
     def is_active(self):
         return True
@@ -130,6 +123,7 @@ def login_button_click():
             session["session_id"] = user.session_id
             login_user(user)
             if 'url' in session:
+                # Redirect to url that user tried to access before auth
                 if session['url']:
                     url = session['url']
                     session['url'] = None
@@ -143,14 +137,7 @@ def login_button_click():
 
 @login_manager.user_loader
 def load_user(username):
-    # Called when flask_login's 'current_user' is used
-    session_id = session.get("session_id")
-    user = User(username, session_id)
-    # Check if user is authenticated, if yes return user otherwise 'None' must be returned
-    if user.is_authenticated:
-        return user
-    else:
-        return None
+    return login_manager.auth_backend.get_user(username)
 
 
 #################
@@ -206,18 +193,14 @@ def update_authentication_status(path, n):
         if path == '/login' or path == '/login/':
             return dcc.Link("logout", href="/logout"), '/'
         return dbc.NavLink("Logout", href="/logout"), no_update
-    else:
-        # If page is restricted, redirect to login and save path
-        if path in restricted_page:
-            session['url'] = path
-            return dbc.NavLink("Login", href="/login"), '/login'
-
-    # If path not login and logout display login link
-    if current_user and path not in ['/login', '/logout']:
+    elif current_user and path not in ['/login', '/logout']:
+        # If path not login and logout display login link
+        # And store path to be redirected to after auth
+        session['url'] = path
         return dbc.NavLink("Login", href="/login"), no_update
 
     # If path login and logout hide links
-    if path in ['/login', '/logout']:
+    if path in ['/login', '/logout', '/login/']:
         return '', no_update
 
 
