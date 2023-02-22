@@ -114,7 +114,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             project = Project(connection, project_name)
             project.set_description(description)
             project.set_keywords(keywords)
-            return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_creation")
+            return not is_open, dcc.Location(href="/projects/", id="redirect_after_project_creation")
         except Exception as err:
             # TODO: differentiate between different exceptions
             return is_open, dbc.Alert(str(err), color="danger")

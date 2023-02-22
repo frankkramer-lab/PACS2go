@@ -22,7 +22,6 @@ from flask_login import current_user
 from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import pil_to_b64
 
 
 register_page(__name__, title='Directory - PACS2go',
@@ -107,7 +106,7 @@ def modal_delete(directory: Directory):
                     dbc.ModalFooter([
                         # Button which triggers the deletion of the directory
                         dbc.Button("Delete Directory",
-                                id="delete_directory_and_close", color="danger"),
+                            id="delete_directory_and_close", color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_delete_directory"),
                     ]),

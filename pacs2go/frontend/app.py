@@ -4,8 +4,6 @@ from datetime import timedelta
 import dash_bootstrap_components as dbc
 import requests
 from dash import ALL
-from dash import callback
-from dash import ctx
 from dash import Dash
 from dash import dcc
 from dash import html
@@ -26,7 +24,6 @@ from flask_login import LoginManager
 from flask_login import UserMixin
 
 from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import restricted_page
 from pacs2go.frontend.helpers import server_url
 
 # Load environment variables from the .env file

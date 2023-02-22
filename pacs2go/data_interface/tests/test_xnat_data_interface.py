@@ -212,7 +212,7 @@ class TestDataInterface(unittest.TestCase):
 
     def test_get_file_from_connection(self):
         file_name = self.directory.get_all_files()[0].name
-        file = self.connection.get_file(self.project.name,self.directory.name, file_name)
+        file = self.connection.get_file(self.project.name, self.directory.name, file_name)
         self.assertTrue(file.exists())
 
     def test_get_non_existent_file_from_connection(self):
@@ -227,8 +227,7 @@ class TestDataInterface(unittest.TestCase):
 
     def test_get_non_existent_directory_from_connection(self):
         with self.assertRaises(Exception):
-            directory = self.connection.get_directory(self.project.name, 'testasdfasefgerhr')
-        
+            self.connection.get_directory(self.project.name, 'testasdfasefgerhr')        
 
 if __name__ == '__main__':
     unittest.main()

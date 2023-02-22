@@ -7,7 +7,6 @@ from pacs2go.data_interface.xnat_pacs_data_interface import pyXNAT
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATDirectory
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATFile
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATProject
-
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATDirectory
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATFile
@@ -26,7 +25,8 @@ class Connection():
         if self.kind == "pyXNAT":
             self._xnat_connection = pyXNAT(server, username, password)
         elif self.kind == "XNAT":
-            self._xnat_connection = XNAT(server=server, username=username, password=password, session_id=session_id)
+            self._xnat_connection = XNAT(
+                server=server, username=username, password=password, session_id=session_id)
         else:
             raise ValueError(kind)
 
@@ -90,7 +90,7 @@ class Project():
         if self.connection._kind == "pyXNAT":
             self._xnat_project = pyXNATProject(connection, name)
         elif self.connection._kind == "XNAT":
-            self._xnat_project = XNATProject(connection,name)
+            self._xnat_project = XNATProject(connection, name)
         else:
             raise ValueError(self.connection._kind)
 
@@ -178,7 +178,7 @@ class Directory():
         if self.project.connection._kind == "pyXNAT":
             self._xnat_directory = pyXNATDirectory(project, name)
         elif self.project.connection._kind == "XNAT":
-            self._xnat_project = XNATDirectory(project,name)
+            self._xnat_project = XNATDirectory(project, name)
         else:
             raise ValueError(self.project.connection._kind)
 
@@ -267,7 +267,7 @@ class File():
             raise ValueError(self.directory.project.connection._kind)
 
     @property
-    def data(self) -> str:
+    def data(self) -> bytes:
         if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
             return self._xnat_file.data
         else:

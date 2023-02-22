@@ -100,7 +100,7 @@ class pyXNATProject():
     def __init__(self, connection: pyXNAT, name: str) -> None:
         project = connection.interface.select.project(name)
 
-        if project.exists() != True:
+        if not project.exists():
             try:
                 project.create()
 

@@ -74,7 +74,7 @@ def show_file(file: File):
         # spacing = abs(mat[2, 2]), abs(mat[1, 1]), abs(mat[0, 0])
         # slicer1 = VolumeSlicer(get_app(), volume=img,
         #                         axis=0, spacing=spacing)
-        #content = html.Div([slicer1.graph, slicer1.slider, *slicer1.stores, html.H5(str())])
+        # content = html.Div([slicer1.graph, slicer1.slider, *slicer1.stores, html.H5(str())])
         content = dbc.Alert(
             "At this current version NIFTI files can not be displayed.", color="danger")
 
@@ -92,7 +92,7 @@ def show_file(file: File):
         final_image = Image.fromarray(image_correct_bw)
 
         content = dbc.Card(dbc.CardBody([
-            html.H3(f"DICOM Information"),
+            html.H3("DICOM Information"),
             html.H5(f"Patient Name: {dcm.PatientName}"),
             html.H5(f"Study Date: {dcm.StudyDate}"),
             html.H5(f"Study Description: {dcm.StudyDescription}"),

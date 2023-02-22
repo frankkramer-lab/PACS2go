@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 import uuid
@@ -44,7 +43,7 @@ def get_project_names() -> List[str]:
                 project_list.append(html.Option(value=p.name))
 
         return project_list
-    
+
     except Exception as err:
         return dbc.Alert(str(err), color="danger")
 
@@ -142,32 +141,31 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 connection = get_connection()
                 project = connection.get_project(project_name)
                 if project.your_user_role == 'Collaborators':
-                    return dbc.Alert("Upload not possible! Your user role in the project '" + project.name +"' does not allow you to upload files.", color="danger")
+                    return dbc.Alert("Upload not possible! Your user role in the project '" + project.name + "' does not allow you to upload files.", color="danger")
                 if dir_name and tags:
                     project.insert(filename, dir_name, tags)
-                
+
                 elif tags:
                     # If the user entered no diretory name but tags
                     new_location = project.insert(
                         file_path=filename, tags_string=tags)
-                    
+
                 elif dir_name:
                     # If the user entered a diretory name but no tags
                     project.insert(
-                        file_path=filename, directory_name= dir_name)
+                        file_path=filename, directory_name=dir_name)
                 else:
                     # If the user entered no diretory name or tags
                     new_location = project.insert(file_path=filename)
-                    
+
                 if not filename.endswith('.zip'):
                     dir_name = new_location.directory.name
                 else:
                     dir_name = new_location.name
-                
 
                 # Remove tempdir after successful upload to XNAT
                 shutil.rmtree(dirpath)
-                return dbc.Alert([f"The upload was successful! ",
+                return dbc.Alert(["The upload was successful! ",
                                   dcc.Link(f"Click here to go to the directory {dir_name}.",
                                            href=f"/dir/{project_name}/{dir_name}",
                                            className="fw-bold text-decoration-none",
@@ -175,7 +173,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
 
             except Exception as err:
                 # TODO: differentiate between different exceptions
-                return dbc.Alert("Upload unsuccessful: " + str(err) , color="danger")
+                return dbc.Alert("Upload unsuccessful: " + str(err), color="danger")
 
         else:
             return dbc.Alert("Please specify Project Name.", color="danger")

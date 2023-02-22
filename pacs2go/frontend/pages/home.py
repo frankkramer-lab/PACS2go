@@ -41,7 +41,7 @@ def card_view_projects():
                               class_name="my-3"
                               ),
                 dbc.Button("Go to Project Overview",
-                           href=f"/projects/", outline=False, color='success'),
+                           href="/projects/", outline=False, color='success'),
             ]
         ))
 
@@ -53,13 +53,13 @@ def card_view_upload():
         dbc.CardBody(
             [
                 html.H4("Upload", className="card-title"),
-                html.P(f"Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
+                html.P("Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
                        className="card-subtitle"),
                 dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
                            href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
             ]
         ),)
-        
+
     return card
 
 

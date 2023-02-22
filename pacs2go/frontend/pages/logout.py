@@ -12,7 +12,9 @@ def layout():
         logout_user()
     return html.Div(
         [
-            html.Div(html.H2("You have been logged out - You will be redirected to login")),
-            dcc.Interval(id={'index':'redirectLogin', 'type':'redirect'}, n_intervals=0, interval=1*3000)
+            html.Div(
+                html.H2("You have been logged out - You will be redirected to login")),
+            dcc.Interval(id={'index': 'redirectLogin',
+                         'type': 'redirect'}, n_intervals=0, interval=1*3000)
         ]
     )

@@ -31,7 +31,7 @@ class XNAT():
         self.username = username
 
         # User may either specify password of session_id to authenticate themselves
-        if password != None:
+        if password is not None:
             data = {"username": username, "password": password}
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
             # Authenticate user via REST API
@@ -126,7 +126,8 @@ class XNAT():
             return projects
         else:
             # Project list not found
-            raise HTTPException("Projects not found." + str(response.status_code))
+            raise HTTPException("Projects not found." +
+                                str(response.status_code))
 
     def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
         return XNATDirectory(self.get_project(project_name), directory_name)
@@ -179,7 +180,8 @@ class XNATProject():
         if response.status_code == 200:
             self._metadata['data_fields']['description'] = description_string
         elif response.status_code == 403:
-            raise Forbidden("You do not possess the rights to change the project description.")
+            raise Forbidden(
+                "You do not possess the rights to change the project description.")
         else:
             raise HTTPException(
                 "Something went wrong trying to change the description string." + str(response.status_code))
@@ -205,7 +207,8 @@ class XNATProject():
         if response.status_code == 200:
             self._metadata['data_fields']['keywords'] = keywords_string
         elif response.status_code == 403:
-            raise Forbidden("You do not possess the rights to change the project keywords.")
+            raise Forbidden(
+                "You do not possess the rights to change the project keywords.")
         else:
             raise HTTPException(
                 "Something went wrong trying to change the keywords string. " + str(response.status_code))
@@ -361,7 +364,7 @@ class XNATProject():
         else:
             raise ValueError("The input is not a zipfile.")
 
-   # Single file upload to given project
+    # Single file upload to given project
     def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '') -> 'XNATFile':
         if os.path.exists(file_path):
             if directory_name == '':
@@ -435,7 +438,7 @@ class XNATDirectory():
                     f"A Directory with this name ({self.name}) does not exist. ")
         else:
             raise HTTPException(
-                f"Directories could not be accessed. " + str(response.status_code))
+                "Directories could not be accessed. " + str(response.status_code))
 
     @property
     def contained_file_tags(self) -> str:
@@ -491,7 +494,7 @@ class XNATDirectory():
 
         else:
             raise HTTPException("No files could be retrieved. " +
-                            str(response.status_code))
+                                str(response.status_code))
 
     def download(self, destination: str) -> str:
         # https://wiki.xnat.org/display/XAPI/How+To+Download+Files+via+the+XNAT+REST+API
@@ -536,7 +539,7 @@ class XNATFile():
                         f"A File with this filename ({self.name}) does not exist. ")
             else:
                 raise HTTPException(
-                    f"Files could not be accessed. " + str(response.status_code))
+                    "Files could not be accessed. " + str(response.status_code))
 
     @property
     def format(self) -> str:
@@ -612,7 +615,7 @@ class XNATFile():
             return path
         else:
             raise HTTPException("Download was not possible." +
-                            str(response.status_code))
+                                str(response.status_code))
 
     def delete_file(self) -> None:
         response = requests.delete(

@@ -26,7 +26,8 @@ def get_details(project: Project):
     description = "Description: " + project.description
     keywords = "Keywords: " + project.keywords
     owners = "Owners: " + ', '.join(project.owners)
-    user_role = "You're part of the '" + project.your_user_role.capitalize() + "' user group."
+    user_role = "You're part of the '" + project.your_user_role.capitalize() + \
+        "' user group."
     return [html.H6(owners), html.H6(description), html.H6(keywords), html.H6(user_role)]
 
 
@@ -68,12 +69,13 @@ def modal_delete(project: Project):
                         html.Div(id="delete-project-content"),
                         dbc.Label(
                             "Are you sure you want to delete this project and all its data?"),
-                        dbc.Input(id="project", value=project.name, disabled=True),
+                        dbc.Input(id="project", value=project.name,
+                                  disabled=True),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the deletion of a project (see modal_and_project_creation)
                         dbc.Button("Delete Project",
-                                id="delete_and_close", color="danger"),
+                                   id="delete_and_close", color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_delete"),
                     ]),
@@ -101,12 +103,12 @@ def modal_delete_data(project: Project):
                         dbc.Label(
                             "Are you sure you want to delete all directories of this project? This will empty the entire project."),
                         dbc.Input(id="project_2",
-                                value=project.name, disabled=True),
+                                  value=project.name, disabled=True),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the directory deletion (see modal_and_project_creation)
                         dbc.Button("Delete All Directories",
-                                id="delete_data_and_close", color="danger"),
+                                   id="delete_data_and_close", color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_delete_data"),
                     ]),
@@ -135,17 +137,17 @@ def modal_edit_project(project: Project):
                             "Please enter a new description for your project.", class_name="mt-2"),
                         # Input Text Field for project name
                         dbc.Input(id="new_project_description",
-                                placeholder=project.description, value=project.description),
+                                  placeholder=project.description, value=project.description),
                         dbc.Label(
                             "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
                         # Input Text Field for project name
                         dbc.Input(id="new_project_keywords",
-                                placeholder=project.keywords, value=project.keywords),
+                                  placeholder=project.keywords, value=project.keywords),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the creation of a project (see modal_and_project_creation)
                         dbc.Button("Save changes",
-                                id="edit_and_close", color="success"),
+                                   id="edit_and_close", color="success"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_edit")
                     ]),
@@ -157,15 +159,16 @@ def modal_edit_project(project: Project):
 
 
 def insert_data(project: Project):
-    if project.your_user_role == 'Owners' or project.your_user_role == 'Members': 
+    if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
         # Link to Upload functionality with a set project name
         return html.Div(dbc.Button([html.I(className="bi bi-cloud-upload me-2"),
                         "Insert Data"], href=f"/upload/{project.name}", size="md", color="success"))
 
+
 def download_project_data():
     return html.Div([
         dbc.Button([
-            html.I(className="bi bi-download me-2"), "Download"], id="btn_download_project",size="md"),
+            html.I(className="bi bi-download me-2"), "Download"], id="btn_download_project", size="md"),
         dbc.Spinner(dcc.Download(id="download_project"))])
 
 
@@ -194,7 +197,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
                 project.delete_project()
 
             # Redirect to project list after deletion
-            return not is_open, dcc.Location(href=f"/projects/", id="redirect_after_project_delete")
+            return not is_open, dcc.Location(href="/projects/", id="redirect_after_project_delete")
 
         except Exception as err:
             return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
@@ -235,7 +238,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
         return is_open, no_update
 
 
-@callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children'), Output('details_card','children')],
+@callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children'), Output('details_card', 'children')],
           [Input('edit_project', 'n_clicks'),
            Input('close_modal_edit', 'n_clicks'),
            Input('edit_and_close', 'n_clicks')],
@@ -288,7 +291,7 @@ def filter_files_table(btn, filter, project_name):
 
 @callback(
     Output("download_project", "data"),
-    Input("btn_download_project", "n_clicks"), State("project_store", "data"), 
+    Input("btn_download_project", "n_clicks"), State("project_store", "data"),
     prevent_initial_call=True,
 )
 def func(n_clicks, project_name):
