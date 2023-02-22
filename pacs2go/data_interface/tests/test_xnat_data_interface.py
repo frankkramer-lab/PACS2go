@@ -6,6 +6,7 @@ from zipfile import ZipFile
 
 import pyxnat
 from PIL import Image
+
 from pacs2go.data_interface.xnat_pacs_data_interface import XNAT
 from pacs2go.data_interface.xnat_pacs_data_interface import XNATProject
 

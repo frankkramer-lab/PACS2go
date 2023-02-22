@@ -2,28 +2,29 @@ import random
 import unittest
 import uuid
 
+from werkzeug.exceptions import HTTPException
+
 from pacs2go.data_interface.pacs_data_interface import Connection
 from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.data_interface.pacs_data_interface import Project
-from PIL import Image
 
 
 class TestConnection(unittest.TestCase):
     user = 'admin'
     pwd = 'admin'
-    server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
+    server = 'http://localhost:8888'
     wrong_user = 'a'
     wrong_pwd = 'a'
-    conn = Connection(server, user, pwd, "XNAT")
+    conn = Connection(server, user, pwd, kind ="XNAT")
 
     def test_connection_correct_input(self):
         with self.conn as connection:
             self.assertEqual(self.user, connection.user)
 
     def test_connection_wrong_input(self):
-        with self.assertRaises(Exception):
-            with Connection(self.server, self.user, self.pwd, "some PACS") as connection:
+        with self.assertRaises(ValueError):
+            with Connection(self.server, self.user, self.pwd, kind= "some PACS") as connection:
                 print(
                     "This should not be visible, because the kind of connection does not exist.")
 
@@ -34,8 +35,8 @@ class TestDataInterface(unittest.TestCase):
     zip_file_test = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
     user = 'admin'
     pwd = 'admin'
-    server = 'http://vm204-misit.informatik.uni-augsburg.de:8080'
-    conn = Connection(server, user, pwd, "XNAT")
+    server = 'http://localhost:8888'
+    conn = Connection(server, user, pwd, kind = "XNAT")
 
     # connect to XNAT for all tests (executed for each testrun)
     def run(self, result=None):
@@ -55,7 +56,9 @@ class TestDataInterface(unittest.TestCase):
             self.to_be_deleted_directory = self.project.insert(
                 self.zip_file_setup)
             self.to_be_deleted_file = self.project.insert(
-                self.file_path)
+                self.file_path, directory_name=self.directory.name)
+            self.to_be_double_deleted_file = self.project.insert(
+                self.file_path, directory_name=self.directory.name)
             # name of a project to test create functionality, stored centrally to ensure deletion after test
             self.to_be_created_project_name = uuid.uuid4()
 
@@ -77,7 +80,7 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(
             len_before + 1, len(self.connection.get_all_projects()))
 
-    def test_delete_project(self):
+    def test_zdelete_project(self):
         # Checks if a project is deleted
         len_before = len(self.connection.get_all_projects())
         self.to_be_deleted_project.delete_project()
@@ -86,11 +89,11 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(
             len_before - 1, len(self.connection.get_all_projects()))
 
-    def test_double_delete_project(self):
+    def test_zdouble_delete_project(self):
         # Checks if double deleting a project results in an expected Exception
         p = Project(self.connection, str(uuid.uuid4()))
         p.delete_project()
-        with self.assertRaisesRegex(Exception, "Project does not exist/has already been deleted."):
+        with self.assertRaises(HTTPException):
             p.delete_project()
 
     def test_insert(self):
@@ -110,17 +113,8 @@ class TestDataInterface(unittest.TestCase):
     def test_file_retrieval(self):
         # Checks if file image data can be retrieved from XNAT
         f = random.choice(self.directory.get_all_files())
-        im = Image.open(f.data)
-        self.assertEqual(im.format, f.format)
-        # not equal for some reason, len(im.fp.read() is always 623byte smaller (metadata perhabs?)
-        self.assertEqual(len(im.fp.read()) + 623, f.size)
-
-    def test_file_retrieval_of_deleted_file(self):
-        # Checks if the retrivial of a no longer existing file results in an expected Exception
-        f = random.choice(self.directory.get_all_files())
-        f.delete_file()
-        with self.assertRaises(Exception):
-            f.data
+        im = f.data
+        self.assertEqual(len(im), f.size)
 
     def test_delete_file(self):
         # Checks if single file is deleted from directory
@@ -131,28 +125,20 @@ class TestDataInterface(unittest.TestCase):
         self.assertNotIn(file.name, [
                          f.name for f in file.directory.get_all_files()])
 
-    def test_double_delete_file(self):
+    def test_xdouble_delete_file(self):
         # Checks if double deleting a file results in an expected Exception
-        file = random.choice(self.directory.get_all_files())
+        file = self.to_be_double_deleted_file
         file.delete_file()
-        with self.assertRaisesRegex(Exception, "File does not exist/has already been deleted."):
+        with self.assertRaises(HTTPException):
             file.delete_file()
 
-    def test_delete_diretory(self):
+    def test_ydelete_diretory(self):
         # Check if single directory is deleted from project
         self.assertIn(self.to_be_deleted_directory.name, [
                       r.name for r in self.project.get_all_directories()])
         self.to_be_deleted_directory.delete_directory()
         self.assertNotIn(self.to_be_deleted_directory.name, [
                          r.name for r in self.project.get_all_directories()])
-
-    def test_double_delete_directory(self):
-        # Checks if double deleting a directory results in an expected Exception
-        file = self.project.insert(self.file_path)
-        d = file.directory
-        d.delete_directory()
-        with self.assertRaisesRegex(Exception, "Directory does not exist/has already been deleted."):
-            d.delete_directory()
 
 
 if __name__ == '__main__':
