@@ -26,7 +26,7 @@ file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
 
 
 class XNAT():
-    def __init__(self, server: str, username: str, password: str = None, session_id: str = None, kind: str = None) -> None:
+    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '') -> None:
         self.server = server
         self.username = username
 
@@ -82,7 +82,7 @@ class XNAT():
         else:
             print("XNAT session was successfully invalidated.")
 
-    def create_project(self, name: str) -> Optional['XNATProject']:
+    def create_project(self, name: str) -> 'XNATProject':
         headers = {'Content-Type': 'application/xml'}
         # Specify XML metadata
         project_data = f"""
@@ -152,7 +152,8 @@ class XNATProject():
         elif response.status_code == 404 and only_get_no_create is False:
             # No project could be retrieved -> we want to create one with the given name
             p = self.connection.create_project(self.name)
-            self._metadata = p._metadata
+            if p:
+                self._metadata = p._metadata
 
         else:
             # No project could be retrieved and we do not wish to create one
@@ -221,9 +222,9 @@ class XNATProject():
         if response.status_code == 200:
             # Retrieve only users with the role 'Owners'
             owners = []
-            for o in response.json()['ResultSet']['Result']:
-                if o['displayname'] == 'Owners':
-                    owners.append(o['login'])
+            for element in response.json()['ResultSet']['Result']:
+                if element['displayname'] == 'Owners':
+                    owners.append(element['login'])
             return owners
         else:
             raise HTTPException(
@@ -236,9 +237,11 @@ class XNATProject():
 
         if response.status_code == 200:
             # Get the autheticated user's role in a project
-            for o in response.json()['ResultSet']['Result']:
-                if o['login'] == self.connection.user:
-                    return o['displayname']
+            for element in response.json()['ResultSet']['Result']:
+                if element['login'] == self.connection.user:
+                    return str(element['displayname'])
+            # User exists but no user role was specified
+            return ''
         else:
             raise HTTPException(
                 "Something went wrong trying to retrieve your user role. " + str(response.status_code))
@@ -469,7 +472,7 @@ class XNATDirectory():
             raise HTTPException(
                 "Something went wrong trying to delete this directory. " + str(response.status_code))
 
-    def get_file(self, file_name: str, format: str = None, content_type: str = None, tags: str = None, size: int = None) -> 'XNATFile':
+    def get_file(self, file_name: str, format: str = '', content_type: str = '', tags: str = '', size: int = None) -> 'XNATFile':
         return XNATFile(self, file_name, format, content_type, tags, size)
 
     def get_all_files(self) -> List['XNATFile']:
@@ -515,7 +518,7 @@ class XNATDirectory():
 
 
 class XNATFile():
-    def __init__(self, directory: XNATDirectory, name: str, format: str = None, content_type: str = None, tags: str = None, size: int = None) -> None:
+    def __init__(self, directory: XNATDirectory, name: str, format: str = '', content_type: str = '', tags: str = '', size: int = None) -> None:
         self.directory = directory
         self.name = name
 
@@ -589,7 +592,7 @@ class XNATFile():
 
         if response.status_code == 200:
             # Return bytes
-            return response.content
+            return bytes(response.content)
         else:
             raise HTTPException(
                 f"The file data for [{self.name}] could not be retrieved. " + str(response.status_code))

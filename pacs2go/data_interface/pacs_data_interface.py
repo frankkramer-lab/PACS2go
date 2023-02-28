@@ -3,6 +3,15 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 
+from pacs2go.data_interface.exceptions.exceptions import DownloadException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import FailedDisconnectException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulProjectCreationException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
+from pacs2go.data_interface.exceptions.exceptions import UserNotFound
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNAT
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATDirectory
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATFile
@@ -14,7 +23,7 @@ from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATProject
 
 
 class Connection():
-    def __init__(self, server: str, username: str, password: str = None, session_id: str = None, kind: str = None) -> None:
+    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '') -> None:
         self.kind = kind
         self.server = server
         self.username = username
@@ -22,153 +31,162 @@ class Connection():
         self.session_id = session_id
         self.cookies = None
 
-        if self.kind == "pyXNAT":
-            self._xnat_connection = pyXNAT(server, username, password)
-        elif self.kind == "XNAT":
-            self._xnat_connection = XNAT(
-                server=server, username=username, password=password, session_id=session_id)
-        else:
-            raise ValueError(kind)
+        try:
+            if self.kind == "pyXNAT":
+                self._xnat_connection = pyXNAT(server, username, password)
+            elif self.kind == "XNAT":
+                self._xnat_connection = XNAT(
+                    server=server, username=username, password=password, session_id=session_id)
+            else:
+                raise ValueError(kind)
+        except:
+            raise FailedConnectionException
 
     @property
     def _kind(self) -> str:
-        return self.kind
+        if self.kind in ['pyXNAT', 'XNAT']:
+            return self.kind
+        else:
+            # FailedConnectionException because only these connection types are supported atm
+            raise FailedConnectionException
 
     @property
     def user(self) -> str:
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
+        try:
             return self._xnat_connection.user
-        else:
-            raise ValueError(self.kind)
+        except:
+            # FailedConnectionException because if this information can not be retrieved the connection is corrupted
+            raise FailedConnectionException
 
     def __enter__(self) -> 'Connection':
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
-            return self._xnat_connection.__enter__()
+        return self._xnat_connection.__enter__()
 
     def __exit__(self, type, value, traceback) -> None:
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
+        try:
             return self._xnat_connection.__exit__(type, value, traceback)
-        else:
-            raise ValueError(self.kind)
+        except:
+            raise FailedDisconnectException
 
-    def create_project(self, name) -> Optional['Project']:
-        if self.kind == "XNAT":
+    def create_project(self, name: str) -> 'Project':
+        try:
             return self._xnat_connection.create_project(name)
-        else:
-            raise ValueError(self.kind)
+        except:
+            raise UnsuccessfulProjectCreationException(str(name))
 
     def get_project(self, name: str) -> Optional['Project']:
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
+        try:
             return self._xnat_connection.get_project(name)
-        else:
-            raise ValueError(self.kind)
+        except:
+            raise UnsuccessfulGetException(f"Project '{name}'")
 
     def get_all_projects(self) -> List['Project']:
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
+        try:
             return self._xnat_connection.get_all_projects()
-        else:
-            raise ValueError(self.kind)
+        except:
+            raise UnsuccessfulGetException("Projects")
 
     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
+        try:
             return self._xnat_connection.get_directory(project_name, directory_name)
-        else:
-            raise ValueError(self.kind)
+        except:
+            raise UnsuccessfulGetException(f"Directory '{directory_name}'")
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
-        if self.kind == "pyXNAT" or self.kind == "XNAT":
+        try:
             return self._xnat_connection.get_file(
                 project_name, directory_name, file_name)
-        else:
-            raise ValueError(self.kind)
+        except:
+            raise UnsuccessfulGetException(f"File '{file_name}'")
 
 
 class Project():
     def __init__(self, connection: Connection, name: str) -> None:
         self.connection = connection
         self.name = name
+
         if self.connection._kind == "pyXNAT":
             self._xnat_project = pyXNATProject(connection, name)
         elif self.connection._kind == "XNAT":
             self._xnat_project = XNATProject(connection, name)
         else:
-            raise ValueError(self.connection._kind)
+            # FailedConnectionException because only these connection types are supported atm
+            raise FailedConnectionException
 
     @property
     def description(self) -> str:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.description
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException("Project description")
 
     def set_description(self, description_string: str) -> None:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.set_description(description_string)
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"a new description ('{description_string}')")
 
     @property
     def keywords(self) -> str:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.keywords
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException("Project-related keywords")
 
     def set_keywords(self, keywords_string: str) -> None:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.set_keywords(keywords_string)
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the project keywords to '{keywords_string}'")
 
     @property
     def owners(self) -> List[str]:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.owners
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException(
+                "Project users that are assigned an 'owner' role")
 
     @property
     def your_user_role(self) -> str:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.your_user_role
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException("Your user role")
 
     def exists(self) -> bool:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
-            return self._xnat_project.exists()
-        else:
-            raise ValueError(self.connection._kind)
+        return self._xnat_project.exists()
 
     def download(self, destination: str) -> str:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.download(destination)
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise DownloadException
 
     def delete_project(self) -> None:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.delete_project()
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulDeletionException(f"Project '{self.name}'")
 
     def get_directory(self, name) -> 'Directory':
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.get_directory(name)
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException(f"Directory '{name}'")
 
     def get_all_directories(self) -> Sequence['Directory']:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.get_all_directories()
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException("Directories")
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
-        if self.connection._kind == "pyXNAT" or self.connection._kind == "XNAT":
+        try:
             return self._xnat_project.insert(file_path, directory_name, tags_string)
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulUploadException(str(file_path))
 
 
 class Directory():
@@ -180,51 +198,49 @@ class Directory():
         elif self.project.connection._kind == "XNAT":
             self._xnat_project = XNATDirectory(project, name)
         else:
-            raise ValueError(self.project.connection._kind)
+            # FailedConnectionException because only these connection types are supported atm
+            raise FailedConnectionException
 
     @property
     def contained_file_tags(self) -> str:
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
+        try:
             return self._xnat_directory.contained_file_tags
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise UnsuccessfulGetException("File tags")
 
     @property
     def number_of_files(self) -> str:
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
+        try:
             return self._xnat_directory.number_of_files
-        else:
-            raise ValueError(self.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("Number of files in this directory")
 
     def exists(self) -> bool:
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
-            return self._xnat_directory.exists()
-        else:
-            raise ValueError(self.project.connection._kind)
+        return self._xnat_directory.exists()
 
     def delete_directory(self) -> None:
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
+        try:
             return self._xnat_directory.delete_directory()
-        else:
-            raise ValueError(self.project.connection._kind)
+        except:
+            raise UnsuccessfulDeletionException(f"directory '{self.name}'")
 
     def get_file(self, file_name: str) -> 'File':
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
+        try:
             return self._xnat_directory.get_file(file_name)
-        else:
-            raise ValueError(self.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException(f"File '{file_name}'")
 
     def get_all_files(self) -> List['File']:
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
+        try:
             return self._xnat_directory.get_all_files()
-        else:
-            raise ValueError(self.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("Files")
 
     def download(self, destination: str) -> str:
-        if self.project.connection._kind == "pyXNAT" or self.project.connection._kind == "XNAT":
+        try:
             return self._xnat_directory.download(destination)
-        else:
-            raise ValueError(self.connection._kind)
+        except:
+            raise DownloadException
 
 
 class File():
@@ -236,57 +252,55 @@ class File():
         if self.directory.project.connection._kind == "XNAT":
             self._xnat_file = XNATFile(directory, name)
         else:
-            raise ValueError(self.directory.project.connection._kind)
+            # FailedConnectionException because only these connection types are supported atm
+            raise FailedConnectionException
 
     @property
     def format(self) -> str:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
+        try:
             return self._xnat_file.format
-        else:
-            raise ValueError(self.directory.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("File format")
 
     @property
     def content_type(self) -> str:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
+        try:
             return self._xnat_file.content_type
-        else:
-            raise ValueError(self.directory.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("File content type")
 
     @property
     def tags(self) -> str:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
+        try:
             return self._xnat_file.tags
-        else:
-            raise ValueError(self.directory.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("File tags")
 
     @property
     def size(self) -> int:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
+        try:
             return self._xnat_file.size
-        else:
-            raise ValueError(self.directory.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("File size")
 
     @property
     def data(self) -> bytes:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
+        try:
             return self._xnat_file.data
-        else:
-            raise ValueError(self.directory.project.connection._kind)
+        except:
+            raise UnsuccessfulGetException("The actual file data itself")
 
     def exists(self) -> bool:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
-            return self._xnat_file.exists()
-        else:
-            raise ValueError(self.connection._kind)
+        return self._xnat_file.exists()
 
     def download(self, destination: str = '') -> str:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
-            return self._xnat_file.download()
-        else:
-            raise ValueError(self.connection._kind)
+        try:
+            return self._xnat_file.download(destination)
+        except:
+            raise DownloadException
 
     def delete_file(self) -> None:
-        if self.directory.project.connection._kind == "pyXNAT" or self.directory.project.connection._kind == "XNAT":
+        try:
             return self._xnat_file.delete_file()
-        else:
-            raise ValueError(self.directory.project.connection._kind)
+        except:
+            raise UnsuccessfulDeletionException(f"file '{self.name}'")
