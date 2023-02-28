@@ -18,8 +18,6 @@ from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='Projects - PACS2go', path='/projects')
 
-# TODO: only make project clickable if user has rights to certain project
-
 
 def get_projects_table(filter: str = ''):
     try:

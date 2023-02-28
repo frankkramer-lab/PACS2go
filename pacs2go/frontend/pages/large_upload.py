@@ -40,7 +40,8 @@ def get_project_names() -> List[str]:
         project_list = []
 
         for p in connection.get_all_projects():
-            project_list.append(html.Option(value=p.name))
+            if p.your_user_role != 'Collaborators':
+                project_list.append(html.Option(value=p.name))
 
         return project_list
     
@@ -140,6 +141,8 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
             try:
                 connection = get_connection()
                 project = connection.get_project(project_name)
+                if project.your_user_role == 'Collaborators':
+                    return dbc.Alert("Upload not possible! Your user role in the project '" + project.name +"' does not allow you to upload files.", color="danger")
                 if dir_name and tags:
                     project.insert(filename, dir_name, tags)
                 
