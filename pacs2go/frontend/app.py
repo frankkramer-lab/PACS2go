@@ -160,9 +160,12 @@ app.layout = html.Div(
             color=colors['sage'],
             className="fw-bold mb-3",
             dark=True,
+            fluid=True,
+            brand_style={'padding-left': '1%'},
+            style={'padding-right': '1%'}
         ),
         # placeholder for each registered page (see pages folder)
-        html.Div([page_container], style={'padding': '1% 11%'})
+        html.Div([page_container], style={'padding': '1% 10%'})
     ]
 )
 
