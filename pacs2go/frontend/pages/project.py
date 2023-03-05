@@ -229,11 +229,11 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
             if project:
                 dirs = project.get_all_directories()
                 if len(dirs) == 0:
-                    return is_open,  dbc.Alert("Project is empty", color="danger")
+                    return is_open,  dbc.Alert("Project is empty.", color="danger")
                 else:
                     for d in dirs:
                         d.delete_directory()
-                    return not is_open, no_update
+                    return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_project_creation")
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger")

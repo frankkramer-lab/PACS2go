@@ -146,8 +146,9 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 project = connection.get_project(project_name)
                 if project.your_user_role == 'Collaborators':
                     return dbc.Alert("Upload not possible! Your user role in the project '" + project.name + "' does not allow you to upload files.", color="danger")
+
                 if dir_name and tags:
-                    project.insert(filename, dir_name, tags)
+                    new_location = project.insert(filename, dir_name, tags)
 
                 elif tags:
                     # If the user entered no diretory name but tags
@@ -156,16 +157,16 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
 
                 elif dir_name:
                     # If the user entered a diretory name but no tags
-                    project.insert(
+                    new_location = project.insert(
                         file_path=filename, directory_name=dir_name)
                 else:
                     # If the user entered no diretory name or tags
                     new_location = project.insert(file_path=filename)
 
-                if not filename.endswith('.zip'):
-                    dir_name = new_location.directory.name
-                else:
+                if filename.endswith('.zip'):
                     dir_name = new_location.name
+                else:
+                    dir_name = new_location.directory.name
 
                 # Remove tempdir after successful upload to XNAT
                 shutil.rmtree(dirpath)
@@ -176,7 +177,6 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                                            style={'color': colors['links']})], color="success")
 
             except (FailedConnectionException, UnsuccessfulGetException, WrongUploadFormatException, UnsuccessfulUploadException) as err:
-                # TODO: differentiate between different exceptions
                 return dbc.Alert(str(err), color="danger")
 
         else:

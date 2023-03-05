@@ -82,15 +82,15 @@ class XNAT():
         else:
             print("XNAT session was successfully invalidated.")
 
-    def create_project(self, name: str) -> 'XNATProject':
+    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'XNATProject':
         headers = {'Content-Type': 'application/xml'}
         # Specify XML metadata
         project_data = f"""
             <projectData>
             <ID>{name}</ID>
             <name>{name}</name>
-            <description>This is a new project.</description>
-            <keywords> Set keywords here. </keywords>
+            <description>{description if description else 'This is a new project.'}</description>
+            <keywords>{description if description else 'Set keywords here.'}</keywords>
             </projectData>
             """
         response = requests.post(self.server + "/data/projects",
@@ -140,7 +140,7 @@ class XNATProject():
     def __init__(self, connection: XNAT, name: str, only_get_no_create: bool = False) -> None:
         self.connection = connection
         self.name = name
-
+        
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}?format=json", cookies=self.connection.cookies)
 
@@ -149,7 +149,7 @@ class XNATProject():
             # Get returned metadata to optimize number of XNAT REST calls (description and keywords don't require extra call)
             self._metadata = response.json()['items'][0]
 
-        elif response.status_code == 404 and only_get_no_create is False:
+        elif (response.status_code == 401 or response.status_code == 404) and only_get_no_create is False:
             # No project could be retrieved -> we want to create one with the given name
             p = self.connection.create_project(self.name)
             if p:
@@ -331,11 +331,23 @@ class XNATProject():
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
 
+            cookies=self.connection.cookies
+            
+            ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####
+            if self.your_user_role == 'Members':
+                data = {"username": 'admin', "password": 'admin'}
+                headers = {"Content-Type": "application/x-www-form-urlencoded"}
+                # Authenticate 'user' via REST API
+                response_fake_auth = requests.post(
+                self.connection.server + "/data/services/auth", data=data, headers=headers)
+                cookies = {"JSESSIONID": response_fake_auth.text}
+            ########
+
             if xnat_compressed_upload:
                 # Open passed file and POST to XNAT endpoint with compressed upload (files will be extracted automatically)
                 with open(file_path, "rb") as file:
                     response = requests.post(
-                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files?extract={zip_extraction}&tags={tags_string}", files={'file.zip': file}, cookies=self.connection.cookies)
+                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files?extract={zip_extraction}&tags={tags_string}", files={'file.zip': file}, cookies=cookies)
 
                 if response.status_code == 200:
                     # Return inserted file
@@ -402,10 +414,22 @@ class XNATProject():
                 # REST query parameter string to set metadata
                 parameter = f"format={file_format[suffix]}&tags={tags_string}&content={file_content}"
 
+                cookies = self.connection.cookies
+
+                ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####
+                if self.your_user_role == 'Members':
+                    data = {"username": 'admin', "password": 'admin'}
+                    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+                    # Authenticate 'user' via REST API
+                    response_fake_auth = requests.post(
+                    self.connection.server + "/data/services/auth", data=data, headers=headers)
+                    cookies = {"JSESSIONID": response_fake_auth.text}
+                ########
+
                 # Open passed file and POST to XNAT endpoint
                 with open(file_path, "rb") as file:
                     response = requests.post(
-                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=self.connection.cookies)
+                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=cookies)
 
                 if response.status_code == 200:
                     # Return inserted file

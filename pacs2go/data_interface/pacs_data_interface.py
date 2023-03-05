@@ -66,9 +66,9 @@ class Connection():
         except:
             raise FailedDisconnectException
 
-    def create_project(self, name: str) -> 'Project':
+    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'Project':
         try:
-            return self._xnat_connection.create_project(name)
+            return self._xnat_connection.create_project(name, description, keywords)
         except:
             raise UnsuccessfulProjectCreationException(str(name))
 
@@ -104,9 +104,15 @@ class Project():
         self.name = name
 
         if self.connection._kind == "pyXNAT":
-            self._xnat_project = pyXNATProject(connection, name)
+            try:
+                self._xnat_project = pyXNATProject(connection, name)
+            except:
+                raise UnsuccessfulGetException(f"Project '{name}'")
         elif self.connection._kind == "XNAT":
-            self._xnat_project = XNATProject(connection, name)
+            try:
+                self._xnat_project = XNATProject(connection, name)
+            except:
+                raise UnsuccessfulGetException(f"Project '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
             raise FailedConnectionException
@@ -195,10 +201,17 @@ class Directory():
     def __init__(self, project: Project, name: str) -> None:
         self.name = name
         self.project = project
+
         if self.project.connection._kind == "pyXNAT":
-            self._xnat_directory = pyXNATDirectory(project, name)
+            try:
+                self._xnat_directory = pyXNATDirectory(project, name)
+            except:
+                raise UnsuccessfulGetException(f"Directory '{name}'")
         elif self.project.connection._kind == "XNAT":
-            self._xnat_project = XNATDirectory(project, name)
+            try:
+                self._xnat_directory = XNATDirectory(project, name)
+            except:
+                raise UnsuccessfulGetException(f"Directory '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
             raise FailedConnectionException
@@ -250,9 +263,16 @@ class File():
         self.directory = directory
         self.name = name
         if self.directory.project.connection._kind == "pyXNAT":
-            self._xnat_file = pyXNATFile(directory, name)
+            try:
+                self._xnat_file = pyXNATFile(directory, name)
+            except:
+                raise UnsuccessfulGetException(f"File '{name}'")
+        
         if self.directory.project.connection._kind == "XNAT":
-            self._xnat_file = XNATFile(directory, name)
+            try:
+                self._xnat_file = XNATFile(directory, name)
+            except:
+                raise UnsuccessfulGetException(f"File '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
             raise FailedConnectionException
