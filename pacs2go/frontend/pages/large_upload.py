@@ -18,6 +18,10 @@ from dash.dependencies import Output
 from dash.dependencies import State
 from flask_login import current_user
 
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
+from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 
@@ -44,7 +48,7 @@ def get_project_names() -> List[str]:
 
         return project_list
 
-    except Exception as err:
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
 
@@ -171,9 +175,9 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                                            className="fw-bold text-decoration-none",
                                            style={'color': colors['links']})], color="success")
 
-            except Exception as err:
+            except (FailedConnectionException, UnsuccessfulGetException, WrongUploadFormatException, UnsuccessfulUploadException) as err:
                 # TODO: differentiate between different exceptions
-                return dbc.Alert("Upload unsuccessful: " + str(err), color="danger")
+                return dbc.Alert(str(err), color="danger")
 
         else:
             return dbc.Alert("Please specify Project Name.", color="danger")

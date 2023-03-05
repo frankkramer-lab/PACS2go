@@ -31,7 +31,7 @@ class XNAT():
         self.username = username
 
         # User may either specify password of session_id to authenticate themselves
-        if password is not None:
+        if password:
             data = {"username": username, "password": password}
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
             # Authenticate user via REST API
@@ -48,7 +48,7 @@ class XNAT():
                 self.cookies = {"JSESSIONID": self.session_id}
                 # print(requests.get(self.server + "/xapi/users/username",cookies=self.cookies).text)
 
-        elif session_id != None:
+        elif session_id:
             self.session_id = session_id
             self.cookies = {"JSESSIONID": self.session_id}
         else:

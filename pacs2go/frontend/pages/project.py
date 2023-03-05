@@ -14,6 +14,10 @@ from dash import State
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
@@ -199,8 +203,8 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
             # Redirect to project list after deletion
             return not is_open, dcc.Location(href="/projects/", id="redirect_after_project_delete")
 
-        except Exception as err:
-            return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+            return is_open, dbc.Alert(str(err), color="danger")
     else:
         return is_open, no_update
 
@@ -231,8 +235,8 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
                         d.delete_directory()
                     return not is_open, no_update
 
-        except Exception as err:
-            return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+            return is_open, dbc.Alert(str(err), color="danger")
 
     else:
         return is_open, no_update
@@ -263,8 +267,7 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
                 # Set new keywords
                 project.set_keywords(keywords)
             return not is_open, no_update, get_details(project)
-        except Exception as err:
-            # TODO: differentiate between different exceptions
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
     else:
         raise PreventUpdate
@@ -272,17 +275,17 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
 
 @callback(Output('directory_table', 'children'),
           Input('filter_directory_tags_btn', 'n_clicks'),
-          State('filter_directory_tags', 'value'),
+          Input('filter_directory_tags', 'value'),
           State('project_store', 'data'))
-def filter_files_table(btn, filter, project_name):
+def filter_directory_table(btn, filter, project_name):
     # Apply filter to the directories table
-    if ctx.triggered_id == 'filter_directory_tags_btn':
+    if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
         if filter or filter == "":
             try:
                 connection = get_connection()
                 return get_directories_table(connection.get_project(project_name), filter)
-            except Exception as err:
-                return dbc.Alert(f"{err}", color="danger")
+            except (FailedConnectionException, UnsuccessfulGetException) as err:
+                return dbc.Alert(str(err), color="danger")
         else:
             raise PreventUpdate
     else:
@@ -294,7 +297,7 @@ def filter_files_table(btn, filter, project_name):
     Input("btn_download_project", "n_clicks"), State("project_store", "data"),
     prevent_initial_call=True,
 )
-def func(n_clicks, project_name):
+def download_project(n_clicks, project_name):
     if ctx.triggered_id == 'btn_download_project':
         try:
             connection = get_connection()
@@ -303,8 +306,8 @@ def func(n_clicks, project_name):
                 # Get directory as zip to a tempdir and then send it to browser
                 zipped_project_data = project.download(tempdir)
                 return dcc.send_file(zipped_project_data)
-        except Exception as err:
-            return dbc.Alert(f"{err}", color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
+            return dbc.Alert(str(err), color="danger")
     else:
         raise PreventUpdate
 
@@ -320,8 +323,8 @@ def layout(project_name: Optional[str] = None):
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
-        except Exception as err:
-            return dbc.Alert(f"No Project found. + {err}", color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
+            return dbc.Alert(str(err), color="danger")
         return html.Div([
             dcc.Store(id='project_store', data=project.name),
             # Header including page title and action buttons

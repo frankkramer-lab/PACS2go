@@ -4,6 +4,8 @@ from dash import html
 from dash import register_page
 from flask_login import current_user
 
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 
@@ -16,8 +18,8 @@ def card_view_projects():
         projects = connection.get_all_projects()
         number_of_projects = len(projects)
 
-    except Exception as err:
-        return dbc.Alert("Projects could not be retrieved." + str(err))
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        return dbc.Alert(str(err))
 
     project_list = []
     # Only show 8 projects on landing page

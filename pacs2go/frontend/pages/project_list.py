@@ -11,6 +11,9 @@ from dash import State
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
@@ -29,7 +32,7 @@ def get_projects_table(filter: str = ''):
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
                     p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords)]))
-    except Exception as err:
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
     table_header = [
@@ -115,8 +118,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             project.set_description(description)
             project.set_keywords(keywords)
             return not is_open, dcc.Location(href="/projects/", id="redirect_after_project_creation")
-        except Exception as err:
-            # TODO: differentiate between different exceptions
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
     else:
         return is_open, no_update

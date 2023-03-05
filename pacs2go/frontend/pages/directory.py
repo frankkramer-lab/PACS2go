@@ -19,10 +19,13 @@ from dash import State
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
+from pacs2go.data_interface.exceptions.exceptions import DownloadException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
-
 
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
@@ -106,7 +109,7 @@ def modal_delete(directory: Directory):
                     dbc.ModalFooter([
                         # Button which triggers the deletion of the directory
                         dbc.Button("Delete Directory",
-                            id="delete_directory_and_close", color="danger"),
+                                   id="delete_directory_and_close", color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_delete_directory"),
                     ]),
@@ -142,23 +145,23 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
             directory.delete_directory()
             # Redirect to project after deletion
             return not is_open, dcc.Location(href=f"/project/{project_name}", id="redirect_after_directory_delete")
-        except Exception as err:
-            return is_open, dbc.Alert("Can't be deleted " + str(err), color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+            return is_open, dbc.Alert(str(err), color="danger")
     else:
         raise PreventUpdate
 
 
 @callback(Output('files_table', 'children'), Input('filter_file_tags_btn', 'n_clicks'),
-          State('filter_file_tags', 'value'), State('directory', 'data'), State('project', 'data'))
+          Input('filter_file_tags', 'value'), State('directory', 'data'), State('project', 'data'))
 def filter_files_table(btn, filter, directory_name, project_name):
     # Apply filter to the files table
-    if ctx.triggered_id == 'filter_file_tags_btn':
+    if ctx.triggered_id == 'filter_file_tags_btn' or filter:
         try:
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             return get_files_table(directory, filter)
-        except Exception as err:
-            return dbc.Alert(f"{err}", color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
+            return dbc.Alert(str(err), color="danger")
     else:
         raise PreventUpdate
 
@@ -169,7 +172,7 @@ def filter_files_table(btn, filter, directory_name, project_name):
         "directory", "data"),  State("project", "data"),
     prevent_initial_call=True,
 )
-def func(n_clicks, directory_name, project_name):
+def download(n_clicks, directory_name, project_name):
     if ctx.triggered_id == 'btn_download_dir':
         try:
             connection = get_connection()
@@ -178,8 +181,8 @@ def func(n_clicks, directory_name, project_name):
                 # Get directory as zip to a tempdir and then send it to browser
                 zipped_dir = directory.download(tempdir)
                 return dcc.send_file(zipped_dir)
-        except Exception as err:
-            return dbc.Alert(f"{err}", color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
+            return dbc.Alert(str(err), color="danger")
     else:
         raise PreventUpdate
 
@@ -197,8 +200,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             connection = get_connection()
             directory = connection.get_directory(
                 project_name, directory_name)
-        except Exception as err:
-            return dbc.Alert(f"{err}", color="danger")
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
+            return dbc.Alert(str(err), color="danger")
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory.name),

@@ -20,6 +20,9 @@ from dash import State
 from flask_login import current_user
 from PIL import Image
 
+from pacs2go.data_interface.exceptions.exceptions import DownloadException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
@@ -40,7 +43,7 @@ def get_file_list(project_name: str, directory_name: str) -> List[File]:
         # Return list of all the files in the directory
         return directory.get_all_files()
 
-    except Exception as err:
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
 
@@ -166,9 +169,9 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
             project_name, directory_name, chosen_file_name)
         # Return visualization of file details if file exists
         return [show_file(file)]
-    except Exception as err:
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
         # Show nothing if file does not exist.
-        return [dbc.Alert(f"No file was chosen. {err}", color='warning')]
+        return [dbc.Alert(str(err), color='warning')]
 
 
 @callback(
@@ -177,7 +180,7 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
         'directory', 'data'), State('project', 'data'),
     prevent_initial_call=True,
 )
-def func(n_clicks, file_name, dir, project):
+def download_file(n_clicks, file_name, dir, project):
     with TemporaryDirectory() as tempdir:
         try:
             connection = get_connection()
@@ -185,8 +188,8 @@ def func(n_clicks, file_name, dir, project):
             temp_dest = file.download(destination=tempdir)
             print(file_name, temp_dest)
             return dcc.send_file(temp_dest)
-        except:
-            dbc.Alert("Download unsuccessful.", color='warning')
+        except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
+            dbc.Alert(str(err), color='warning')
 
 
 #################
@@ -202,7 +205,7 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
         try:
             # Get list of files
             files = get_file_list(project_name, directory_name)
-        except Exception as err:
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
         return html.Div([
             # dcc Store components for project and directory name strings

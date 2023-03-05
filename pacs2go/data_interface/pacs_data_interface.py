@@ -35,8 +35,7 @@ class Connection():
             if self.kind == "pyXNAT":
                 self._xnat_connection = pyXNAT(server, username, password)
             elif self.kind == "XNAT":
-                self._xnat_connection = XNAT(
-                    server=server, username=username, password=password, session_id=session_id)
+                self._xnat_connection = XNAT(server=server, username=username, password=password, session_id=session_id)
             else:
                 raise ValueError(kind)
         except:
