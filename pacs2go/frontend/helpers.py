@@ -1,9 +1,9 @@
 import base64
 from io import BytesIO
-from flask_login import current_user
-from flask import session
 
 import dash
+from flask import session
+from flask_login import current_user
 
 from pacs2go.data_interface.pacs_data_interface import Connection
 
@@ -16,6 +16,7 @@ colors = {
     'links': '#2d9e2b'
 }
 
+
 def get_connection():
     if current_user.is_authenticated:
         user = current_user.id
@@ -25,10 +26,11 @@ def get_connection():
     else:
         pass
 
- 
-## LOGIN utils
+
+#--- LOGIN utils ---#
 
 restricted_page = {}
+
 
 def require_login(page):
     # Without this only the home address ending in "/" requires a login
@@ -39,7 +41,7 @@ def require_login(page):
             restricted_page[dash.page_registry[pg]['path']] = True
 
 
-## IMAGE REPRESENATION utils
+# IMAGE REPRESENATION utils
 
 # from: https://stackoverflow.com/questions/60712647/displaying-pil-images-in-dash-plotly
 # usage: html.Img(id="my-img",className="image", width="100%",  src="data:image/png;base64, " + pil_to_b64(pil_img))

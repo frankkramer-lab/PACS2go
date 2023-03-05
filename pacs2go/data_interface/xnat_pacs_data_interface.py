@@ -92,7 +92,10 @@ class pyXNAT():
             raise Exception(
                 f"No file called {file_name} in Project {project_name}, Directory {directory_name}.")
 
-
+    def create_project(self, name: str):
+        return pyXNATProject(self, name)
+    
+    
 #---------------------------------------------#
 #       pyXNAT Project interface class          #
 #---------------------------------------------#
@@ -100,7 +103,7 @@ class pyXNATProject():
     def __init__(self, connection: pyXNAT, name: str) -> None:
         project = connection.interface.select.project(name)
 
-        if project.exists() != True:
+        if not project.exists():
             try:
                 project.create()
 

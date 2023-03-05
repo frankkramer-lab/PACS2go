@@ -4,6 +4,8 @@ from dash import html
 from dash import register_page
 from flask_login import current_user
 
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 
@@ -16,8 +18,8 @@ def card_view_projects():
         projects = connection.get_all_projects()
         number_of_projects = len(projects)
 
-    except Exception as err:
-        return dbc.Alert("Projects could not be retrieved." + str(err))
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        return dbc.Alert(str(err))
 
     project_list = []
     # Only show 8 projects on landing page
@@ -41,7 +43,7 @@ def card_view_projects():
                               class_name="my-3"
                               ),
                 dbc.Button("Go to Project Overview",
-                           href=f"/projects/", outline=False, color='success'),
+                           href="/projects/", outline=False, color='success'),
             ]
         ))
 
@@ -53,13 +55,13 @@ def card_view_upload():
         dbc.CardBody(
             [
                 html.H4("Upload", className="card-title"),
-                html.P(f"Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
+                html.P("Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
                        className="card-subtitle"),
                 dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
                            href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
             ]
         ),)
-        
+
     return card
 
 
