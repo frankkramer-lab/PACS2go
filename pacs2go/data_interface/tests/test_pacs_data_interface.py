@@ -2,8 +2,9 @@ import random
 import unittest
 import uuid
 
-from werkzeug.exceptions import HTTPException
-
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
+from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
 from pacs2go.data_interface.pacs_data_interface import Connection
 from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.data_interface.pacs_data_interface import File
@@ -23,7 +24,7 @@ class TestConnection(unittest.TestCase):
             self.assertEqual(self.user, connection.user)
 
     def test_connection_wrong_input(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(FailedConnectionException):
             with Connection(self.server, self.user, self.pwd, kind= "some PACS") as connection:
                 print(
                     "This should not be visible, because the kind of connection does not exist.")
@@ -93,7 +94,7 @@ class TestDataInterface(unittest.TestCase):
         # Checks if double deleting a project results in an expected Exception
         p = Project(self.connection, str(uuid.uuid4()))
         p.delete_project()
-        with self.assertRaises(HTTPException):
+        with self.assertRaises(UnsuccessfulDeletionException):
             p.delete_project()
 
     def test_insert(self):
@@ -107,7 +108,7 @@ class TestDataInterface(unittest.TestCase):
 
     def test_insert_invalid_input(self):
         # Checks if wrong input raises the expected Exception
-        with self.assertRaisesRegex(Exception, "The input is neither a file nor a zip."):
+        with self.assertRaises(WrongUploadFormatException):
             self.project.insert('hello', 'test_general_insert_2')
 
     def test_file_retrieval(self):
@@ -127,9 +128,9 @@ class TestDataInterface(unittest.TestCase):
 
     def test_xdouble_delete_file(self):
         # Checks if double deleting a file results in an expected Exception
-        file = self.to_be_double_deleted_file
+        file = File(self.to_be_double_deleted_file.directory, self.to_be_double_deleted_file.name)
         file.delete_file()
-        with self.assertRaises(HTTPException):
+        with self.assertRaises(UnsuccessfulDeletionException):
             file.delete_file()
 
     def test_ydelete_diretory(self):

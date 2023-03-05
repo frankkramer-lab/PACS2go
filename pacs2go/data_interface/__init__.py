@@ -1,1 +1,0 @@
-from .xnat_pacs_data_interface import *

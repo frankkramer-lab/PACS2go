@@ -11,7 +11,7 @@ from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionExc
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulProjectCreationException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
-from pacs2go.data_interface.exceptions.exceptions import UserNotFound
+from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNAT
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATDirectory
 from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATFile
@@ -185,8 +185,11 @@ class Project():
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
             return self._xnat_project.insert(file_path, directory_name, tags_string)
+        except ValueError:
+            raise WrongUploadFormatException(str(file_path))
         except:
             raise UnsuccessfulUploadException(str(file_path))
+
 
 
 class Directory():
