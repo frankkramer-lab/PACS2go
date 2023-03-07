@@ -11,3 +11,4 @@
 /pacs2go/frontend/pages/__pycache__
 /pacs2go.egg-info
 .vscode
+.env

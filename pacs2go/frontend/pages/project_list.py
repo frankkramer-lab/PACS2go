@@ -11,7 +11,7 @@ from dash import State
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException, UnsuccessfulProjectCreationException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.pacs_data_interface import Project
@@ -60,7 +60,7 @@ def modal_create():
                 dbc.ModalHeader(dbc.ModalTitle("Create New Project")),
                 dbc.ModalBody([
                     html.Div(id='create-project-content'),
-                    dbc.Label("Please enter a unique name for your project."),
+                    dbc.Label("Please enter a unique name for your project. (Don't use ä,ö,ü or ß)"),
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
@@ -115,8 +115,8 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             connection = get_connection()
             # Try to create project
             project = connection.create_project(name=project_name, description=description, keywords=keywords)
-            return not is_open, dcc.Location(href="/projects/", id="redirect_after_project_creation")
-        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
+            return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_project_creation")
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulProjectCreationException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
 
     else:

@@ -335,7 +335,7 @@ class XNATProject():
             
             ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####
             if self.your_user_role == 'Members':
-                data = {"username": 'admin', "password": 'admin'}
+                data = {"username": os.getenv("XNAT_USER"), "password": os.getenv("XNAT_PASS")}
                 headers = {"Content-Type": "application/x-www-form-urlencoded"}
                 # Authenticate 'user' via REST API
                 response_fake_auth = requests.post(
@@ -418,7 +418,7 @@ class XNATProject():
 
                 ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####
                 if self.your_user_role == 'Members':
-                    data = {"username": 'admin', "password": 'admin'}
+                    data = {"username": os.getenv('XNAT_USER'), "password": os.getenv('XNAT_PASS')}
                     headers = {"Content-Type": "application/x-www-form-urlencoded"}
                     # Authenticate 'user' via REST API
                     response_fake_auth = requests.post(
@@ -428,8 +428,8 @@ class XNATProject():
 
                 # Open passed file and POST to XNAT endpoint
                 with open(file_path, "rb") as file:
-                    response = requests.post(
-                        self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=cookies)
+                        response = requests.post(
+                            self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=cookies)
 
                 if response.status_code == 200:
                     # Return inserted file
