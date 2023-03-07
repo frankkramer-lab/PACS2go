@@ -97,14 +97,14 @@ class XNATAuthBackend:
 
 server.config["AUTH_TYPE"] = "XNAT"
 # TODO: production: https://flask-login.readthedocs.io/en/latest/#session-protection set to "strong"
-login_manager.session_protection = None
+login_manager.session_protection = 'strong'
 login_manager.auth_backend = XNATAuthBackend()
 
 
 @server.before_request
 def make_session_permanent():
     session.permanent = True
-    # Defualt permanent_session_lifetime is 31days
+    # Default permanent_session_lifetime is 31days
     server.permanent_session_lifetime = timedelta(minutes=10)
 
 
@@ -213,4 +213,4 @@ def login_feedback(path):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

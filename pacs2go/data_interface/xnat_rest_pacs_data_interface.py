@@ -331,6 +331,8 @@ class XNATProject():
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
 
+            if tags_string == '':
+                tags_string = 'No tags'
             cookies=self.connection.cookies
             
             ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####
