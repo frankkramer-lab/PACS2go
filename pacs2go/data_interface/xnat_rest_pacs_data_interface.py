@@ -90,7 +90,7 @@ class XNAT():
             <ID>{name}</ID>
             <name>{name}</name>
             <description>{description if description else 'This is a new project.'}</description>
-            <keywords>{description if description else 'Set keywords here.'}</keywords>
+            <keywords>{keywords if keywords else 'Set keywords here.'}</keywords>
             </projectData>
             """
         response = requests.post(self.server + "/data/projects",
