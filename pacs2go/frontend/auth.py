@@ -1,3 +1,4 @@
+from flask import session
 import requests
 from flask_login import UserMixin
 
