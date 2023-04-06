@@ -2,7 +2,6 @@ import os
 from datetime import timedelta
 
 import dash_bootstrap_components as dbc
-import requests
 from dash import ALL
 from dash import Dash
 from dash import dcc
@@ -21,10 +20,10 @@ from flask import session
 from flask_login import current_user
 from flask_login import login_user
 from flask_login import LoginManager
-from flask_login import UserMixin
 
 from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import server_url
+from pacs2go.frontend.auth import XNATAuthBackend
+
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -50,51 +49,6 @@ login_manager = LoginManager()
 login_manager.init_app(server)
 login_manager.login_view = "/login"
 
-
-class User(UserMixin):
-    def __init__(self, username, session_id):
-        self.id = username
-        self.session_id = session_id
-
-    def get_id(self):
-        return self.id
-
-    def is_authenticated(self):
-        return True
-
-    def is_active(self):
-        return True
-
-    def is_anonymous(self):
-        return False
-
-
-class XNATAuthBackend:
-    def authenticate(self, username, password):
-        # Send request to XNAT server to authenticate user
-        data = {"username": username, "password": password}
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        response = requests.post(
-            server_url + "/data/services/auth", data=data, headers=headers)
-        if response.status_code == 200:
-            # Login was successful
-            session_id = response.text
-            return User(username, session_id)
-        else:
-            # Login failed
-            return None
-
-    def get_user(self, username):
-        # Check if user is logged in
-        session_id = session.get("session_id")
-        if session_id is not None:
-            # User is logged in, return user object
-            return User(username, session_id)
-        else:
-            # User is not logged in
-            return None
-
-
 server.config["AUTH_TYPE"] = "XNAT"
 # TODO: production: https://flask-login.readthedocs.io/en/latest/#session-protection set to "strong"
 login_manager.session_protection = 'strong'
@@ -105,7 +59,7 @@ login_manager.auth_backend = XNATAuthBackend()
 def make_session_permanent():
     session.permanent = True
     # Default permanent_session_lifetime is 31days
-    server.permanent_session_lifetime = timedelta(minutes=10)
+    server.permanent_session_lifetime = timedelta(minutes=30)
 
 
 @server.route('/login', methods=['POST'])
