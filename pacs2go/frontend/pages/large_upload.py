@@ -44,7 +44,7 @@ def get_project_names() -> List[str]:
 
         for p in connection.get_all_projects():
             if p.your_user_role != 'Collaborators':
-                project_list.append(html.Option(value=p.name))
+                project_list.append(p.name)
 
         return project_list
 
@@ -76,11 +76,10 @@ def uploader(passed_project: Optional[str]):
             dbc.Col(
                 # Input field value equals project name, if user navigates to upload via a specific project
                 [dbc.Label("Project"),
-                 html.Datalist(children=get_project_names(),
-                               id='project_names'),
-                 dbc.Input(id="project_name", type="text", placeholder="Project Name...",
-                           required=True, value=passed_project, list='project_names'),
-                 dbc.FormText("If you choose a pre-existent project name, the data will be inserted into this project. Otherwise a new project will be created.")], className="mb-3"),
+                 #html.Datalist(children=get_project_names(),id='project_names'),
+                 dcc.Dropdown(options=get_project_names(),id="project_name", placeholder="Project Name...",
+                          value=passed_project),
+                 dbc.FormText("Please choose a project. To create a new project go to 'Projects'.")], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
                  dbc.Input(id="directory_name",

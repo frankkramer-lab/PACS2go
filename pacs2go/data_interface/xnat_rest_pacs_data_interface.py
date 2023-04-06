@@ -90,7 +90,7 @@ class XNAT():
             <ID>{name}</ID>
             <name>{name}</name>
             <description>{description if description else 'This is a new project.'}</description>
-            <keywords>{description if description else 'Set keywords here.'}</keywords>
+            <keywords>{keywords if keywords else 'Set keywords here.'}</keywords>
             </projectData>
             """
         response = requests.post(self.server + "/data/projects",
@@ -331,6 +331,8 @@ class XNATProject():
                 # XNAT can't handle whitespaces in names -> replace them with underscores
                 directory_name = directory_name.replace(" ", "_")
 
+            if tags_string == '':
+                tags_string = 'No tags'
             cookies=self.connection.cookies
             
             ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####

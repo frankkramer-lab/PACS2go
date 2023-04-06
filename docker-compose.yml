@@ -12,6 +12,7 @@ services:
       XNAT_USER: ${XNAT_USER}
       XNAT_PASS: ${XNAT_PASS}
     command: gunicorn pacs2go.frontend.app:server -b :5000
+    #command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
     restart: always
