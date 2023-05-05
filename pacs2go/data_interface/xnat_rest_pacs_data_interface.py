@@ -286,7 +286,7 @@ class XNATProject():
 
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}/resources", cookies=self.connection.cookies)
+            self.connection.server + f"/data/projects/{self.name}/resources?sortBy=label", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
@@ -506,7 +506,7 @@ class XNATDirectory():
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json", cookies=self.project.connection.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json&sortBy=Name", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
