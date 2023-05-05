@@ -49,7 +49,7 @@ def get_project_names() -> List[str]:
         return project_list
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
-        return dbc.Alert(str(err), color="danger")
+        return ["No database connection."]
 
 
 def get_upload_component(id: str):
