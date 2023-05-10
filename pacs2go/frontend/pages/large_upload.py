@@ -22,6 +22,7 @@ from pacs2go.data_interface.exceptions.exceptions import FailedConnectionExcepti
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
 from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
+from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 
@@ -47,6 +48,21 @@ def get_project_names() -> List[str]:
                 project_list.append(p.name)
 
         return project_list
+
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        return ["No database connection."]
+
+def get_directory_names(project:Project) -> List[str]:
+    # Get List of all project names as html Options
+    try:
+        directories = get_connection().get_project(project).get_all_directories()
+        dir_list = []
+
+        for d in directories:
+            # html option to create a html datalist
+            dir_list.append(html.Option(value=d.name))
+
+        return dir_list
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return ["No database connection."]
@@ -82,8 +98,9 @@ def uploader(passed_project: Optional[str]):
                  dbc.FormText("Please choose a project. To create a new project go to 'Projects'.")], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
+                 html.Datalist(id='dir_names'),
                  dbc.Input(id="directory_name",
-                           placeholder="Directory Name (optional)"),
+                           placeholder="Directory Name... (optional)", list='dir_names'),
                  dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
         ]),
         dbc.Row(dbc.Col(
@@ -183,6 +200,11 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
 
     else:
         return no_update
+
+@callback(Output('dir_names', 'children'),Input('project_name','value'))
+def display_directory_dropdown(project):
+    # When a project is selected, the directory field suggests existing directories to upload to
+    return get_directory_names(project)
 
 #################
 #  Page Layout  #
