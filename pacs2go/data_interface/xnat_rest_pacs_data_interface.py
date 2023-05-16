@@ -286,7 +286,7 @@ class XNATProject():
 
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}/resources", cookies=self.connection.cookies)
+            self.connection.server + f"/data/projects/{self.name}/resources?sortBy=label", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
@@ -382,7 +382,7 @@ class XNATProject():
             raise ValueError("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '') -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', use_original_file_name:bool=True) -> 'XNATFile':
         if os.path.exists(file_path):
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
@@ -399,10 +399,13 @@ class XNATProject():
 
             # Only continue if file format/suffix is an accepted one
             if suffix in allowed_file_suffixes:
-                # File names are unique, duplicate file names can not be inserted
-                file_id = str(uuid.uuid4())
-                # Add file suffix to generated unique file_id
-                file_id = file_id + suffix
+                if use_original_file_name:
+                    file_id = file_path.split("/")[-1]
+                else:
+                    # File names are unique, duplicate file names can not be inserted
+                    file_id = str(uuid.uuid4())
+                    # Add file suffix to generated unique file_id
+                    file_id = file_id + suffix
 
                 # Get correct content tag for REST query parameter
                 if suffix in image_file_suffixes:
@@ -430,7 +433,7 @@ class XNATProject():
 
                 # Open passed file and POST to XNAT endpoint
                 with open(file_path, "rb") as file:
-                        response = requests.post(
+                    response = requests.post(
                             self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=cookies)
 
                 if response.status_code == 200:
@@ -503,7 +506,7 @@ class XNATDirectory():
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json", cookies=self.project.connection.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json&sortBy=Name", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull

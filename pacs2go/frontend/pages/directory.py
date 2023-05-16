@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import math
 from tempfile import TemporaryDirectory
 from typing import Optional
 
@@ -60,28 +61,29 @@ def get_single_file_preview(directory: Directory):
         dbc.CardBody(content, className="w-25 h-25")])
 
 
-def get_files_table(directory: Directory, filter: str = ''):
+def get_files_table(directory: Directory, filter: str = '', active_page: int = 0):
     rows = []
     files = directory.get_all_files()
     # Get file information as rows for table
     # No filter applied
     if len(filter) == 0:
-        for f in files:
-            rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                         ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+        for index, f in enumerate(files):
+            rows.append(html.Tr([html.Td(index+1), html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                                           ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
     # Filtering
     elif len(filter) > 0 and filter.lower() in directory.contained_file_tags.lower():
-        for f in files:
+        for index, f in enumerate(files):
             if filter.lower() in f.tags.lower():
-                rows.append(html.Tr([html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                             ), html.Td(f.format), html.Td(f.tags), html.Td(f.size)]))
+                rows.append(html.Tr([html.Td(index+1), html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                                               ), html.Td(f.format), html.Td(f.tags), html.Td(f.size)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size")]))
+            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size")]))
     ]
 
-    table_body = [html.Tbody(rows)]
+    table_body = [html.Tbody(
+        rows[active_page*20:min((active_page+1)*20, int(directory.number_of_files))])]
 
     # Put together file table
     table = dbc.Table(table_header + table_body,
@@ -152,14 +154,18 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
 
 
 @callback(Output('files_table', 'children'), Input('filter_file_tags_btn', 'n_clicks'),
-          Input('filter_file_tags', 'value'), State('directory', 'data'), State('project', 'data'))
-def filter_files_table(btn, filter, directory_name, project_name):
+          Input('filter_file_tags', 'value'), Input('pagination-files', 'active_page'), State('directory', 'data'), State('project', 'data'))
+def filter_files_table(btn, filter, active_page, directory_name, project_name):
     # Apply filter to the files table
-    if ctx.triggered_id == 'filter_file_tags_btn' or filter:
+    if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
-            return get_files_table(directory, filter)
+            if not active_page:
+                active_page = 1
+            if not filter:
+                filter = ''
+            return get_files_table(directory, filter, int(active_page)-1)
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
     else:
@@ -242,6 +248,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     # Display a table of the directory's files
                     dbc.Spinner(html.Div(get_files_table(
                         directory), id='files_table')),
+                    dbc.Pagination(id="pagination-files", max_value=math.ceil(
+                        int(directory.number_of_files)/20), first_last=True, previous_next=True)
                 ])], class_name="mb-3"),
 
             # Display a preview of the first file's content
