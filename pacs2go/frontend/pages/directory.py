@@ -130,7 +130,7 @@ def modal_delete(directory: Directory):
 @callback([Output('modal_delete_directory', 'is_open'), Output('delete-directory-content', 'children')],
           [Input('delete_directory', 'n_clicks'), Input(
               'close_modal_delete_directory', 'n_clicks'), Input('delete_directory_and_close', 'n_clicks')],
-          State("modal_delete_directory", "is_open"), State('directory', 'data'), State('project', 'data'))
+          State("modal_delete_directory", "is_open"), State('directory', 'data'), State('project', 'data'), prevent_initial_call=True)
 # Callback for the directory deletion modal view and the actual directory deletion
 def modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
     # Open/close modal via button click
@@ -154,7 +154,7 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
 
 
 @callback(Output('files_table', 'children'), Input('filter_file_tags_btn', 'n_clicks'),
-          Input('filter_file_tags', 'value'), Input('pagination-files', 'active_page'), State('directory', 'data'), State('project', 'data'))
+          Input('filter_file_tags', 'value'), Input('pagination-files', 'active_page'), State('directory', 'data'), State('project', 'data'), prevent_initial_call=True)
 def filter_files_table(btn, filter, active_page, directory_name, project_name):
     # Apply filter to the files table
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:

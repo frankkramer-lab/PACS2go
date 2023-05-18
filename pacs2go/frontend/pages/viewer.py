@@ -160,7 +160,7 @@ def file_card_view():
 
 
 @callback([Output('current_image', 'children')], [Input('image-dropdown', 'value')],
-          State('directory', 'data'), State('project', 'data'))
+          State('directory', 'data'), State('project', 'data'), prevent_initial_call=True)
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
     try:
         connection = get_connection()

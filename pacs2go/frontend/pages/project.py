@@ -185,7 +185,7 @@ def download_project_data():
            Input('close_modal_delete', 'n_clicks'),
            Input('delete_and_close', 'n_clicks')],
           State("modal_delete", "is_open"),
-          State("project", "value"))
+          State("project", "value"), prevent_initial_call=True)
 # Callback for project deletion modal view and executing project deletion
 def modal_and_project_deletion(open, close, delete_and_close, is_open, project_name):
     # Open/close modal via button click
@@ -214,7 +214,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
            Input('close_modal_delete_data', 'n_clicks'),
            Input('delete_data_and_close', 'n_clicks')],
           State("modal_delete_data", "is_open"),
-          State("project_2", "value"))
+          State("project_2", "value"), prevent_initial_call=True)
 # Callback used to delete all directories of a project (open modal view + actual deletion)
 def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open, project_name):
     # Open/close modal via button click
@@ -249,7 +249,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
           State("modal_edit_project", "is_open"),
           State('project_store', 'data'),
           State('new_project_description', 'value'),
-          State('new_project_keywords', 'value'))
+          State('new_project_keywords', 'value'), prevent_initial_call=True)
 # Callback used to edit project description and keywords
 def modal_edit_project_callback(open, close, edit_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
@@ -276,7 +276,7 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
 @callback(Output('directory_table', 'children'),
           Input('filter_directory_tags_btn', 'n_clicks'),
           Input('filter_directory_tags', 'value'),
-          State('project_store', 'data'))
+          State('project_store', 'data'), prevent_initial_call=True)
 def filter_directory_table(btn, filter, project_name):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn' or filter:

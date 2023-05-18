@@ -95,7 +95,7 @@ def uploader(passed_project: Optional[str]):
                  #html.Datalist(children=get_project_names(),id='project_names'),
                  dcc.Dropdown(options=get_project_names(),id="project_name", placeholder="Project Name...",
                           value=passed_project),
-                 dbc.FormText("Please choose a project. To create a new project go to 'Projects'.")], className="mb-3"),
+                 dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects'), "."])], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
                  html.Datalist(id='dir_names'),
@@ -150,7 +150,7 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
     State('project_name', 'value'),
     State('directory_name', 'value'),
     State('filename-storage', 'data'),
-    State('upload_file_tags', 'value'),
+    State('upload_file_tags', 'value'), prevent_initial_call=True
 )
 def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str):
     if ctx.triggered_id == "click-upload":
@@ -201,7 +201,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
     else:
         return no_update
 
-@callback(Output('dir_names', 'children'),Input('project_name','value'))
+@callback(Output('dir_names', 'children'),Input('project_name','value'), prevent_initial_call=True)
 def display_directory_dropdown(project):
     # When a project is selected, the directory field suggests existing directories to upload to
     return get_directory_names(project)

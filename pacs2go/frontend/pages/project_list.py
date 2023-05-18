@@ -99,7 +99,7 @@ def modal_create():
               'close_modal_create', 'n_clicks'), Input('create_and_close', 'n_clicks')],
           State("modal_create", "is_open"), State('project_name',
                                                   'value'), State('project_description', 'value'),
-          State('project_keywords', 'value'))
+          State('project_keywords', 'value'), prevent_initial_call=True)
 def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
@@ -124,7 +124,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
 
 
 @callback(Output('projects_table', 'children'), Input('filter_project_keywords_btn', 'n_clicks'),
-          Input('filter_project_keywords', 'value'))
+          Input('filter_project_keywords', 'value'), prevent_initial_call=True)
 def filter_projects_table(btn, filter):
     # Apply filter to the projects table
     if ctx.triggered_id == 'filter_project_keywords_btn' or filter:
