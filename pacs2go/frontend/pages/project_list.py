@@ -27,7 +27,8 @@ def get_projects_table(filter: str = ''):
         # Get list of all project names, specific user roles and number of directories per project
         connection = get_connection()
         rows = []
-        for p in connection.get_all_projects():
+        projects = connection.get_all_projects()
+        for p in projects:
             if filter.lower() in p.keywords.lower() or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
@@ -157,7 +158,7 @@ def layout():
                 ], class_name="mb-3"),
 
                 # Project information table
-                html.Div(get_projects_table(), id='projects_table'),
+                dbc.Spinner(html.Div(get_projects_table(), id='projects_table')),
             ])], class_name="mb-3"),
 
     ])

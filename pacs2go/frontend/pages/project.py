@@ -341,7 +341,7 @@ def layout(project_name: Optional[str] = None):
             # Project Information (owners,..)
             dbc.Card([
                 dbc.CardHeader("Details"),
-                dbc.CardBody(get_details(project), id="details_card")], class_name="mb-3"),
+                dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="mb-3"),
             dbc.Card([
                 dbc.CardHeader('Directories'),
                 dbc.CardBody([
@@ -353,8 +353,8 @@ def layout(project_name: Optional[str] = None):
                             "Filter", id="filter_directory_tags_btn"))
                     ], class_name="mb-3"),
                     # Directories Table
-                    html.Div(get_directories_table(
-                        project), id='directory_table'),
+                    dbc.Spinner(html.Div(get_directories_table(
+                        project), id='directory_table')),
                 ])], class_name="mb-3"),
 
         ])

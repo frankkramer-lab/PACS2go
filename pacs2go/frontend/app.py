@@ -20,6 +20,7 @@ from flask import session
 from flask_login import current_user
 from flask_login import login_user
 from flask_login import LoginManager
+from werkzeug.middleware.profiler import ProfilerMiddleware
 
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.auth import XNATAuthBackend
@@ -37,8 +38,10 @@ server.config.update(SECRET_KEY=os.getenv("SECRET_KEY"))
 server.config['REMEMBER_COOKIE_DURATION'] = timedelta(minutes=10)
 
 # Dash App
-app = Dash(name="xnat2go", pages_folder="/pacs2go/frontend/pages", use_pages=True, server=server,
+app = Dash(name="xnat2go", pages_folder="pacs2go/frontend/pages", use_pages=True, server=server,
            external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True)
+
+
 
 #################
 #     Login     #
@@ -115,8 +118,8 @@ app.layout = html.Div(
             className="fw-bold mb-3",
             dark=True,
             fluid=True,
-            brand_style={'padding-left': '1%'},
-            style={'padding-right': '1%'}
+            brand_style={'paddingLeft': '1%'},
+            style={'paddingRight': '1%'}
         ),
         # placeholder for each registered page (see pages folder)
         html.Div([page_container], style={'padding': '1% 10%'})
@@ -147,7 +150,7 @@ def update_authentication_status(path, n):
         if path == '/login' or path == '/login/':
             return dcc.Link("logout", href="/logout"), '/'
         return dbc.NavLink("Logout", href="/logout"), no_update
-    elif current_user and path not in ['/login', '/logout']:
+    elif current_user and path not in ['/login', '/logout', '/login/']:
         # If path not login and logout display login link
         # And store path to be redirected to after auth
         session['url'] = path
@@ -167,4 +170,13 @@ def login_feedback(path):
 
 
 if __name__ == '__main__':
+    # Performance Analytics
+    if os.getenv("PROFILER", None):
+        app.server.config["PROFILE"] = True
+        app.server.wsgi_app = ProfilerMiddleware(
+            app.server.wsgi_app,
+            sort_by=("cumtime", "tottime"),
+            restrictions=[50],
+        )
+    # Start App
     app.run(host='0.0.0.0', port=5000, debug=False)
