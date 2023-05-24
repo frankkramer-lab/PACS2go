@@ -200,8 +200,11 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
             if project:
                 project.delete_project()
 
-            # Redirect to project list after deletion
-            return not is_open, dcc.Location(href="/projects/", id="redirect_after_project_delete")
+            return is_open, dbc.Alert([f"The project {project.name} has been successfully deleted! ",
+                                  dcc.Link(f"Click here to go to back to the projects overview.",
+                                           href=f"/projects",
+                                           className="fw-bold text-decoration-none",
+                                           style={'color': colors['links']})], color="success")
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
@@ -209,7 +212,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
         return is_open, no_update
 
 
-@callback([Output('modal_delete_data', 'is_open'), Output('delete-project-data-content', 'children')],
+@callback([Output('modal_delete_data', 'is_open'), Output('delete-project-data-content', 'children'),Output('directory_table', 'children', allow_duplicate=True),],
           [Input('delete_project_data', 'n_clicks'),
            Input('close_modal_delete_data', 'n_clicks'),
            Input('delete_data_and_close', 'n_clicks')],
@@ -219,7 +222,7 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
 def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "delete_project_data" or ctx.triggered_id == "close_modal_delete_data":
-        return not is_open, no_update
+        return not is_open, no_update, no_update
 
     # Delete Button in Modal View
     if ctx.triggered_id == "delete_data_and_close":
@@ -229,17 +232,17 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
             if project:
                 dirs = project.get_all_directories()
                 if len(dirs) == 0:
-                    return is_open,  dbc.Alert("Project is empty.", color="danger")
+                    return is_open,  dbc.Alert("Project is empty.", color="danger"), no_update
                 else:
                     for d in dirs:
                         d.delete_directory()
-                    return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_project_creation")
+                    return not is_open, no_update, get_directories_table(project)
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-            return is_open, dbc.Alert(str(err), color="danger")
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
 
     else:
-        return is_open, no_update
+        return is_open, no_update, no_update
 
 
 @callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children'), Output('details_card', 'children')],

@@ -116,7 +116,11 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             connection = get_connection()
             # Try to create project
             project = connection.create_project(name=project_name, description=description, keywords=keywords)
-            return not is_open, dcc.Location(href=f"/project/{project.name}", id="redirect_after_project_creation")
+            return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
+                                  html.Span(dcc.Link(f" Click here to go to the new project {project.name}.", 
+                                           href=f"/project/{project.name}",
+                                           className="fw-bold text-decoration-none",
+                                           style={'color': colors['links']}))], color="success")
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulProjectCreationException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
 

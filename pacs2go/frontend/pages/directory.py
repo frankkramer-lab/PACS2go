@@ -146,7 +146,11 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
             # Delete Directory
             directory.delete_directory()
             # Redirect to project after deletion
-            return not is_open, dcc.Location(href=f"/project/{project_name}", id="redirect_after_directory_delete")
+            return is_open, dbc.Alert([f"The directory {directory.name} has been successfully deleted! ",
+                                  dcc.Link(f"Click here to go to back to the '{project_name}' project.",
+                                           href=f"/project/{project_name}",
+                                           className="fw-bold text-decoration-none",
+                                           style={'color': colors['links']})], color="success")
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
     else:
