@@ -39,7 +39,7 @@ server.config['REMEMBER_COOKIE_DURATION'] = timedelta(minutes=10)
 
 # Dash App
 app = Dash(name="xnat2go", pages_folder="pacs2go/frontend/pages", use_pages=True, server=server,
-           external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True)
+           external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True,update_title='Updating PACS2go...', assets_folder='pacs2go/frontend/assets')
 
 
 
@@ -172,7 +172,7 @@ def login_feedback(path):
 if __name__ == '__main__':
     # Performance Analytics
     if os.getenv("PROFILER", None):
-        app.server.config["PROFILE"] = True
+        app.server.config["PROFILE"] = False
         app.server.wsgi_app = ProfilerMiddleware(
             app.server.wsgi_app,
             sort_by=("cumtime", "tottime"),
