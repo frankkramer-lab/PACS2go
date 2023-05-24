@@ -20,6 +20,7 @@
   animation: load6 1.7s infinite ease, round 1.7s infinite ease;
   margin-top: 2rem;
 }
+/*https://community.plotly.com/t/change-loading-to-a-spinner/52933/2*/
 
 @-webkit-keyframes load6 {
   0% {
