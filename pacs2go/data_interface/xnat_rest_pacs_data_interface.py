@@ -319,7 +319,7 @@ class XNATProject():
         else:
             raise ValueError("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = True) -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = False) -> 'XNATDirectory':
         # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
@@ -363,8 +363,7 @@ class XNATProject():
                 with TemporaryDirectory() as tempdir:
                     with zipfile.ZipFile(file_path) as z:
                         z.extractall(tempdir)
-                        dir_path = os.path.join(
-                            tempdir, os.listdir(tempdir)[0])
+                        dir_path = next(os.scandir(tempdir)).path
 
                         # Get all files, even those within a lower-level directory
                         onlyfiles = []
