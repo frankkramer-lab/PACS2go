@@ -11,8 +11,8 @@ services:
     environment: # env-variables
       XNAT_USER: ${XNAT_USER}
       XNAT_PASS: ${XNAT_PASS}
-    command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload
-    #command: python pacs2go/frontend/app.py
+    #command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload
+    command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
     restart: always

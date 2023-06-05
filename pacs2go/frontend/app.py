@@ -171,12 +171,12 @@ def login_feedback(path):
 
 if __name__ == '__main__':
     # Performance Analytics
-    if os.getenv("PROFILER", None):
-        app.server.config["PROFILE"] = False
-        app.server.wsgi_app = ProfilerMiddleware(
-            app.server.wsgi_app,
-            sort_by=("cumtime", "tottime"),
-            restrictions=[50],
-        )
+    # if os.getenv("PROFILER", None):
+    #     app.server.config["PROFILE"] = False
+    #     app.server.wsgi_app = ProfilerMiddleware(
+    #         app.server.wsgi_app,
+    #         sort_by=("cumtime", "tottime"),
+    #         restrictions=[50],
+    #     )
     # Start App
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)

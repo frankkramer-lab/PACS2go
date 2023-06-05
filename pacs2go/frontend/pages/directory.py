@@ -7,11 +7,13 @@ from typing import Optional
 
 import dash_bootstrap_components as dbc
 import pandas as pd
+from dash import ALL
 from dash import callback
 from dash import ctx
 from dash import dash_table
 from dash import dcc
 from dash import html
+from dash import get_app
 from dash import Input
 from dash import no_update
 from dash import Output
@@ -24,7 +26,7 @@ from pacs2go.data_interface.exceptions.exceptions import DownloadException
 from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.pacs_data_interface import Directory
+from pacs2go.data_interface.pacs_data_interface import Directory, File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 
@@ -69,17 +71,17 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
     if len(filter) == 0:
         for index, f in enumerate(files):
             rows.append(html.Tr([html.Td(index+1), html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                                           ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)")]))
+                                                           ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)"), html.Td(modal_delete_file(directory, f))]))
     # Filtering
     elif len(filter) > 0 and filter.lower() in directory.contained_file_tags.lower():
         for index, f in enumerate(files):
             if filter.lower() in f.tags.lower():
                 rows.append(html.Tr([html.Td(index+1), html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                                               ), html.Td(f.format), html.Td(f.tags), html.Td(f.size)]))
+                                                               ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)"), html.Td(f.size)]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size")]))
+            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size"), html.Th("Actions")]))
     ]
 
     table_body = [html.Tbody(
@@ -122,9 +124,80 @@ def modal_delete(directory: Directory):
         ])
 
 
+def modal_delete_file(directory: Directory, file: File):
+    if directory.project.your_user_role == 'Owners':
+        # Modal view for directory deletion
+        return html.Div([
+            dcc.Store('file', data=file.name),
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-trash")],
+                       id={'type': 'delete_file', 'index': file.name}, size="md", color="danger"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Delete File")),
+                    dbc.ModalBody([
+                        html.Div(
+                            id='delete-file-content'),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the deletion of the file
+                        dbc.Button("Delete File",
+                                   id={'type': 'delete_file_and_close', 'index': file.name}, color="danger"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button(
+                            "Close", id='close_modal_delete_file'),
+                    ]),
+                ],
+                id='modal_delete_file',
+                is_open=False,
+            ),
+        ])
+
+
 #################
 #   Callbacks   #
 #################
+
+@callback(
+    [Output('modal_delete_file', 'is_open'),
+     Output('delete-file-content', 'children'), Output('file', 'data')],
+    [Input({'type': 'delete_file', 'index': ALL}, 'n_clicks'),
+     Input('close_modal_delete_file', 'n_clicks'),
+     Input({'type': 'delete_file_and_close', 'index': ALL}, 'n_clicks')],
+    [State('modal_delete_file', 'is_open'),
+     State('directory', 'data'),
+     State('project', 'data'),
+     State('file', 'data')],
+    prevent_initial_call=True
+)
+# Callback for the file deletion modal view and the actual file deletion
+def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
+    
+    # Open/close modal via button click
+    if isinstance(ctx.triggered_id,dict):
+        if ctx.triggered_id['type'] == "delete_file":
+            return not is_open, dbc.Label(
+                            f"Are you sure you want to delete this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index']
+        # Delete Button in the Modal View
+        if ctx.triggered_id['type'] == 'delete_file_and_close':
+            try:
+                connection = get_connection()
+                file = connection.get_file(project_name, directory_name, file_name)
+                # Delete File
+                file.delete_file()
+                # Redirect to project after deletion
+                return is_open, dbc.Alert(
+                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update
+            except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+                return not is_open, dbc.Alert(str(err), color="danger"), no_update
+            
+    elif isinstance(ctx.triggered_id, str):
+        if ctx.triggered_id == "close_modal_delete_file":
+            return not is_open, no_update, no_update
+
+    return is_open, no_update
 
 
 @callback([Output('modal_delete_directory', 'is_open'), Output('delete-directory-content', 'children')],
@@ -147,10 +220,10 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
             directory.delete_directory()
             # Redirect to project after deletion
             return is_open, dbc.Alert([f"The directory {directory.name} has been successfully deleted! ",
-                                  dcc.Link(f"Click here to go to back to the '{project_name}' project.",
-                                           href=f"/project/{project_name}",
-                                           className="fw-bold text-decoration-none",
-                                           style={'color': colors['links']})], color="success")
+                                       dcc.Link(f"Click here to go to back to the '{project_name}' project.",
+                                                href=f"/project/{project_name}",
+                                                className="fw-bold text-decoration-none",
+                                                style={'color': colors['links']})], color="success")
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
     else:
