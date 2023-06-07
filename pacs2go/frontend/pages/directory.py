@@ -68,17 +68,17 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
     files = directory.get_all_files()
     # Get file information as rows for table
     # No filter applied
-    if len(filter) == 0:
-        for index, f in enumerate(files):
-            rows.append(html.Tr([html.Td(index+1), html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                                           ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)"), html.Td(modal_delete_file(directory, f))]))
-    # Filtering
-    elif len(filter) > 0 and filter.lower() in directory.contained_file_tags.lower():
-        for index, f in enumerate(files):
-            if filter.lower() in f.tags.lower():
-                rows.append(html.Tr([html.Td(index+1), html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                                               ), html.Td(f.format), html.Td(f.tags), html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)"), html.Td(f.size)]))
-
+    
+    for index, f in enumerate(files):
+        if len(filter) == 0 or (len(filter) > 0 and filter.lower() in f.tags.lower()):
+            rows.append(html.Tr([html.Td(index+1), 
+                                    html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                                            ), 
+                                html.Td(f.format), 
+                                html.Td(f.tags), 
+                                html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)"), 
+                                html.Td([modal_delete_file(directory, f), dbc.Button([html.I(className="bi bi-download"),], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justify-content': 'space-evenly', 'align-items': 'center'})]))
+    
     table_header = [
         html.Thead(
             html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size"), html.Th("Actions")]))
@@ -270,6 +270,24 @@ def download(n_clicks, directory_name, project_name):
         raise PreventUpdate
 
 
+@callback(
+    Output("download_single_file", "data"),
+    Input({'type': 'btn_download_file', 'index': ALL}, 'n_clicks'), 
+    State("directory", "data"),  
+    State("project", "data"),
+    prevent_initial_call=True,
+)
+def download_single_file(n_clicks, directory_name, project_name):
+    with TemporaryDirectory() as tempdir:
+            try:
+                connection = get_connection()
+                file = connection.get_file(project_name, directory_name, ctx.triggered_id['index'])
+                temp_dest = file.download(destination=tempdir)
+                return dcc.send_file(temp_dest)
+            except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
+                return dbc.Alert(str(err), color='warning')
+
+
 #################
 #  Page Layout  #
 #################
@@ -304,7 +322,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                            href=f"/viewer/{project_name}/{directory.name}/none"),
                                 dbc.Button([html.I(className="bi bi-download me-2"),
                                             "Download"], id="btn_download_dir", size="md", class_name="mx-2"),
-                                dcc.Download(id="download_directory")])
+                                dcc.Download(id="download_directory"),dcc.Download(id="download_single_file")])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
             # Link back to project

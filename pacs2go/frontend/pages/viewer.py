@@ -186,7 +186,6 @@ def download_file(n_clicks, file_name, dir, project):
             connection = get_connection()
             file = connection.get_file(project, dir, file_name)
             temp_dest = file.download(destination=tempdir)
-            print(file_name, temp_dest)
             return dcc.send_file(temp_dest)
         except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
             dbc.Alert(str(err), color='warning')
