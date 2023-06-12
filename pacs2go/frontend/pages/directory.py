@@ -278,14 +278,17 @@ def download(n_clicks, directory_name, project_name):
     prevent_initial_call=True,
 )
 def download_single_file(n_clicks, directory_name, project_name):
-    with TemporaryDirectory() as tempdir:
-            try:
-                connection = get_connection()
-                file = connection.get_file(project_name, directory_name, ctx.triggered_id['index'])
-                temp_dest = file.download(destination=tempdir)
-                return dcc.send_file(temp_dest)
-            except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
-                return dbc.Alert(str(err), color='warning')
+    if ctx.triggered_id['type'] == 'btn_download_file':
+        with TemporaryDirectory() as tempdir:
+                try:
+                    connection = get_connection()
+                    file = connection.get_file(project_name, directory_name, ctx.triggered_id['index'])
+                    temp_dest = file.download(destination=tempdir)
+                    return dcc.send_file(temp_dest)
+                except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
+                    return dbc.Alert(str(err), color='warning')
+    else:
+        raise PreventUpdate
 
 
 #################
