@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pydicom
 from dash import callback
+from dash import ctx
 from dash import dash_table
 from dash import dcc
 from dash import html
@@ -181,15 +182,15 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
     prevent_initial_call=True,
 )
 def download_file(n_clicks, file_name, dir, project):
-    with TemporaryDirectory() as tempdir:
-        try:
-            connection = get_connection()
-            file = connection.get_file(project, dir, file_name)
-            temp_dest = file.download(destination=tempdir)
-            print(file_name, temp_dest)
-            return dcc.send_file(temp_dest)
-        except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
-            dbc.Alert(str(err), color='warning')
+    if ctx.triggered_id == 'btn_download':
+        with TemporaryDirectory() as tempdir:
+            try:
+                connection = get_connection()
+                file = connection.get_file(project, dir, file_name)
+                temp_dest = file.download(destination=tempdir)
+                return dcc.send_file(temp_dest)
+            except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
+                dbc.Alert(str(err), color='warning')
 
 
 #################
