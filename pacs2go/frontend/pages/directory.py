@@ -77,7 +77,7 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
                                 html.Td(f.format), 
                                 html.Td(f.tags), 
                                 html.Td(f"{round(f.size/1024,2)} KB ({f.size} Bytes)"), 
-                                html.Td([modal_delete_file(directory, f), dbc.Button([html.I(className="bi bi-download"),], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justify-content': 'space-evenly', 'align-items': 'center'})]))
+                                html.Td([modal_delete_file(directory, f), dbc.Button([html.I(className="bi bi-download"),], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]))
     
     table_header = [
         html.Thead(
@@ -174,7 +174,6 @@ def modal_delete_file(directory: Directory, file: File):
 )
 # Callback for the file deletion modal view and the actual file deletion
 def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
-    
     # Open/close modal via button click
     if isinstance(ctx.triggered_id,dict):
         if ctx.triggered_id['type'] == "delete_file":
@@ -278,7 +277,7 @@ def download(n_clicks, directory_name, project_name):
     prevent_initial_call=True,
 )
 def download_single_file(n_clicks, directory_name, project_name):
-    if ctx.triggered_id['type'] == 'btn_download_file':
+    if ctx.triggered_id['type'] == 'btn_download_file' and any(n_clicks):
         with TemporaryDirectory() as tempdir:
                 try:
                     connection = get_connection()
