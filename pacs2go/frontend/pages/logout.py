@@ -14,9 +14,14 @@ def layout():
     return html.Div(
         [
             html.Div(
-                [html.H2("You have been logged out. - You will be redirected to login.."), html.H4(dcc.Link('Or click here.', href='/login',className="fw-bold text-decoration-none",
-                                           style={'color': colors['links']}))]),
+                [html.H2("You have been logged out. - You will be redirected to login.."), html.H4(dcc.Link('Or click here.', href='/login', className="fw-bold text-decoration-none",
+                                                                                                            style={'color': colors['links']}))]),
             dcc.Interval(id={'index': 'redirectLogin',
                          'type': 'redirect'}, n_intervals=0, interval=1*3000)
-        ]
+        ], style={
+            'display': 'flex',
+            'justify-content': 'center',
+            'align-items': 'center',
+            'height': '80vh'
+        },
     )

@@ -25,6 +25,8 @@ from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatExcept
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
+
 
 
 register_page(__name__, title='Upload - PACS2go',
@@ -213,7 +215,8 @@ def display_directory_dropdown(project):
 
 def layout(project_name: Optional[str] = None):
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+        return login_required_interface()
+
     return [html.H1(
         children='PACS2go 2.0 - Uploader',
         style={

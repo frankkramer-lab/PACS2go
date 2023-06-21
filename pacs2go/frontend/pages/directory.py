@@ -29,6 +29,7 @@ from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetExceptio
 from pacs2go.data_interface.pacs_data_interface import Directory, File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
 
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
@@ -297,7 +298,8 @@ def download_single_file(n_clicks, directory_name, project_name):
 
 def layout(project_name: Optional[str] = None, directory_name: Optional[str] = None):
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+        return login_required_interface()
+
     if project_name and directory_name:
         try:
             connection = get_connection()

@@ -27,6 +27,7 @@ from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetExceptio
 from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
 from pacs2go.frontend.helpers import pil_to_b64
 # from dash_slicer import VolumeSlicer
 # from nilearn import image
@@ -200,7 +201,7 @@ def download_file(n_clicks, file_name, dir, project):
 
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+        return login_required_interface()
 
     if directory_name and project_name and file_name:
         try:
