@@ -314,6 +314,19 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory.name),
             dcc.Store(id='project', data=project_name),
+                            
+            html.Div(
+                [
+                    dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link("All Projects", href="/projects", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link(f"{project_name}", href=f"/project/{project_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    html.Span(f"{directory_name}", className='active fw-bold',style={"color": "#707070"})
+                ],
+                className='breadcrumb'
+            ),
             dbc.Row([
                     dbc.Col(
                         html.H1(f"Directory {directory.name}", style={
@@ -332,10 +345,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 dcc.Download(id="download_directory"),dcc.Download(id="download_single_file")])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
-            # Link back to project
-            dcc.Link(
-                html.H4(f"Belongs to project: {project_name}"), href=f"/project/{project_name}",
-                className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
+
             dbc.Card([
                 dbc.CardHeader('Files'),
                 dbc.CardBody([

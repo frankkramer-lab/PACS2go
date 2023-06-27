@@ -149,6 +149,12 @@ def layout():
         return login_required_interface()
 
     return html.Div(children=[
+        html.Div(
+                [
+                    dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    html.Span("All Projects", className='active fw-bold',style={"color": "#707070"})],
+            className='breadcrumb'),
         # Header including page title and create button
         html.Div([
             html.H1(

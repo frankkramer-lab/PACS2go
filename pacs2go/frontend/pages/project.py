@@ -333,7 +333,18 @@ def layout(project_name: Optional[str] = None):
             return dbc.Alert(str(err), color="danger")
         return html.Div([
             dcc.Store(id='project_store', data=project.name),
-            # Header including page title and action buttons
+                
+        html.Div(
+            [
+                dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                html.Span(" > ", style={"marginRight": "1%"}),
+                dcc.Link("All Projects", href="/projects", style={"color": colors['sage'], "marginRight": "1%"}), 
+                html.Span(" > ", style={"marginRight": "1%"}),
+                html.Span(f"{project.name}", className='active fw-bold',style={"color": "#707070"})
+            ],
+            className='breadcrumb'
+        ),
+              # Header including page title and action buttons
             dbc.Row([
                 dbc.Col(html.H1(f"Project {project.name}", style={
                         'textAlign': 'left', })),
@@ -344,6 +355,7 @@ def layout(project_name: Optional[str] = None):
                         modal_delete(project),
                         modal_delete_data(project)], className="d-grid gap-2 d-md-flex justify-content-md-end"),
             ], className="mb-3"),
+
             # Project Information (owners,..)
             dbc.Card([
                 dbc.CardHeader("Details"),

@@ -5,6 +5,7 @@ from dash import dcc
 from dash import html
 from dash import Input
 from dash import Output
+from pacs2go.frontend.helpers import colors
 
 
 dash.register_page(__name__)
@@ -12,8 +13,15 @@ dash.register_page(__name__)
 # Login screen
 layout = html.Div(
     [
+        html.Div(
+            [
+                dcc.Link("Home", href="/",
+                         style={"color": colors['sage'], "marginRight": "1%"}),
+                html.Span(" > ", style={"marginRight": "1%"}),
+                html.Span("Help", className='active fw-bold', style={"color": "#707070"})],
+            className='breadcrumb'),
         html.H1(f"Help", style={
-                                'textAlign': 'left' }, className="mb-3"),
+            'textAlign': 'left'}, className="mb-3"),
         dbc.Card([
             dbc.CardHeader(
                 dbc.Tabs(
@@ -26,7 +34,8 @@ layout = html.Div(
                     active_tab="tab-1",
                 )
             ),
-            dbc.CardBody(html.Div(id="card-content", className="card-text m-3")),
+            dbc.CardBody(html.Div(id="card-content",
+                         className="card-text m-3")),
         ]
         )
     ]
@@ -110,5 +119,3 @@ def switch_tab(at):
 
             If a red box appears instead of projects, please log out and log back in to refresh your session. For further questions, suggestions, or difficulties, feel free to contact us at [tamara.krafft@uni-a.de](mailto:tamara.krafft@uni-a.de) or [dennis.hartmann@uni-a.de](mailto:dennis.hartmann@uni-a.de).'''),
     return html.P("This shouldn't ever be displayed...")
-
-

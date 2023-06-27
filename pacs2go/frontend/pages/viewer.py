@@ -213,6 +213,23 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory_name),
             dcc.Store(id='project', data=project_name),
+
+                                        
+            html.Div(
+                [
+                    dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link("All Projects", href="/projects", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link(f"{project_name}", href=f"/project/{project_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link(f"{directory_name}", href=f"/dir/{project_name}/{directory_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    html.Span("File Viewer", className='active fw-bold',style={"color": "#707070"})
+                ],
+                className='breadcrumb'
+            ),
+
             dcc.Link(
                 html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
                 className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),

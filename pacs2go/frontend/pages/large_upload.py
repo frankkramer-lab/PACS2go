@@ -97,7 +97,7 @@ def uploader(passed_project: Optional[str]):
                  #html.Datalist(children=get_project_names(),id='project_names'),
                  dcc.Dropdown(options=get_project_names(),id="project_name", placeholder="Project Name...",
                           value=passed_project),
-                 dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects'), "."])], className="mb-3"),
+                 dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects',style={"color":colors['sage']}), "."])], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
                  html.Datalist(id='dir_names'),
@@ -217,7 +217,14 @@ def layout(project_name: Optional[str] = None):
     if not current_user.is_authenticated:
         return login_required_interface()
 
-    return [html.H1(
+    return [
+        html.Div(
+        [
+            dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+            html.Span(" > ", style={"marginRight": "1%"}),
+            html.Span("Upload", className='active fw-bold',style={"color": "#707070"})],
+            className='breadcrumb'),
+        html.H1(
         children='PACS2go 2.0 - Uploader',
         style={
             'textAlign': 'left',
