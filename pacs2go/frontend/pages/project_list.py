@@ -19,8 +19,6 @@ from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
 from pacs2go.frontend.helpers import login_required_interface
 
-
-
 register_page(__name__, title='Projects - PACS2go', path='/projects')
 
 
@@ -31,6 +29,7 @@ def get_projects_table(filter: str = ''):
         rows = []
         projects = connection.get_all_projects()
         for p in projects:
+            # Only show rows if no filter is applied of if the filter has a match in the project's keywords
             if filter.lower() in p.keywords.lower() or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
@@ -63,7 +62,8 @@ def modal_create():
                 dbc.ModalHeader(dbc.ModalTitle("Create New Project")),
                 dbc.ModalBody([
                     html.Div(id='create-project-content'),
-                    dbc.Label("Please enter a unique name for your project. (Don't use ä,ö,ü or ß)"),
+                    dbc.Label(
+                        "Please enter a unique name for your project. (Don't use ä,ö,ü or ß)"),
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
@@ -96,20 +96,27 @@ def modal_create():
 #   Callbacks   #
 #################
 
-# callback for project creation modal view and executing project creation
-@callback([Output('modal_create', 'is_open'), Output('create-project-content', 'children')],
-          [Input('create_project', 'n_clicks'), Input(
-              'close_modal_create', 'n_clicks'), Input('create_and_close', 'n_clicks')],
-          State("modal_create", "is_open"), State('project_name',
-                                                  'value'), State('project_description', 'value'),
-          State('project_keywords', 'value'), prevent_initial_call=True)
+# Callback for project creation modal view and executing project creation
+@callback(
+    [Output('modal_create', 'is_open'),
+     Output('create-project-content', 'children')],
+    [Input('create_project', 'n_clicks'),
+     Input('close_modal_create', 'n_clicks'),
+     Input('create_and_close', 'n_clicks')],
+    State("modal_create", "is_open"),
+    State('project_name', 'value'),
+    State('project_description', 'value'),
+    State('project_keywords', 'value'),
+    prevent_initial_call=True)
 def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
         return not is_open, no_update
+
     # User tries to create modal without specifying a project name -> show alert feedback
     elif ctx.triggered_id == "create_and_close" and project_name is None:
         return is_open, dbc.Alert("Please specify project name.", color="danger")
+
     # User does everything "right" for project creation
     elif ctx.triggered_id == "create_and_close" and project_name is not None:
         # Project name cannot contain whitespaces
@@ -117,21 +124,26 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         try:
             connection = get_connection()
             # Try to create project
-            project = connection.create_project(name=project_name, description=description, keywords=keywords)
+            project = connection.create_project(
+                name=project_name, description=description, keywords=keywords)
             return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
-                                  html.Span(dcc.Link(f" Click here to go to the new project {project.name}.", 
-                                           href=f"/project/{project.name}",
-                                           className="fw-bold text-decoration-none",
-                                           style={'color': colors['links']}))], color="success")
+                                       html.Span(dcc.Link(f" Click here to go to the new project {project.name}.",
+                                                          href=f"/project/{project.name}",
+                                                          className="fw-bold text-decoration-none",
+                                                          style={'color': colors['links']}))], color="success")
+
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulProjectCreationException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
 
     else:
-        return is_open, no_update
+        raise PreventUpdate
 
 
-@callback(Output('projects_table', 'children'), Input('filter_project_keywords_btn', 'n_clicks'),
-          Input('filter_project_keywords', 'value'), prevent_initial_call=True)
+@callback(
+    Output('projects_table', 'children'),
+    Input('filter_project_keywords_btn', 'n_clicks'),
+    Input('filter_project_keywords', 'value'),
+    prevent_initial_call=True)
 def filter_projects_table(btn, filter):
     # Apply filter to the projects table
     if ctx.triggered_id == 'filter_project_keywords_btn' or filter:
@@ -148,30 +160,37 @@ def layout():
     if not current_user.is_authenticated:
         return login_required_interface()
 
-    return html.Div(children=[
-        html.Div(
+    return html.Div(
+        children=[
+            # Breadcrumbs
+            html.Div(
                 [
-                    dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                    dcc.Link(
+                        "Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
                     html.Span(" > ", style={"marginRight": "1%"}),
-                    html.Span("All Projects", className='active fw-bold',style={"color": "#707070"})],
-            className='breadcrumb'),
-        # Header including page title and create button
-        html.Div([
-            html.H1(
-                children='Your Projects'),
-            html.Div(modal_create(), className="d-flex justify-content-between")
-        ], className="d-flex justify-content-between mb-4"),
-        dbc.Card([
-            dbc.CardBody([
-                # Filter file tags
-                dbc.Row([
-                    dbc.Col(dbc.Input(id="filter_project_keywords",
-                        placeholder="Search keywords.. (e.g. 'CT')")),
-                    dbc.Col(dbc.Button("Filter", id="filter_project_keywords_btn"))
-                ], class_name="mb-3"),
+                    html.Span("All Projects", className='active fw-bold', style={"color": "#707070"})],
+                className='breadcrumb'),
 
-                # Project information table
-                dbc.Spinner(html.Div(get_projects_table(), id='projects_table')),
-            ])], class_name="mb-3"),
+            # Header including page title and create button
+            html.Div([
+                html.H1(
+                    children='Your Projects'),
+                html.Div(modal_create(),
+                         className="d-flex justify-content-between")
+            ], className="d-flex justify-content-between mb-4"),
 
-    ])
+            # Project table
+            dbc.Card([
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col(dbc.Input(id="filter_project_keywords",
+                                          placeholder="Search keywords.. (e.g. 'CT')")),
+                        dbc.Col(dbc.Button(
+                            "Filter", id="filter_project_keywords_btn"))
+                    ], class_name="mb-3"),
+
+                    dbc.Spinner(
+                        html.Div(get_projects_table(), id='projects_table')),
+                ])], class_name="mb-3"),
+
+        ])

@@ -161,8 +161,12 @@ def file_card_view():
 #################
 
 
-@callback([Output('current_image', 'children')], [Input('image-dropdown', 'value')],
-          State('directory', 'data'), State('project', 'data'))
+@callback(
+    [Output('current_image', 'children')], 
+    [Input('image-dropdown', 'value')],
+    State('directory', 'data'),
+    State('project', 'data'))
+# Callback to show the contents of a selected file in the viewer
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
     try:
         connection = get_connection()
@@ -178,10 +182,13 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
 
 @callback(
     Output("download-file", "data"),
-    Input("btn_download", "n_clicks"), State("file_name", "data"), State(
-        'directory', 'data'), State('project', 'data'),
+    Input("btn_download", "n_clicks"), 
+    State("file_name", "data"), 
+    State('directory', 'data'), 
+    State('project', 'data'),
     prevent_initial_call=True,
 )
+# Callback to download the selected file
 def download_file(n_clicks, file_name, dir, project):
     if ctx.triggered_id == 'btn_download':
         with TemporaryDirectory() as tempdir:
@@ -190,6 +197,7 @@ def download_file(n_clicks, file_name, dir, project):
                 file = connection.get_file(project, dir, file_name)
                 temp_dest = file.download(destination=tempdir)
                 return dcc.send_file(temp_dest)
+            
             except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
                 dbc.Alert(str(err), color='warning')
 
@@ -207,14 +215,16 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
         try:
             # Get list of files
             files = get_file_list(project_name, directory_name)
+
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
+        
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory_name),
             dcc.Store(id='project', data=project_name),
 
-                                        
+            # Breadcrumbs                         
             html.Div(
                 [
                     dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),

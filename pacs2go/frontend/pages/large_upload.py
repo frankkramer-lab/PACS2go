@@ -218,19 +218,23 @@ def layout(project_name: Optional[str] = None):
         return login_required_interface()
 
     return [
+        # Breadcrumbs
         html.Div(
         [
             dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
             html.Span(" > ", style={"marginRight": "1%"}),
             html.Span("Upload", className='active fw-bold',style={"color": "#707070"})],
             className='breadcrumb'),
+
         html.H1(
         children='PACS2go 2.0 - Uploader',
         style={
             'textAlign': 'left',
         },
         className="mb-3"),
+
         uploader(project_name),
+        
         # Store filename for upload to xnat https://dash.plotly.com/sharing-data-between-callbacks
         dcc.Store(id='filename-storage')
     ]
