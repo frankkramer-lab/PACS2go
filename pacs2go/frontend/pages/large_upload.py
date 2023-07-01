@@ -33,9 +33,8 @@ register_page(__name__, title='Upload - PACS2go',
               path_template='/upload/<project_name>')
 
 # Setup dash-uploader
-# Attention: global variables not recommended for multi-user environments
 dirpath = tempfile.mkdtemp()
-UPLOAD_FOLDER_ROOT = dirpath
+UPLOAD_FOLDER_ROOT = dirpath # still stateless because du uses upload id's -> multiuser friendly
 du.configure_upload(get_app(), UPLOAD_FOLDER_ROOT)
 
 
