@@ -2,6 +2,15 @@ import base64
 import io
 import json
 import math
+from pacs2go.data_interface.exceptions.exceptions import DownloadException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.pacs_data_interface import Directory
+from pacs2go.data_interface.pacs_data_interface import File
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
 from tempfile import TemporaryDirectory
 from typing import Optional
 
@@ -12,8 +21,8 @@ from dash import callback
 from dash import ctx
 from dash import dash_table
 from dash import dcc
-from dash import html
 from dash import get_app
+from dash import html
 from dash import Input
 from dash import no_update
 from dash import Output
@@ -21,15 +30,6 @@ from dash import register_page
 from dash import State
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
-
-from pacs2go.data_interface.exceptions.exceptions import DownloadException
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.pacs_data_interface import Directory, File
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
 
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')

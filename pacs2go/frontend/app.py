@@ -1,5 +1,7 @@
 import os
 from datetime import timedelta
+from pacs2go.frontend.auth import XNATAuthBackend
+from pacs2go.frontend.helpers import colors
 
 import dash_bootstrap_components as dbc
 from dash import ALL
@@ -21,9 +23,6 @@ from flask_login import current_user
 from flask_login import login_user
 from flask_login import LoginManager
 from werkzeug.middleware.profiler import ProfilerMiddleware
-
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.auth import XNATAuthBackend
 
 
 # Load environment variables from the .env file

@@ -1,10 +1,10 @@
+from pacs2go.frontend.helpers import colors
+
 import dash
 from dash import dcc
 from dash import html
 from flask_login import current_user
 from flask_login import logout_user
-
-from pacs2go.frontend.helpers import colors
 
 dash.register_page(__name__)
 

@@ -1,6 +1,14 @@
 import base64
 import io
 import json
+from pacs2go.data_interface.exceptions.exceptions import DownloadException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.pacs_data_interface import File
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
+from pacs2go.frontend.helpers import pil_to_b64
 from tempfile import TemporaryDirectory
 from typing import List
 from typing import Optional
@@ -20,15 +28,6 @@ from dash import register_page
 from dash import State
 from flask_login import current_user
 from PIL import Image
-
-from pacs2go.data_interface.exceptions.exceptions import DownloadException
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.pacs_data_interface import File
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
-from pacs2go.frontend.helpers import pil_to_b64
 # from dash_slicer import VolumeSlicer
 # from nilearn import image
 
