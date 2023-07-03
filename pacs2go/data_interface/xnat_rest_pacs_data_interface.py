@@ -9,6 +9,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 
+from natsort import natsorted
 import requests
 from werkzeug.exceptions import Forbidden
 from werkzeug.exceptions import HTTPException
@@ -520,6 +521,7 @@ class XNATDirectory():
                 file_object = self.get_file(file['Name'], format=file['file_format'],
                                             content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
                 files.append(file_object)
+            files = natsorted(files, key=lambda obj: obj.name)
 
             return files
 

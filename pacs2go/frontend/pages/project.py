@@ -1,3 +1,11 @@
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
 from tempfile import TemporaryDirectory
 from typing import Optional
 
@@ -14,13 +22,6 @@ from dash import State
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')
@@ -39,6 +40,7 @@ def get_directories_table(project: Project, filter: str = ''):
     # Get list of all directory names and number of files per directory
     rows = []
     for d in project.get_all_directories():
+        # Only show rows if no filter is applied of if the filter has a match in the directory's contained file tags
         if filter.lower() in d.contained_file_tags.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
@@ -125,7 +127,7 @@ def modal_delete_data(project: Project):
 
 def modal_edit_project(project: Project):
     if project.your_user_role == 'Owners':
-        # Modal view for project deletion
+        # Modal view for project editing
         return html.Div([
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-pencil me-2"),
@@ -149,7 +151,7 @@ def modal_edit_project(project: Project):
                                   placeholder=project.keywords, value=project.keywords),
                     ]),
                     dbc.ModalFooter([
-                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        # Button which triggers the update of a project
                         dbc.Button("Save changes",
                                    id="edit_and_close", color="success"),
                         # Button which causes modal to close/disappear
@@ -180,12 +182,15 @@ def download_project_data():
 #   Callbacks   #
 #################
 
-@callback([Output('modal_delete', 'is_open'), Output('delete-project-content', 'children')],
-          [Input('delete_project', 'n_clicks'),
-           Input('close_modal_delete', 'n_clicks'),
-           Input('delete_and_close', 'n_clicks')],
-          State("modal_delete", "is_open"),
-          State("project", "value"), prevent_initial_call=True)
+@callback(
+    [Output('modal_delete', 'is_open'),
+     Output('delete-project-content', 'children')],
+    [Input('delete_project', 'n_clicks'),
+     Input('close_modal_delete', 'n_clicks'),
+     Input('delete_and_close', 'n_clicks')],
+    State("modal_delete", "is_open"),
+    State("project", "value"),
+    prevent_initial_call=True)
 # Callback for project deletion modal view and executing project deletion
 def modal_and_project_deletion(open, close, delete_and_close, is_open, project_name):
     # Open/close modal via button click
@@ -201,23 +206,27 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
                 project.delete_project()
 
             return is_open, dbc.Alert([f"The project {project.name} has been successfully deleted! ",
-                                  dcc.Link(f"Click here to go to back to the projects overview.",
-                                           href=f"/projects",
-                                           className="fw-bold text-decoration-none",
-                                           style={'color': colors['links']})], color="success")
+                                       dcc.Link(f"Click here to go to back to the projects overview.",
+                                                href=f"/projects",
+                                                className="fw-bold text-decoration-none",
+                                                style={'color': colors['links']})], color="success")
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
     else:
-        return is_open, no_update
+        raise PreventUpdate
 
 
-@callback([Output('modal_delete_data', 'is_open'), Output('delete-project-data-content', 'children'),Output('directory_table', 'children', allow_duplicate=True),],
-          [Input('delete_project_data', 'n_clicks'),
-           Input('close_modal_delete_data', 'n_clicks'),
-           Input('delete_data_and_close', 'n_clicks')],
-          State("modal_delete_data", "is_open"),
-          State("project_2", "value"), prevent_initial_call=True)
+@callback(
+    [Output('modal_delete_data', 'is_open'), 
+     Output('delete-project-data-content', 'children'), 
+     Output('directory_table', 'children', allow_duplicate=True), ],
+    [Input('delete_project_data', 'n_clicks'),
+     Input('close_modal_delete_data', 'n_clicks'),
+     Input('delete_data_and_close', 'n_clicks')],
+    State("modal_delete_data", "is_open"),
+    State("project_2", "value"), 
+    prevent_initial_call=True)
 # Callback used to delete all directories of a project (open modal view + actual deletion)
 def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open, project_name):
     # Open/close modal via button click
@@ -242,22 +251,27 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
             return is_open, dbc.Alert(str(err), color="danger"), no_update
 
     else:
-        return is_open, no_update, no_update
+        raise PreventUpdate
 
 
-@callback([Output('modal_edit_project', 'is_open'), Output('edit-project-content', 'children'), Output('details_card', 'children')],
-          [Input('edit_project', 'n_clicks'),
-           Input('close_modal_edit', 'n_clicks'),
-           Input('edit_and_close', 'n_clicks')],
-          State("modal_edit_project", "is_open"),
-          State('project_store', 'data'),
-          State('new_project_description', 'value'),
-          State('new_project_keywords', 'value'), prevent_initial_call=True)
+@callback(
+    [Output('modal_edit_project', 'is_open'), 
+     Output('edit-project-content', 'children'), 
+     Output('details_card', 'children')],
+    [Input('edit_project', 'n_clicks'),
+     Input('close_modal_edit', 'n_clicks'),
+     Input('edit_and_close', 'n_clicks')],
+     State("modal_edit_project", "is_open"),
+     State('project_store', 'data'),
+     State('new_project_description', 'value'),
+     State('new_project_keywords', 'value'),
+    prevent_initial_call=True)
 # Callback used to edit project description and keywords
 def modal_edit_project_callback(open, close, edit_and_close, is_open, project_name, description, keywords):
     # Open/close modal via button click
     if ctx.triggered_id == "edit_project" or ctx.triggered_id == "close_modal_edit":
         return not is_open, no_update, no_update
+    
     # User does everything "right"
     elif ctx.triggered_id == "edit_and_close":
         try:
@@ -270,16 +284,20 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
                 # Set new keywords
                 project.set_keywords(keywords)
             return not is_open, no_update, get_details(project)
+        
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
+        
     else:
         raise PreventUpdate
 
 
-@callback(Output('directory_table', 'children'),
-          Input('filter_directory_tags_btn', 'n_clicks'),
-          Input('filter_directory_tags', 'value'),
-          State('project_store', 'data'), prevent_initial_call=True)
+@callback(
+    Output('directory_table', 'children'),
+    Input('filter_directory_tags_btn', 'n_clicks'),
+    Input('filter_directory_tags', 'value'),
+    State('project_store', 'data'), 
+    prevent_initial_call=True)
 def filter_directory_table(btn, filter, project_name):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
@@ -297,7 +315,8 @@ def filter_directory_table(btn, filter, project_name):
 
 @callback(
     Output("download_project", "data"),
-    Input("btn_download_project", "n_clicks"), State("project_store", "data"),
+    Input("btn_download_project", "n_clicks"), 
+    State("project_store", "data"),
     prevent_initial_call=True,
 )
 def download_project(n_clicks, project_name):
@@ -309,8 +328,10 @@ def download_project(n_clicks, project_name):
                 # Get directory as zip to a tempdir and then send it to browser
                 zipped_project_data = project.download(tempdir)
                 return dcc.send_file(zipped_project_data)
+            
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
+        
     else:
         raise PreventUpdate
 
@@ -321,7 +342,8 @@ def download_project(n_clicks, project_name):
 
 def layout(project_name: Optional[str] = None):
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+        return login_required_interface()
+
     if project_name:
         try:
             connection = get_connection()
@@ -330,6 +352,22 @@ def layout(project_name: Optional[str] = None):
             return dbc.Alert(str(err), color="danger")
         return html.Div([
             dcc.Store(id='project_store', data=project.name),
+
+            # Breadcrumbs
+            html.Div(
+                [
+                    dcc.Link("Home", href="/",
+                             style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link("All Projects", href="/projects",
+                             style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    html.Span(f"{project.name}", className='active fw-bold',
+                              style={"color": "#707070"})
+                ],
+                className='breadcrumb'
+            ),
+            
             # Header including page title and action buttons
             dbc.Row([
                 dbc.Col(html.H1(f"Project {project.name}", style={
@@ -341,6 +379,7 @@ def layout(project_name: Optional[str] = None):
                         modal_delete(project),
                         modal_delete_data(project)], className="d-grid gap-2 d-md-flex justify-content-md-end"),
             ], className="mb-3"),
+
             # Project Information (owners,..)
             dbc.Card([
                 dbc.CardHeader("Details"),

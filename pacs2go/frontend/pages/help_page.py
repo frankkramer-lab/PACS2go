@@ -1,3 +1,5 @@
+from pacs2go.frontend.helpers import colors
+
 import dash
 import dash_bootstrap_components as dbc
 from dash import callback
@@ -9,33 +11,11 @@ from dash import Output
 
 dash.register_page(__name__)
 
-# Login screen
-layout = html.Div(
-    [
-        html.H1(f"Help", style={
-                                'textAlign': 'left' }, className="mb-3"),
-        dbc.Card([
-            dbc.CardHeader(
-                dbc.Tabs(
-                    [
-                        dbc.Tab(label="Deutsch", tab_id="tab-1"),
-
-                        dbc.Tab(label="English", tab_id="tab-2"),
-                    ],
-                    id="card-tabs",
-                    active_tab="tab-1",
-                )
-            ),
-            dbc.CardBody(html.Div(id="card-content", className="card-text m-3")),
-        ]
-        )
-    ]
-)
-
 
 @callback(Output("card-content", "children"), [Input("card-tabs", "active_tab")])
 def switch_tab(at):
     if at == "tab-1":
+        # German
         return dcc.Markdown('''
             ## Bedienungsanleitung PACS2go
 
@@ -74,6 +54,7 @@ def switch_tab(at):
             Sollte anstelle der Projekte eine rote Box angezeigt werden, melden Sie sich bitte ab und wieder an, um Ihre Sitzung zu aktualisieren. Bei weiteren Fragen, Anregungen oder Schwierigkeiten wenden Sie sich gerne an uns unter [tamara.krafft@uni-a.de](mailto:tamara.krafft@uni-a.de) oder [dennis.hartmann@uni-a.de](mailto:dennis.hartmann@uni-a.de).
             '''),
     elif at == "tab-2":
+        # English
         return dcc.Markdown('''
             ## How to use PACS2go
 
@@ -109,6 +90,44 @@ def switch_tab(at):
             ### Troubleshooting & Contact
 
             If a red box appears instead of projects, please log out and log back in to refresh your session. For further questions, suggestions, or difficulties, feel free to contact us at [tamara.krafft@uni-a.de](mailto:tamara.krafft@uni-a.de) or [dennis.hartmann@uni-a.de](mailto:dennis.hartmann@uni-a.de).'''),
-    return html.P("This shouldn't ever be displayed...")
+    return html.P("This should never be displayed...")
 
 
+#################
+#  Page Layout  #
+#################
+
+def layout():
+    return html.Div(
+        [
+            # Breadcrumb
+            html.Div(
+                [
+                    dcc.Link("Home", href="/",
+                             style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    html.Span("Help", className='active fw-bold', style={"color": "#707070"})],
+                className='breadcrumb'),
+
+            # Page title
+            html.H1(f"Help", style={
+                'textAlign': 'left'}, className="mb-3"),
+            
+            # Bilingual Instructions
+            dbc.Card([
+                dbc.CardHeader(
+                    dbc.Tabs(
+                        [
+                            dbc.Tab(label="Deutsch", tab_id="tab-1"),
+                            dbc.Tab(label="English", tab_id="tab-2"),
+                        ],
+                        id="card-tabs",
+                        active_tab="tab-1",
+                    )
+                ),
+                dbc.CardBody(html.Div(id="card-content",
+                                      className="card-text m-3")),
+            ]
+            )
+        ]
+    )

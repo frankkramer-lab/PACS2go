@@ -1,8 +1,3 @@
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Union
-
 from pacs2go.data_interface.exceptions.exceptions import DownloadException
 from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
 from pacs2go.data_interface.exceptions.exceptions import FailedDisconnectException
@@ -20,6 +15,10 @@ from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATDirectory
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATFile
 from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATProject
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Union
 
 
 class Connection():

@@ -1,11 +1,12 @@
 import base64
 from io import BytesIO
+from pacs2go.data_interface.pacs_data_interface import Connection
 
-import dash
+from dash import dcc
+from dash import html
+from dash import page_registry
 from flask import session
 from flask_login import current_user
-
-from pacs2go.data_interface.pacs_data_interface import Connection
 
 server_url = "http://xnat-web:8080"
 connection_type = "XNAT" # To change Backend, change string here
@@ -36,9 +37,35 @@ def require_login(page):
     # Without this only the home address ending in "/" requires a login
     restricted_page[''] = True
     # All pages require login
-    for pg in dash.page_registry:
+    for pg in page_registry:
         if page == pg:
-            restricted_page[dash.page_registry[pg]['path']] = True
+            restricted_page[page_registry[pg]['path']] = True
+
+
+def login_required_interface():
+    return html.Div(
+            style={
+                'display': 'flex',
+                'justify-content': 'center',
+                'align-items': 'center',
+                'height': '80vh'
+            },  # Center align the container div in the middle of the screen
+            children=[
+                html.H4(
+                    style={'text-align': 'center'},  # Center align the text
+                    children=[
+                        "Please ",
+                        dcc.Link(
+                            "login",
+                            href="/login",
+                            className="fw-bold text-decoration-none",
+                            style={'color': colors['links']}
+                        ),
+                        " to continue"
+                    ]
+                )
+            ]
+        )
 
 
 # IMAGE REPRESENATION utils

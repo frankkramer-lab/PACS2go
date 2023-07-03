@@ -6,15 +6,66 @@ from dash import html
 dash.register_page(__name__)
 
 # Login screen
-layout = html.Form(
-    [
-        html.H2("Please log in to continue:", id="h1"),
-        html.Div(children="", id="output-state", className="mb-3"),
-        dbc.Input(placeholder="Enter your username", type="text",
-                  id="uname-box", name='username', class_name="mb-3"),
-        dbc.Input(placeholder="Enter your password", type="password",
-                  id="pwd-box", name='password', class_name="mb-3"),
-        dbc.Button(children="Login", n_clicks=0, type="submit",
-                   id="login-button", color="success"),
-    ], method='POST', className="w-50"
-)
+
+
+def layout():
+    return dbc.Container(
+        [
+            html.H1("Welcome to PACS2go!", className="text-center mt-5"),
+            html.Div(
+                dbc.Card(
+                    [
+                        dbc.CardHeader(
+                            html.H4("Please log in to continue:", className="my-2")),
+                        dbc.CardBody(
+                            html.Form(
+                                [
+                                    dbc.InputGroup(
+                                        [
+                                            dbc.InputGroupText(
+                                                html.I(
+                                                    className="bi bi-person-fill"),
+                                            ),
+                                            dbc.Input(
+                                                placeholder="Enter your username",
+                                                type="text",
+                                                id="uname-box",
+                                                name='username',
+                                            ),
+                                        ],
+                                        className="mb-3",
+                                    ),
+                                    dbc.InputGroup(
+                                        [
+                                            dbc.InputGroupText(
+                                                html.I(
+                                                    className="bi bi-lock-fill"),
+                                            ),
+                                            dbc.Input(
+                                                placeholder="Enter your password",
+                                                type="password",
+                                                id="pwd-box",
+                                                name='password',
+                                            ),
+                                        ],
+                                        className="mb-3",
+                                    ),
+                                    dbc.Button(
+                                        "Login",
+                                        n_clicks=0,
+                                        type="submit",
+                                        id="login-button",
+                                        color="success",
+                                        className="w-100",
+                                    ),
+                                    html.Div("", id="output-state",
+                                             className="mt-3"),
+                                ], method='POST'), style={'background-color': 'rgb(211, 228, 216)'}
+                        ),
+                    ],
+                    className="mt-5"
+                ),
+            ),
+        ],
+        className="d-flex flex-column justify-content-center align-items-center vh-40"
+    )
