@@ -302,6 +302,7 @@ class XNATProject():
                 directory = self.get_directory(d['label'])
                 directories.append(directory)
 
+            directories = natsorted(directories, key=lambda obj: obj.name)
             return directories
 
         else:
