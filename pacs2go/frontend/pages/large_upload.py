@@ -1,6 +1,14 @@
 import shutil
 import tempfile
 import uuid
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
+from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
 from typing import List
 from typing import Optional
 
@@ -18,21 +26,14 @@ from dash.dependencies import Output
 from dash.dependencies import State
 from flask_login import current_user
 
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
-from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
 
 
 register_page(__name__, title='Upload - PACS2go',
               path_template='/upload/<project_name>')
 
 # Setup dash-uploader
-# Attention: global variables not recommended for multi-user environments
 dirpath = tempfile.mkdtemp()
-UPLOAD_FOLDER_ROOT = dirpath
+UPLOAD_FOLDER_ROOT = dirpath # still stateless because du uses upload id's -> multiuser friendly
 du.configure_upload(get_app(), UPLOAD_FOLDER_ROOT)
 
 
@@ -49,7 +50,22 @@ def get_project_names() -> List[str]:
         return project_list
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
-        return dbc.Alert(str(err), color="danger")
+        return ["No database connection."]
+
+def get_directory_names(project:Project) -> List[str]:
+    # Get List of all project names as html Options
+    try:
+        directories = get_connection().get_project(project).get_all_directories()
+        dir_list = []
+
+        for d in directories:
+            # html option to create a html datalist
+            dir_list.append(html.Option(value=d.name))
+
+        return dir_list
+
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        return ["No database connection."]
 
 
 def get_upload_component(id: str):
@@ -79,11 +95,12 @@ def uploader(passed_project: Optional[str]):
                  #html.Datalist(children=get_project_names(),id='project_names'),
                  dcc.Dropdown(options=get_project_names(),id="project_name", placeholder="Project Name...",
                           value=passed_project),
-                 dbc.FormText("Please choose a project. To create a new project go to 'Projects'.")], className="mb-3"),
+                 dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects',style={"color":colors['sage']}), "."])], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
+                 html.Datalist(id='dir_names'),
                  dbc.Input(id="directory_name",
-                           placeholder="Directory Name (optional)"),
+                           placeholder="Directory Name... (optional)", list='dir_names'),
                  dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
         ]),
         dbc.Row(dbc.Col(
@@ -133,7 +150,7 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
     State('project_name', 'value'),
     State('directory_name', 'value'),
     State('filename-storage', 'data'),
-    State('upload_file_tags', 'value'),
+    State('upload_file_tags', 'value'), prevent_initial_call=True
 )
 def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str):
     if ctx.triggered_id == "click-upload":
@@ -184,6 +201,11 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
     else:
         return no_update
 
+@callback(Output('dir_names', 'children'),Input('project_name','value'), prevent_initial_call=True)
+def display_directory_dropdown(project):
+    # When a project is selected, the directory field suggests existing directories to upload to
+    return get_directory_names(project)
+
 #################
 #  Page Layout  #
 #################
@@ -191,14 +213,26 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
 
 def layout(project_name: Optional[str] = None):
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
-    return [html.H1(
+        return login_required_interface()
+
+    return [
+        # Breadcrumbs
+        html.Div(
+        [
+            dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+            html.Span(" > ", style={"marginRight": "1%"}),
+            html.Span("Upload", className='active fw-bold',style={"color": "#707070"})],
+            className='breadcrumb'),
+
+        html.H1(
         children='PACS2go 2.0 - Uploader',
         style={
             'textAlign': 'left',
         },
         className="mb-3"),
+
         uploader(project_name),
+        
         # Store filename for upload to xnat https://dash.plotly.com/sharing-data-between-callbacks
         dcc.Store(id='filename-storage')
     ]

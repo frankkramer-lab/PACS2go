@@ -1,6 +1,14 @@
 import base64
 import io
 import json
+from pacs2go.data_interface.exceptions.exceptions import DownloadException
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.data_interface.pacs_data_interface import File
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
+from pacs2go.frontend.helpers import pil_to_b64
 from tempfile import TemporaryDirectory
 from typing import List
 from typing import Optional
@@ -10,6 +18,7 @@ import numpy as np
 import pandas as pd
 import pydicom
 from dash import callback
+from dash import ctx
 from dash import dash_table
 from dash import dcc
 from dash import html
@@ -19,14 +28,6 @@ from dash import register_page
 from dash import State
 from flask_login import current_user
 from PIL import Image
-
-from pacs2go.data_interface.exceptions.exceptions import DownloadException
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.pacs_data_interface import File
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import pil_to_b64
 # from dash_slicer import VolumeSlicer
 # from nilearn import image
 
@@ -159,8 +160,12 @@ def file_card_view():
 #################
 
 
-@callback([Output('current_image', 'children')], [Input('image-dropdown', 'value')],
-          State('directory', 'data'), State('project', 'data'))
+@callback(
+    [Output('current_image', 'children')], 
+    [Input('image-dropdown', 'value')],
+    State('directory', 'data'),
+    State('project', 'data'))
+# Callback to show the contents of a selected file in the viewer
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
     try:
         connection = get_connection()
@@ -176,20 +181,24 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
 
 @callback(
     Output("download-file", "data"),
-    Input("btn_download", "n_clicks"), State("file_name", "data"), State(
-        'directory', 'data'), State('project', 'data'),
+    Input("btn_download", "n_clicks"), 
+    State("file_name", "data"), 
+    State('directory', 'data'), 
+    State('project', 'data'),
     prevent_initial_call=True,
 )
+# Callback to download the selected file
 def download_file(n_clicks, file_name, dir, project):
-    with TemporaryDirectory() as tempdir:
-        try:
-            connection = get_connection()
-            file = connection.get_file(project, dir, file_name)
-            temp_dest = file.download(destination=tempdir)
-            print(file_name, temp_dest)
-            return dcc.send_file(temp_dest)
-        except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
-            dbc.Alert(str(err), color='warning')
+    if ctx.triggered_id == 'btn_download':
+        with TemporaryDirectory() as tempdir:
+            try:
+                connection = get_connection()
+                file = connection.get_file(project, dir, file_name)
+                temp_dest = file.download(destination=tempdir)
+                return dcc.send_file(temp_dest)
+            
+            except (FailedConnectionException, UnsuccessfulGetException, DownloadException) as err:
+                dbc.Alert(str(err), color='warning')
 
 
 #################
@@ -199,18 +208,37 @@ def download_file(n_clicks, file_name, dir, project):
 
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+        return login_required_interface()
 
     if directory_name and project_name and file_name:
         try:
             # Get list of files
             files = get_file_list(project_name, directory_name)
+
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
+        
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory_name),
             dcc.Store(id='project', data=project_name),
+
+            # Breadcrumbs                         
+            html.Div(
+                [
+                    dcc.Link("Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link("All Projects", href="/projects", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link(f"{project_name}", href=f"/project/{project_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    dcc.Link(f"{directory_name}", href=f"/dir/{project_name}/{directory_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    html.Span(" > ", style={"marginRight": "1%"}),
+                    html.Span("File Viewer", className='active fw-bold',style={"color": "#707070"})
+                ],
+                className='breadcrumb'
+            ),
+
             dcc.Link(
                 html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
                 className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),

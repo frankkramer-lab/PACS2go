@@ -1,13 +1,14 @@
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
+from pacs2go.frontend.helpers import colors
+from pacs2go.frontend.helpers import get_connection
+from pacs2go.frontend.helpers import login_required_interface
+
 import dash_bootstrap_components as dbc
 from dash import dcc
 from dash import html
 from dash import register_page
 from flask_login import current_user
-
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
 
 register_page(__name__, title='PACS2go 2.0', path='/')
 
@@ -71,7 +72,8 @@ def card_view_upload():
 
 def layout():
     if not current_user.is_authenticated:
-        return html.H4(["Please ", dcc.Link("login", href="/login", className="fw-bold text-decoration-none", style={'color': colors['links']}), " to continue"])
+        return login_required_interface()
+
     else:
         return [
             html.H1(f'Welcome to PACS2go 2.0, {current_user.id}!'),

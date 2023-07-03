@@ -9,6 +9,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 
+from natsort import natsorted
 import requests
 from werkzeug.exceptions import Forbidden
 from werkzeug.exceptions import HTTPException
@@ -286,7 +287,7 @@ class XNATProject():
 
     def get_all_directories(self) -> Sequence['XNATDirectory']:
         response = requests.get(
-            self.connection.server + f"/data/projects/{self.name}/resources", cookies=self.connection.cookies)
+            self.connection.server + f"/data/projects/{self.name}/resources?sortBy=label", cookies=self.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
@@ -301,6 +302,7 @@ class XNATProject():
                 directory = self.get_directory(d['label'])
                 directories.append(directory)
 
+            directories = natsorted(directories, key=lambda obj: obj.name)
             return directories
 
         else:
@@ -319,7 +321,7 @@ class XNATProject():
         else:
             raise ValueError("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = True) -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = False) -> 'XNATDirectory':
         # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
@@ -363,8 +365,7 @@ class XNATProject():
                 with TemporaryDirectory() as tempdir:
                     with zipfile.ZipFile(file_path) as z:
                         z.extractall(tempdir)
-                        dir_path = os.path.join(
-                            tempdir, os.listdir(tempdir)[0])
+                        dir_path = next(os.scandir(tempdir)).path
 
                         # Get all files, even those within a lower-level directory
                         onlyfiles = []
@@ -382,7 +383,7 @@ class XNATProject():
             raise ValueError("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '') -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', use_original_file_name:bool=True) -> 'XNATFile':
         if os.path.exists(file_path):
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
@@ -399,10 +400,13 @@ class XNATProject():
 
             # Only continue if file format/suffix is an accepted one
             if suffix in allowed_file_suffixes:
-                # File names are unique, duplicate file names can not be inserted
-                file_id = str(uuid.uuid4())
-                # Add file suffix to generated unique file_id
-                file_id = file_id + suffix
+                if use_original_file_name:
+                    file_id = file_path.split("/")[-1]
+                else:
+                    # File names are unique, duplicate file names can not be inserted
+                    file_id = str(uuid.uuid4())
+                    # Add file suffix to generated unique file_id
+                    file_id = file_id + suffix
 
                 # Get correct content tag for REST query parameter
                 if suffix in image_file_suffixes:
@@ -430,7 +434,7 @@ class XNATProject():
 
                 # Open passed file and POST to XNAT endpoint
                 with open(file_path, "rb") as file:
-                        response = requests.post(
+                    response = requests.post(
                             self.connection.server + f"/data/projects/{self.name}/resources/{directory_name}/files/{file_id}?{parameter}", files={'upload_file': file}, cookies=cookies)
 
                 if response.status_code == 200:
@@ -503,7 +507,7 @@ class XNATDirectory():
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json", cookies=self.project.connection.cookies)
+            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json&sortBy=Name", cookies=self.project.connection.cookies)
 
         if response.status_code == 200:
             # Directory list retrieval was successfull
@@ -518,6 +522,7 @@ class XNATDirectory():
                 file_object = self.get_file(file['Name'], format=file['file_format'],
                                             content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
                 files.append(file_object)
+            files = natsorted(files, key=lambda obj: obj.name)
 
             return files
 
