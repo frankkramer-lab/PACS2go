@@ -7,14 +7,12 @@ from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetExceptio
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulProjectCreationException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
 from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNAT
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATDirectory
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATFile
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATProject
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATDirectory
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATFile
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATProject
+from pacs2go.data_interface.data_structure_db import PACS_DB
+from pacs2go.data_interface.data_structure_db import ProjectData
+from pacs2go.data_interface.xnat_rest_wrapper import XNAT
+from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
+from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
+from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -31,9 +29,7 @@ class Connection():
         self.cookies = None
 
         try:
-            if self.kind == "pyXNAT":
-                self._xnat_connection = pyXNAT(server, username, password)
-            elif self.kind == "XNAT":
+            if self.kind == "XNAT":
                 self._xnat_connection = XNAT(server=server, username=username, password=password, session_id=session_id)
             else:
                 raise ValueError(kind)
@@ -42,7 +38,7 @@ class Connection():
 
     @property
     def _kind(self) -> str:
-        if self.kind in ['pyXNAT', 'XNAT']:
+        if self.kind in ['XNAT']:
             return self.kind
         else:
             # FailedConnectionException because only these connection types are supported atm
@@ -67,6 +63,8 @@ class Connection():
 
     def create_project(self, name: str, description: str = '', keywords:str = '') -> 'Project':
         try:
+            with PACS_DB() as db:
+                db.insert_into_project(ProjectData(name=name))
             return self._xnat_connection.create_project(name, description, keywords)
         except:
             raise UnsuccessfulProjectCreationException(str(name))
@@ -102,12 +100,7 @@ class Project():
         self.connection = connection
         self.name = name
 
-        if self.connection._kind == "pyXNAT":
-            try:
-                self._xnat_project = pyXNATProject(connection, name)
-            except:
-                raise UnsuccessfulGetException(f"Project '{name}'")
-        elif self.connection._kind == "XNAT":
+        if self.connection._kind == "XNAT":
             try:
                 self._xnat_project = XNATProject(connection, name)
             except:
@@ -201,12 +194,7 @@ class Directory():
         self.name = name
         self.project = project
 
-        if self.project.connection._kind == "pyXNAT":
-            try:
-                self._xnat_directory = pyXNATDirectory(project, name)
-            except:
-                raise UnsuccessfulGetException(f"Directory '{name}'")
-        elif self.project.connection._kind == "XNAT":
+        if self.project.connection._kind == "XNAT":
             try:
                 self._xnat_directory = XNATDirectory(project, name)
             except:
@@ -261,11 +249,6 @@ class File():
     def __init__(self, directory: Directory, name: str) -> None:
         self.directory = directory
         self.name = name
-        if self.directory.project.connection._kind == "pyXNAT":
-            try:
-                self._xnat_file = pyXNATFile(directory, name)
-            except:
-                raise UnsuccessfulGetException(f"File '{name}'")
         
         if self.directory.project.connection._kind == "XNAT":
             try:

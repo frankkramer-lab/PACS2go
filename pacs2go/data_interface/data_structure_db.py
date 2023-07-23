@@ -1,18 +1,18 @@
 from typing import NamedTuple
-from typing import Union
 
 import psycopg2
+import os
 
 
-class Metadata_DB():
-    def __init__(self,host:str= "localhost") -> None:
+class PACS_DB():
+    def __init__(self) -> None:
         # Connect to the Postgres service
         self.conn = psycopg2.connect(
             host="data-structure-db",
             port=5432,
-            user="myuser",
-            password="mypassword",
-            database="mydb"
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            database=os.getenv("POSTGRES_DB")
         )
         # Get cursor object to operate db
         self.cursor = self.conn.cursor()
@@ -49,6 +49,7 @@ class Metadata_DB():
             # Commit the changes
             self.conn.commit()
         except Exception as err:
+            self.conn.rollback()
             print("Project table could not be created. " + str(err))
 
     def create_table_directory(self):
@@ -66,6 +67,7 @@ class Metadata_DB():
             # Commit the changes
             self.conn.commit()
         except Exception as err:
+            self.conn.rollback()
             print("Directory table could not be created. " + str(err))
             
     def create_table_file(self):
@@ -81,6 +83,7 @@ class Metadata_DB():
             # Commit the changes
             self.conn.commit()
         except Exception as err:
+            self.conn.rollback()
             print("File table could not be created. " + str(err))
 
 
@@ -93,6 +96,7 @@ class Metadata_DB():
             """, (data.name,))
             self.conn.commit()
         except Exception as err:
+            self.conn.rollback()
             print("Error inserting into Project table: " + str(err))
 
     def insert_into_directory(self, data: 'DirectoryData') -> None:
@@ -103,6 +107,7 @@ class Metadata_DB():
             """, (data.unique_name, data.dir_name, data.parent_project, data.parent_directory))
             self.conn.commit()
         except Exception as err:
+            self.conn.rollback()
             print("Error inserting into Directory table: " + str(err))
 
     def insert_into_file(self, data: 'FileData') -> None:
@@ -112,6 +117,7 @@ class Metadata_DB():
             """, (data.file_name, data.parent_directory))
             self.conn.commit()
         except Exception as err:
+            self.conn.rollback()
             print("Error inserting into File table: " + str(err))
 
 
