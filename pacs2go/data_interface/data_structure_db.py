@@ -1,6 +1,7 @@
-from typing import NamedTuple
+from typing import NamedTuple, List
 
 import psycopg2
+from psycopg2.extras import execute_values
 import os
 from dotenv import load_dotenv
 
@@ -10,8 +11,8 @@ class PACS_DB():
     def __init__(self) -> None:
         # Connect to the Postgres service
         self.conn = psycopg2.connect(
-            host="localhost",
-            port=5433,
+            host="data-structure-db",
+            port=5432,
             user=os.getenv("POSTGRES_USER"),
             password=os.getenv("POSTGRES_PASSWORD"),
             database=os.getenv("POSTGRES_DB")
@@ -79,8 +80,9 @@ class PACS_DB():
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS File (
                     file_name VARCHAR(60) NOT NULL,
-                    parent_directory VARCHAR(60) REFERENCES Directory(unique_name) ON DELETE CASCADE,
-                    PRIMARY KEY(file_name)
+                    parent_directory VARCHAR(60) NOT NULL,
+                    PRIMARY KEY(file_name, parent_directory),
+                    FOREIGN KEY (parent_directory) REFERENCES Directory(unique_name) ON DELETE CASCADE
                 )
             """)
             # Commit the changes
@@ -122,6 +124,23 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             print("Error inserting into File table: " + str(err))
+    
+        
+    def insert_multiple_files(self, files: List['FileData']) -> None:
+        try:
+            # Construct a list of tuples with (file_name, parent_directory) for each file
+            file_values = [(file.file_name, file.parent_directory) for file in files]
+
+            query = """
+                INSERT INTO File (file_name, parent_directory)
+                VALUES %s
+                ON CONFLICT (file_name) DO NOTHING
+            """
+            execute_values(self.cursor, query, file_values)
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print(f"Error inserting multiple files: {err}")
 
 
     # -------- Select From Tables ------- #
@@ -182,6 +201,26 @@ class PACS_DB():
         except Exception as err:
             print("Error retrieving directories by project: " + str(err))
             return []
+
+    def get_directory_by_name(self, unique_name: str) -> 'DirectoryData':
+        try:
+            query = """
+                SELECT unique_name, dir_name, parent_project, parent_directory
+                FROM Directory
+                WHERE unique_name = %s
+            """
+            self.cursor.execute(query, (unique_name,))
+            result = self.cursor.fetchone()
+
+            if result:
+                # Directory exists in the database
+                return DirectoryData(*result)
+            else:
+                # Directory does not exist in the database
+                return None
+        except Exception as err:
+            print("Error retrieving directory from the database: " + str(err))
+            return None
 
     def get_subdirectories_by_directory(self, parent_directory: str) -> list:
         try:

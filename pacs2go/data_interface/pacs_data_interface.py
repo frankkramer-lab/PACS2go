@@ -175,6 +175,15 @@ class Project():
         except:
             raise UnsuccessfulDeletionException(f"Project '{self.name}'")
 
+    def create_directory(self, name: str) -> 'Directory':
+        try:
+            with PACS_DB() as db:
+                unique_name = self.name + '/' + name
+                db.insert_into_directory(DirectoryData(
+                    unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=''))
+        except:
+            raise UnsuccessfulProjectCreationException(str(name))
+
     def get_directory(self, name) -> 'Directory':
         try:
             return self._xnat_project.get_directory(name)
@@ -183,14 +192,15 @@ class Project():
 
     def get_all_directories(self) -> Sequence['Directory']:
         try:
-            directories_from_xnat = self._xnat_project.get_all_directories()
             with PACS_DB() as db:
                 directories_from_db = db.get_directories_by_project(self.name)
 
-            # only return the directories that live directly under the project (no sub-dirs)
-            filtered_directories = [dir_xnat for dir_xnat in directories_from_xnat
-                                    if any(dir_xnat.name == dir_data.unique_name for dir_data in directories_from_db)
-                                    ]
+            # Get the unique names of directories from the database
+            db_unique_names = [dir_data.unique_name for dir_data in directories_from_db]
+
+            # Filter directories from XNAT that have a matching unique name in the database
+            filtered_directories = [dir_xnat for dir_xnat in self._xnat_project.get_all_directories()
+                                    if dir_xnat.name in db_unique_names]
 
             return filtered_directories
 
@@ -199,24 +209,38 @@ class Project():
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
+            # Check if directory already exists in db, if not insert it
+            with PACS_DB() as db:
+                directory_in_db = db.get_directory_by_name(directory_name)
+                if not dir:
+                    if directory_name.count('/') == 1:
+                        directory_in_db = self.create_directory(DirectoryData(unique_name=directory_name, dir_name=directory_name.split(
+                            '/')[-1], parent_project=self.name, parent_directory=None))
+                    else:
+                        directory_in_db = self.create_directory(DirectoryData(unique_name=directory_name, dir_name=directory_name.split(
+                            '/')[-1], parent_project=None, parent_directory=directory_name.split('/')[-2]))
+                        
             # File path leads to a single file
             if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
-                # TODO: directory name has to be unique -> create unique dir name before hand
-                file = self._xnat_project.insert_file_into_project(file_path, directory_name, tags_string)
-                with PACS_DB() as db:
-                    # TODO: if directory does not exist insert directory
-                    db.insert_into_file(FileData(file_name=file.name, parent_directory=file.directory))
+                file = self._xnat_project.insert_file_into_project(
+                    file_path, directory_name, tags_string)
+
+                db.insert_into_file(
+                    FileData(file_name=file.name, parent_directory=file.directory))
                 return file
-            
+
             # File path equals a zip file
             elif zipfile.is_zipfile(file_path):
-                directory = self._xnat_project.insert_zip_into_project(file_path, directory_name, tags_string)
+                directory = self._xnat_project.insert_zip_into_project(
+                    file_path, directory_name, tags_string)
                 with PACS_DB() as db:
-                    # TODO: differentiate between subdir and high-level dir, create unique name from parents and display name
-                    db.insert_into_directory(DirectoryData(unique_name='', name=directory.name, dir_name='', project_name = ''))
-                    # TODO: insert all files into db
+                    files = [FileData(
+                        name=file.name,
+                        parent_directory=directory.name
+                    ) for file in directory.get_all_files()]
+                    db.insert_multiple_files(files)
                 return directory
-            
+
             else:
                 raise ValueError
         except ValueError:
@@ -227,7 +251,8 @@ class Project():
 
 class Directory():
     def __init__(self, project: Project, name: str) -> None:
-        self.name = name
+        self.name = name  # unique
+        self.display_name = self.name.split('/')[-1]
         self.project = project
 
         if self.project.connection._kind == "XNAT":
@@ -265,10 +290,20 @@ class Directory():
             return self._xnat_directory.delete_directory()
         except:
             raise UnsuccessfulDeletionException(f"directory '{self.name}'")
-        
+
+    def create_subdirectory(self, name: str) -> 'Directory':
+        try:
+            with PACS_DB() as db:
+                unique_name = self.name + '/' + name
+                db.insert_into_directory(DirectoryData(
+                    unique_name=unique_name, dir_name=name, parent_project='', parent_directory=self.name))
+        except:
+            raise UnsuccessfulProjectCreationException(str(name))
+
     def get_subdirectories(self) -> List['Directory']:
         with PACS_DB() as db:
-            subdirectories_from_db = db.get_subdirectories_by_directory(self.name)
+            subdirectories_from_db = db.get_subdirectories_by_directory(
+                self.name)
         directories_from_xnat = self._xnat_project.get_all_directories()
 
         # only return the directories that are subdirectories of this directory
@@ -277,7 +312,6 @@ class Directory():
                                 ]
 
         return filtered_directories
-
 
     def get_file(self, file_name: str) -> 'File':
         try:

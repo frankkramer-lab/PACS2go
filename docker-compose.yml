@@ -15,6 +15,7 @@ services:
     #command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
+      - data-structure-db
     restart: always
 
   data-structure-db:
@@ -83,19 +84,6 @@ services:
       - XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME}
       - XNAT_DATASOURCE_PASSWORD=${XNAT_DATASOURCE_PASSWORD}
 
-  # xnat-nginx:
-  #   image: nginx:${NGINX_VERSION}
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-  #   ports:
-  #     - "80:80"
-  #   expose:
-  #     - "80"
-  #   depends_on:
-  #     - xnat-web
-  #     - dash
-  #   links:
-  #     - xnat-web
 
 
 
