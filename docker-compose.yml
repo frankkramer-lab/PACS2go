@@ -18,13 +18,17 @@ services:
     restart: always
 
   data-structure-db:
+    container_name: data-structure-db
     image: postgres:15.1
     restart: always
     # save data on local disk
     volumes:
       - ./data/db:/var/lib/postgresql/data
-    env_file:
-      - .env
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - 5433:5432
     

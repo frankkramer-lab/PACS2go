@@ -2,20 +2,23 @@ from typing import NamedTuple
 
 import psycopg2
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class PACS_DB():
     def __init__(self) -> None:
         # Connect to the Postgres service
         self.conn = psycopg2.connect(
-            host="data-structure-db",
-            port=5432,
+            host="localhost",
+            port=5433,
             user=os.getenv("POSTGRES_USER"),
             password=os.getenv("POSTGRES_PASSWORD"),
             database=os.getenv("POSTGRES_DB")
         )
         # Get cursor object to operate db
         self.cursor = self.conn.cursor()
+        print(self.conn)
 
         # On inital setup create tables (all statements possess IF NOT EXISTS keyword)
         self.create_tables()
@@ -123,6 +126,43 @@ class PACS_DB():
 
     # -------- Select From Tables ------- #
 
+    def get_all_projects(self) -> list:
+        try:
+            query = """
+                SELECT name FROM Project
+            """
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+
+            project_list = []
+            for row in results:
+                project_name = row[0]
+                project_list.append(project_name)
+
+            return project_list
+        except Exception as err:
+            print("Error retrieving all projects: " + str(err))
+            return []
+        
+    def get_all_directories(self) -> list:
+        try:
+            query = """
+                SELECT unique_name, dir_name, parent_project, parent_directory
+                FROM Directory
+            """
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+
+            directory_list = []
+            for row in results:
+                directory = DirectoryData(*row)
+                directory_list.append(directory)
+
+            return directory_list
+        except Exception as err:
+            print("Error retrieving all directories: " + str(err))
+            return []
+
     def get_directories_by_project(self, project_name: str) -> list:
         try:
             query = """
@@ -162,6 +202,43 @@ class PACS_DB():
         except Exception as err:
             print("Error retrieving directories by directory: " + str(err))
             return []
+        
+
+   # -------- Delete From Tables ------- #
+
+    def delete_project_by_name(self, project_name: str) -> None:
+        try:
+            query = """
+                DELETE FROM Project WHERE name = %s
+            """
+            self.cursor.execute(query, (project_name,))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print("Error deleting project by name: " + str(err))
+
+    def delete_directory_by_name(self, unique_name: str) -> None:
+        try:
+            query = """
+                DELETE FROM Directory WHERE unique_name = %s
+            """
+            self.cursor.execute(query, (unique_name,))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print("Error deleting directory by unique name: " + str(err))
+
+    def delete_file_by_name(self, file_name: str) -> None:
+        try:
+            query = """
+                DELETE FROM File WHERE file_name = %s
+            """
+            self.cursor.execute(query, (file_name,))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print("Error deleting file by name: " + str(err))
+
 
 # Named Tuples
 class ProjectData(NamedTuple):
@@ -178,3 +255,17 @@ class DirectoryData(NamedTuple):
 class FileData(NamedTuple):
     file_name: str
     parent_directory: str
+
+
+with PACS_DB() as db:
+    # Retrieving all projects
+    projects = db.get_all_projects()
+    print("All Projects:")
+    for project_name in projects:
+        print(project_name)
+
+    # Retrieving all directories
+    directories = db.get_all_directories()
+    print("All Directories:")
+    for directory in directories:
+        print(directory)

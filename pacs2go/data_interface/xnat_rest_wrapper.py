@@ -5,7 +5,6 @@ import uuid
 import zipfile
 from tempfile import TemporaryDirectory
 from typing import List
-from typing import Optional
 from typing import Sequence
 from typing import Union
 
@@ -149,12 +148,6 @@ class XNATProject():
             # Project was successfully retrieved
             # Get returned metadata to optimize number of XNAT REST calls (description and keywords don't require extra call)
             self._metadata = response.json()['items'][0]
-
-        elif (response.status_code == 401 or response.status_code == 404) and only_get_no_create is False:
-            # No project could be retrieved -> we want to create one with the given name
-            p = self.connection.create_project(self.name)
-            if p:
-                self._metadata = p._metadata
 
         else:
             # No project could be retrieved and we do not wish to create one

@@ -9,6 +9,8 @@ from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadExcep
 from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
 from pacs2go.data_interface.data_structure_db import PACS_DB
 from pacs2go.data_interface.data_structure_db import ProjectData
+from pacs2go.data_interface.data_structure_db import DirectoryData
+from pacs2go.data_interface.data_structure_db import FileData
 from pacs2go.data_interface.xnat_rest_wrapper import XNAT
 from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
 from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
@@ -17,6 +19,9 @@ from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Union
+
+import os
+import zipfile
 
 
 class Connection():
@@ -30,7 +35,8 @@ class Connection():
 
         try:
             if self.kind == "XNAT":
-                self._xnat_connection = XNAT(server=server, username=username, password=password, session_id=session_id)
+                self._xnat_connection = XNAT(
+                    server=server, username=username, password=password, session_id=session_id)
             else:
                 raise ValueError(kind)
         except:
@@ -61,7 +67,7 @@ class Connection():
         except:
             raise FailedDisconnectException
 
-    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'Project':
+    def create_project(self, name: str, description: str = '', keywords: str = '') -> 'Project':
         try:
             with PACS_DB() as db:
                 db.insert_into_project(ProjectData(name=name))
@@ -163,6 +169,8 @@ class Project():
 
     def delete_project(self) -> None:
         try:
+            with PACS_DB() as db:
+                db.delete_project_by_name(self.name)
             return self._xnat_project.delete_project()
         except:
             raise UnsuccessfulDeletionException(f"Project '{self.name}'")
@@ -175,18 +183,46 @@ class Project():
 
     def get_all_directories(self) -> Sequence['Directory']:
         try:
-            return self._xnat_project.get_all_directories()
+            directories_from_xnat = self._xnat_project.get_all_directories()
+            with PACS_DB() as db:
+                directories_from_db = db.get_directories_by_project(self.name)
+
+            # only return the directories that live directly under the project (no sub-dirs)
+            filtered_directories = [dir_xnat for dir_xnat in directories_from_xnat
+                                    if any(dir_xnat.name == dir_data.unique_name for dir_data in directories_from_db)
+                                    ]
+
+            return filtered_directories
+
         except:
             raise UnsuccessfulGetException("Directories")
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
-            return self._xnat_project.insert(file_path, directory_name, tags_string)
+            # File path leads to a single file
+            if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
+                # TODO: directory name has to be unique -> create unique dir name before hand
+                file = self._xnat_project.insert_file_into_project(file_path, directory_name, tags_string)
+                with PACS_DB() as db:
+                    # TODO: if directory does not exist insert directory
+                    db.insert_into_file(FileData(file_name=file.name, parent_directory=file.directory))
+                return file
+            
+            # File path equals a zip file
+            elif zipfile.is_zipfile(file_path):
+                directory = self._xnat_project.insert_zip_into_project(file_path, directory_name, tags_string)
+                with PACS_DB() as db:
+                    # TODO: differentiate between subdir and high-level dir, create unique name from parents and display name
+                    db.insert_into_directory(DirectoryData(unique_name='', name=directory.name, dir_name='', project_name = ''))
+                    # TODO: insert all files into db
+                return directory
+            
+            else:
+                raise ValueError
         except ValueError:
             raise WrongUploadFormatException(str(file_path))
         except:
             raise UnsuccessfulUploadException(str(file_path))
-
 
 
 class Directory():
@@ -222,9 +258,26 @@ class Directory():
 
     def delete_directory(self) -> None:
         try:
+            for subdir in self.get_subdirectories():
+                subdir.delete_directory()
+            with PACS_DB() as db:
+                db.delete_directory_by_name(self.name)
             return self._xnat_directory.delete_directory()
         except:
             raise UnsuccessfulDeletionException(f"directory '{self.name}'")
+        
+    def get_subdirectories(self) -> List['Directory']:
+        with PACS_DB() as db:
+            subdirectories_from_db = db.get_subdirectories_by_directory(self.name)
+        directories_from_xnat = self._xnat_project.get_all_directories()
+
+        # only return the directories that are subdirectories of this directory
+        filtered_directories = [dir_xnat for dir_xnat in directories_from_xnat
+                                if any(dir_xnat.name == dir_data.unique_name for dir_data in subdirectories_from_db)
+                                ]
+
+        return filtered_directories
+
 
     def get_file(self, file_name: str) -> 'File':
         try:
@@ -249,7 +302,7 @@ class File():
     def __init__(self, directory: Directory, name: str) -> None:
         self.directory = directory
         self.name = name
-        
+
         if self.directory.project.connection._kind == "XNAT":
             try:
                 self._xnat_file = XNATFile(directory, name)
@@ -305,6 +358,8 @@ class File():
 
     def delete_file(self) -> None:
         try:
+            with PACS_DB() as db:
+                db.delete_file_by_name(self.name)
             return self._xnat_file.delete_file()
         except:
             raise UnsuccessfulDeletionException(f"file '{self.name}'")
