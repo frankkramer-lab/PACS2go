@@ -19,7 +19,6 @@ class PACS_DB():
         )
         # Get cursor object to operate db
         self.cursor = self.conn.cursor()
-        print(self.conn)
 
         # On inital setup create tables (all statements possess IF NOT EXISTS keyword)
         self.create_tables()
@@ -296,15 +295,15 @@ class FileData(NamedTuple):
     parent_directory: str
 
 
-with PACS_DB() as db:
-    # Retrieving all projects
-    projects = db.get_all_projects()
-    print("All Projects:")
-    for project_name in projects:
-        print(project_name)
+# with PACS_DB() as db:
+#     # Retrieving all projects
+#     projects = db.get_all_projects()
+#     print("All Projects:")
+#     for project_name in projects:
+#         print(project_name)
 
-    # Retrieving all directories
-    directories = db.get_all_directories()
-    print("All Directories:")
-    for directory in directories:
-        print(directory)
+#     # Retrieving all directories
+#     directories = db.get_all_directories()
+#     print("All Directories:")
+#     for directory in directories:
+#         print(directory)
