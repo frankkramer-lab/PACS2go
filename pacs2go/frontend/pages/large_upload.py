@@ -60,7 +60,7 @@ def get_directory_names(project:Project) -> List[str]:
 
         for d in directories:
             # html option to create a html datalist
-            dir_list.append(html.Option(value=d.name))
+            dir_list.append(html.Option(label=d.name.replace('-',' / '),value=d.name))
 
         return dir_list
 

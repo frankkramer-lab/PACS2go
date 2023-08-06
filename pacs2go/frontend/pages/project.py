@@ -44,7 +44,7 @@ def get_directories_table(project: Project, filter: str = ''):
         # Only show rows if no filter is applied of if the filter has a match in the directory's contained file tags
         if filter.lower() in d.contained_file_tags.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
-            rows.append(html.Tr([html.Td(dcc.Link(d.name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+            rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
                 d.number_of_files), html.Td(d.contained_file_tags)]))
 
     table_header = [
@@ -352,7 +352,6 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
-            print("hello")
             directory = project.create_directory(name)
             return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.name}.",

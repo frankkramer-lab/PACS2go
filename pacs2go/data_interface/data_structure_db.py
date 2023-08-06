@@ -181,6 +181,25 @@ class PACS_DB():
             print("Error retrieving all directories: " + str(err))
             return []
 
+
+    def get_all_files(self) -> list:
+        try:
+            query = """
+                SELECT file_name FROM File
+            """
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+
+            file_list = []
+            for row in results:
+                file_name = row[0]
+                file_list.append(file_name)
+
+            return file_list
+        except Exception as err:
+            print("Error retrieving all projects: " + str(err))
+            return []
+
     def get_directories_by_project(self, project_name: str) -> list:
         try:
             query = """

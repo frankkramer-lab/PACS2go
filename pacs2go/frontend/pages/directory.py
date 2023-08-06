@@ -37,31 +37,32 @@ register_page(__name__, title='Directory - PACS2go',
 
 def get_single_file_preview(directory: Directory):
     # Preview first image within the directory
-    file = directory.get_all_files()[0]
-    file = directory.get_file(file.name)
-    if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
-        # Display jpeg, png or tiff bytes as image
-        encoded_image = base64.b64encode(file.data).decode("utf-8")
-        content = html.Img(id="my-img", className="image", width="100%",
-                           src=f"data:image/png;base64,{encoded_image}")
-    elif file.format == 'JSON':
-        # Display contents of a JSON file
-        json_str = file.data.decode("utf-8")
-        json_data = json.loads(json_str)
-        content = html.Pre(json.dumps(json_data, indent=2))
+    if len(directory.get_all_files()) > 0:
+        file = directory.get_all_files()[0]
+        file = directory.get_file(file.name)
+        if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
+            # Display jpeg, png or tiff bytes as image
+            encoded_image = base64.b64encode(file.data).decode("utf-8")
+            content = html.Img(id="my-img", className="image", width="100%",
+                               src=f"data:image/png;base64,{encoded_image}")
+        elif file.format == 'JSON':
+            # Display contents of a JSON file
+            json_str = file.data.decode("utf-8")
+            json_data = json.loads(json_str)
+            content = html.Pre(json.dumps(json_data, indent=2))
 
-    elif file.format == 'CSV':
-        # Display CSV as data table
-        csv_str = file.data.decode("utf-8")
-        df = pd.read_csv(io.StringIO(csv_str))
-        content = dash_table.DataTable(df.to_dict(
-            'records'), [{"name": i, "id": i} for i in df.columns])
-    else:
-        return html.Div()
+        elif file.format == 'CSV':
+            # Display CSV as data table
+            csv_str = file.data.decode("utf-8")
+            df = pd.read_csv(io.StringIO(csv_str))
+            content = dash_table.DataTable(df.to_dict(
+                'records'), [{"name": i, "id": i} for i in df.columns])
+        else:
+            return html.Div()
 
-    return dbc.Card([
-        dbc.CardHeader("Preview the first file of this directory:"),
-        dbc.CardBody(content, className="w-25 h-25")])
+        return dbc.Card([
+            dbc.CardHeader("Preview the first file of this directory:"),
+            dbc.CardBody(content, className="w-25 h-25")])
 
 
 def get_files_table(directory: Directory, filter: str = '', active_page: int = 0):
@@ -207,14 +208,14 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
 
 
 @callback(
-    [Output('modal_delete_directory', 'is_open'), 
+    [Output('modal_delete_directory', 'is_open'),
      Output('delete-directory-content', 'children')],
-    [Input('delete_directory', 'n_clicks'), 
+    [Input('delete_directory', 'n_clicks'),
      Input('close_modal_delete_directory', 'n_clicks'),
      Input('delete_directory_and_close', 'n_clicks')],
-     State("modal_delete_directory", "is_open"), 
-     State('directory', 'data'), 
-     State('project', 'data'), 
+    State("modal_delete_directory", "is_open"),
+    State('directory', 'data'),
+    State('project', 'data'),
     prevent_initial_call=True)
 # Callback for the directory deletion modal view and the actual directory deletion
 def modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
@@ -238,18 +239,18 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
                                                 style={'color': colors['links']})], color="success")
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
-        
+
     else:
         raise PreventUpdate
 
 
 @callback(
-    Output('files_table', 'children'), 
+    Output('files_table', 'children'),
     Input('filter_file_tags_btn', 'n_clicks'),
-    Input('filter_file_tags', 'value'), 
-    Input('pagination-files', 'active_page'), 
-    State('directory', 'data'), 
-    State('project', 'data'), 
+    Input('filter_file_tags', 'value'),
+    Input('pagination-files', 'active_page'),
+    State('directory', 'data'),
+    State('project', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
 def filter_files_table(btn, filter, active_page, directory_name, project_name):
@@ -258,6 +259,7 @@ def filter_files_table(btn, filter, active_page, directory_name, project_name):
         try:
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
+
             if not active_page:
                 active_page = 1
             if not filter:
@@ -271,8 +273,8 @@ def filter_files_table(btn, filter, active_page, directory_name, project_name):
 
 @callback(
     Output("download_directory", "data"),
-    Input("btn_download_dir", "n_clicks"), 
-    State("directory", "data"),  
+    Input("btn_download_dir", "n_clicks"),
+    State("directory", "data"),
     State("project", "data"),
     prevent_initial_call=True,
 )
@@ -333,10 +335,10 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             connection = get_connection()
             directory = connection.get_directory(
                 project_name, directory_name)
-            
+
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
-        
+
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory.name),
@@ -362,7 +364,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
             dbc.Row([
                     dbc.Col(
-                        html.H1(f"Directory {directory.name}", style={
+                        html.H1(f"Directory {directory.display_name}", style={
                                 'textAlign': 'left', })),
                     dbc.Col(
                         [
@@ -403,6 +405,6 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             # Display a preview of the first file's content
             get_single_file_preview(directory),
         ])
-    
+
     else:
         return dbc.Alert("No project and directory name was given.", color="danger")

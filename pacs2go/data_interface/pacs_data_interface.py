@@ -106,9 +106,9 @@ class Connection():
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
         try:
-            return File(directory=self.get_directory(self, project_name=project_name), file_name=file_name)
-        except:
-            raise UnsuccessfulGetException(f"File '{file_name}'")
+            return File(directory=self.get_directory(project_name=project_name, directory_name=directory_name), name=file_name)
+        except Exception as err:
+            raise UnsuccessfulGetException(f"File '{file_name}' {err}")
 
 
 class Project():
@@ -190,20 +190,23 @@ class Project():
 
     def create_directory(self, name: str) -> 'Directory':
         try:
-            with PACS_DB() as db:
-                unique_name = self.name + '-' + name
-                db.insert_into_directory(DirectoryData(
-                    unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=None))
-                db.delete_project_by_name('asdfgh')
-            dir = self._xnat_project.create_directory(unique_name)
-            return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
-        except Exception as err:
-            raise UnsuccessfulCreationException(str(name) + str(err))
+            d = self.get_directory(name)
+            return d
+        except:
+            try:
+                with PACS_DB() as db:
+                    unique_name = self.name + '-' + name
+                    db.insert_into_directory(DirectoryData(
+                        unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=None))
+        
+                dir = self._xnat_project.create_directory(unique_name)
+                return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
+            except Exception as err:
+                raise UnsuccessfulCreationException(str(name) + str(err))
 
     def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
         try:
-            d = self._xnat_project.get_directory(name=name)
-            return Directory(self, name=d.name, _directory_filestorage_object=d)
+            return Directory(self, name=name, _directory_filestorage_object=_directory_filestorage_object)
         except:
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
@@ -223,44 +226,32 @@ class Project():
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
-            # Check if directory already exists in db, if not insert it
-            with PACS_DB() as db:
-                directory_in_db = db.get_directory_by_name(directory_name)
-                if not dir:
-                    if directory_name.count('/') == 1:
-                        directory_in_db = self.create_directory(DirectoryData(unique_name=directory_name, dir_name=directory_name.split(
-                            '/')[-1], parent_project=self.name, parent_directory=None))
-                    else:
-                        directory_in_db = self.create_directory(DirectoryData(unique_name=directory_name, dir_name=directory_name.split(
-                            '/')[-1], parent_project=None, parent_directory=directory_name.split('/')[-2]))
+            if directory_name.count('-') == 1 or directory_name.count('-') == 0:
+                directory = self.create_directory(directory_name)
+            else:
+                parent_dir = self.get_directory(directory_name.rsplit('-', 1))
+                directory = parent_dir.create_subdirectory(directory_name)
 
             # File path leads to a single file
             if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
                 file = self._xnat_project.insert_file_into_project(
-                    file_path, directory_name, tags_string)
+                    file_path, directory.name, tags_string)
 
-                db.insert_into_file(
-                    FileData(file_name=file.name, parent_directory=file.directory))
-                return file  # TODO: fix
+                with PACS_DB() as db:
+                    db.insert_into_file(
+                        FileData(file_name=file.name, parent_directory=directory.name))
+                return File(directory=directory, name=file.name, _file_filestorage_object=file)
 
             # File path equals a zip file
             elif zipfile.is_zipfile(file_path):
-                directory = self._xnat_project.insert_zip_into_project(
-                    file_path, directory_name, tags_string)
-                with PACS_DB() as db:
-                    files = [FileData(
-                        name=file.name,
-                        parent_directory=directory.name
-                    ) for file in directory.get_all_files()]
-                    db.insert_multiple_files(files)
-                return directory  # TODO: fix
+                pass
 
             else:
                 raise ValueError
         except ValueError:
-            raise WrongUploadFormatException(str(file_path))
-        except:
-            raise UnsuccessfulUploadException(str(file_path))
+            raise WrongUploadFormatException(str(file_path.split("/")[-1]))
+        except Exception as err:
+            raise UnsuccessfulUploadException(str(file_path.split("/")[-1]) + str(err))
 
 
 class Directory():
@@ -294,6 +285,14 @@ class Directory():
             return self._xnat_directory.number_of_files
         except:
             raise UnsuccessfulGetException("Number of files in this directory")
+        
+    @property
+    def parent_directory_name(self) -> 'str':
+        try:
+            with PACS_DB() as db:
+                return db.get_directory_by_name(self.name).parent_directory
+        except:
+            raise UnsuccessfulGetException("Number of files in this directory")
 
     def exists(self) -> bool:
         return self._xnat_directory.exists()
@@ -310,13 +309,19 @@ class Directory():
 
     def create_subdirectory(self, name: str) -> 'Directory':
         try:
-            with PACS_DB() as db:
-                unique_name = self.name + '/' + name
-                db.insert_into_directory(DirectoryData(
-                    unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name))
-            return Directory(project=self.project, name=unique_name)
+            d = self.project.get_directory(name)
+            return d
         except:
-            raise UnsuccessfulCreationException(str(name))
+            try:
+                with PACS_DB() as db:
+                    unique_name = self.name + '-' + name
+                    db.insert_into_directory(DirectoryData(
+                        unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name))
+        
+                dir = self.project._xnat_project.create_directory(unique_name)
+                return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
+            except Exception as err:
+                raise UnsuccessfulCreationException(str(name) + str(err))
 
     def get_subdirectories(self) -> List['Directory']:
         with PACS_DB() as db:

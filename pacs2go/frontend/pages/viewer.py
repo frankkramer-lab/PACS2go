@@ -232,7 +232,7 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
                     html.Span(" > ", style={"marginRight": "1%"}),
                     dcc.Link(f"{project_name}", href=f"/project/{project_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
                     html.Span(" > ", style={"marginRight": "1%"}),
-                    dcc.Link(f"{directory_name}", href=f"/dir/{project_name}/{directory_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    dcc.Link(f"{directory_name.rsplit('-')[1]}", href=f"/dir/{project_name}/{directory_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
                     html.Span(" > ", style={"marginRight": "1%"}),
                     html.Span("File Viewer", className='active fw-bold',style={"color": "#707070"})
                 ],
@@ -240,7 +240,7 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
             ),
 
             dcc.Link(
-                html.H1(f"Directory {directory_name}"), href=f"/dir/{project_name}/{directory_name}",
+                html.H1(f"Directory {directory_name.rsplit('-')[1]}"), href=f"/dir/{project_name}/{directory_name}",
                 className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
             # Get Dropdown with file names
             files_dropdown(files, file_name),

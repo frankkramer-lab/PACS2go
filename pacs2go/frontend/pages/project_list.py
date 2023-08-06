@@ -1,7 +1,7 @@
 from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulProjectCreationException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulCreationException
 from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import colors
 from pacs2go.frontend.helpers import get_connection
@@ -133,7 +133,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
                                                           className="fw-bold text-decoration-none",
                                                           style={'color': colors['links']}))], color="success")
 
-        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulProjectCreationException) as err:
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulCreationException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
 
     else:
