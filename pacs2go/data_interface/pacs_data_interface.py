@@ -1,3 +1,5 @@
+import datetime
+import tempfile
 from pacs2go.data_interface.exceptions.exceptions import DownloadException
 from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
 from pacs2go.data_interface.exceptions.exceptions import FailedDisconnectException
@@ -226,6 +228,9 @@ class Project():
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
+            if directory_name == '':
+                directory_name = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
             if directory_name.count('-') == 1 or directory_name.count('-') == 0:
                 directory = self.create_directory(directory_name)
             else:
@@ -244,7 +249,20 @@ class Project():
 
             # File path equals a zip file
             elif zipfile.is_zipfile(file_path):
-                pass
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    # Unzip the file to the temporary directory
+                    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                        zip_ref.extractall(temp_dir)
+                    
+                    # Walk through the unzipped directory
+                    for root, dirs, files in os.walk(temp_dir):
+                        print(root,dirs, files, flush=True)
+                        current_dir = directory.create_subdirectory(os.path.basename(root))
+                        for file_name in files:
+                            self._xnat_project.insert_file_into_project(
+                                os.path.join(root, file_name), directory.name, tags_string)
+                        directory = current_dir
+                    return None
 
             else:
                 raise ValueError
