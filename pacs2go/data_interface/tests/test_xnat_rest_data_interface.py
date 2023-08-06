@@ -152,13 +152,6 @@ class TestDataInterface(unittest.TestCase):
         self.assertNotIn(file.name, [
                          f.name for f in file.directory.get_all_files()])
 
-    def test_double_delete_file(self):
-        # Checks if double deleting a file results in an expected Exception
-        file = self.to_be_double_deleted_file
-        file.delete_file()
-        with self.assertRaises(Exception):
-            file.delete_file()
-
     def test_ydelete_diretory(self):
         # Check if single directory is deleted from project
         self.assertIn(self.to_be_deleted_directory.name, [

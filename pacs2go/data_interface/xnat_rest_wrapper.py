@@ -41,7 +41,7 @@ class XNAT():
             if response.status_code != 200:
                 # Non successful authentication
                 raise HTTPException(
-                    "Something went wrong connecting to XNAT. " + str(response.text))
+                    "Something went wrong connecting to XNAT. " + str(response.status_code))
             else:
                 # Return SessionID
                 self.session_id = response.text
@@ -83,7 +83,6 @@ class XNAT():
             print("XNAT session was successfully invalidated.")
 
     def create_project(self, name: str, description: str = '', keywords:str = '') -> 'XNATProject':
-        print(self, flush=True)
         headers = {'Content-Type': 'application/xml'}
         # Specify XML metadata
         project_data = f"""
@@ -359,7 +358,8 @@ class XNATProject():
                 with TemporaryDirectory() as tempdir:
                     with zipfile.ZipFile(file_path) as z:
                         z.extractall(tempdir)
-                        dir_path = next(os.scandir(tempdir)).path
+                        with os.scandir(tempdir) as entries:
+                            dir_path = next(entries).path
 
                         # Get all files, even those within a lower-level directory
                         onlyfiles = []
