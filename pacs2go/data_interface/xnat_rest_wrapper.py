@@ -16,13 +16,13 @@ from werkzeug.exceptions import NotFound
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (
-    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
+    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json', '.txt')
 image_file_suffixes = (
     '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff')
 
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
+               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
 
 
 class XNAT():
@@ -78,7 +78,7 @@ class XNAT():
         response = requests.post(
             self.server + "/data/JSESSION/", cookies=self.cookies)
         if response.status_code != 200:
-            raise HTTPException("Unable to invalidate session Id.")
+            raise HTTPException("Unable to invalidate session Id." + str(response.status_code))
         else:
             print("XNAT session was successfully invalidated.")
 
@@ -274,6 +274,16 @@ class XNATProject():
         elif response.status_code != 200:
             raise HTTPException(
                 'Something went wrong trying to delete the project.' + str(response.status_code))
+        
+    def create_directory(self, name) -> 'XNATDirectory':
+        file_path = 'empty_dir.txt'
+        with open(file_path, 'w') as f:
+            f.write('No content')
+        file = self.insert(file_path=file_path,directory_name=name)
+        dir = file.directory
+        file.delete_file()
+        os.remove(file_path)
+        return dir
 
     def get_directory(self, name) -> 'XNATDirectory':
         return XNATDirectory(self, name)
