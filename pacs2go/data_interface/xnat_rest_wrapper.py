@@ -83,6 +83,7 @@ class XNAT():
             print("XNAT session was successfully invalidated.")
 
     def create_project(self, name: str, description: str = '', keywords:str = '') -> 'XNATProject':
+        print(self, flush=True)
         headers = {'Content-Type': 'application/xml'}
         # Specify XML metadata
         project_data = f"""
@@ -495,8 +496,8 @@ class XNATDirectory():
             raise HTTPException(
                 "Something went wrong trying to delete this directory. " + str(response.status_code))
 
-    def get_file(self, file_name: str, format: str = '', content_type: str = '', tags: str = '', size: int = None) -> 'XNATFile':
-        return XNATFile(self, file_name, format, content_type, tags, size)
+    def get_file(self, file_name: str, metadata: dict = None) -> 'XNATFile':
+        return XNATFile(self, file_name, metadata)
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
@@ -511,9 +512,8 @@ class XNATDirectory():
 
             files = []
             for file in file_results:
-                # Create List of all Project objectss
-                file_object = self.get_file(file['Name'], format=file['file_format'],
-                                            content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
+                # Create List of all Project objects
+                file_object = self.get_file(file_name = file['Name'], metadata = file)
                 files.append(file_object)
             files = natsorted(files, key=lambda obj: obj.name)
 
@@ -542,14 +542,13 @@ class XNATDirectory():
 
 
 class XNATFile():
-    def __init__(self, directory: XNATDirectory, name: str, format: str = '', content_type: str = '', tags: str = '', size: int = None) -> None:
+    def __init__(self, directory: XNATDirectory, name: str, metadata:dict = None) -> None:
         self.directory = directory
         self.name = name
 
-        if format and content_type and tags and size:
+        if metadata:
             # Format etc will be passed in case of the Directory's get_all_files method, this will speed up the metadata extraction process
-            self._metadata = {
-                'file_format': format, 'file_content': content_type, 'file_tags': tags, 'Size': size}
+            self._metadata = metadata
         else:
             # Get all files from this file's directory (retrieving the metadata of a single file via a GET is not possible)
             response = requests.get(
