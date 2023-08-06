@@ -23,6 +23,7 @@ from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
 
+
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')
 
@@ -164,6 +165,39 @@ def modal_edit_project(project: Project):
         ])
 
 
+def modal_create_new_directory():
+    # Modal view for project creation
+    return html.Div([
+        # Button which triggers modal activation
+        dbc.Button([html.I(className="bi bi-plus me-2"),
+                        "Create Directory"], id="create_new_directory_btn", color="success"),
+        # Actual modal view
+        dbc.Modal(
+            [
+                dbc.ModalHeader(dbc.ModalTitle("Create New Directory")),
+                dbc.ModalBody([
+                    html.Div(id='create-directory-content'),
+                    dbc.Label(
+                        "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
+                    # Input Text Field for project name
+                    dbc.Input(id="new_dir_name",
+                              placeholder="Directory unique name...", required=True),
+                ]),
+                dbc.ModalFooter([
+                    # Button which triggers the creation of a project (see modal_and_project_creation)
+                    dbc.Button("Create Directory",
+                               id="create_dir_and_close", color="success"),
+                    # Button which causes modal to close/disappear
+                    dbc.Button("Close", id="close_modal_create_dir")
+                ]),
+            ],
+            id="modal_create_new_directory",
+            is_open=False,
+        ),
+    ])
+
+
+
 def insert_data(project: Project):
     if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
         # Link to Upload functionality with a set project name
@@ -291,6 +325,46 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
     else:
         raise PreventUpdate
 
+# Callback for project creation modal view and executing project creation
+@callback(
+    [Output('modal_create_new_directory', 'is_open'),
+     Output('create-directory-content', 'children')],
+    [Input('create_new_directory_btn', 'n_clicks'),
+     Input('close_modal_create_dir', 'n_clicks'),
+     Input('create_dir_and_close', 'n_clicks')],
+    State("modal_create_new_directory", "is_open"),
+    State('new_dir_name', 'value'),
+    State("project", "value"),
+    prevent_initial_call=True)
+def modal_and_directory_creation(open, close, create_and_close, is_open, name, project_name):
+    # Open/close modal via button click
+    if ctx.triggered_id == "create_new_directory_btn" or ctx.triggered_id == "close_modal_create_dir":
+        return not is_open, no_update
+
+    # User tries to create modal without specifying a project name -> show alert feedback
+    elif ctx.triggered_id == "create_dir_and_close" and name is None:
+        return is_open, dbc.Alert("Please specify a name.", color="danger")
+
+    # User does everything "right" for project creation
+    elif ctx.triggered_id == "create_dir_and_close" and name is not None:
+        # Project name cannot contain whitespaces
+        name = str(name).replace(" ", "_")
+        try:
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            print("hello")
+            directory = project.create_directory(name)
+            return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
+                                       html.Span(dcc.Link(f" Click here to go to the new directory {directory.name}.",
+                                                          href=f"/dir/{project.name}/{directory.name}",
+                                                          className="fw-bold text-decoration-none",
+                                                          style={'color': colors['links']}))], color="success")
+
+        except Exception as err:
+            return is_open, dbc.Alert(str(err), color="danger")
+
+    else:
+        raise PreventUpdate
 
 @callback(
     Output('directory_table', 'children'),
@@ -392,13 +466,13 @@ def layout(project_name: Optional[str] = None):
                         dbc.Col(dbc.Input(id="filter_directory_tags",
                             placeholder="Search keywords.. (e.g. 'CT')")),
                         dbc.Col(dbc.Button(
-                            "Filter", id="filter_directory_tags_btn"))
+                            "Filter", id="filter_directory_tags_btn")),
+                        dbc.Col(modal_create_new_directory(), className="d-grid gap-2 d-md-flex justify-content-md-end")
                     ], class_name="mb-3"),
                     # Directories Table
                     dbc.Spinner(html.Div(get_directories_table(
                         project), id='directory_table')),
                 ])], class_name="mb-3"),
-
         ])
 
     else:
