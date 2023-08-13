@@ -27,7 +27,7 @@ import zipfile
 
 
 class Connection():
-    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '') -> None:
+    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '', db_host:str = 'data-structure-db', db_port:int=5432) -> None:
         self.kind = kind
         self.server = server
         self.username = username
@@ -204,7 +204,7 @@ class Project():
                 dir = self._xnat_project.create_directory(unique_name)
                 return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
             except Exception as err:
-                raise UnsuccessfulCreationException(str(name) + str(err))
+                raise UnsuccessfulCreationException(str(name))
 
     def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
         try:

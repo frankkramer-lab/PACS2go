@@ -5,20 +5,25 @@ from psycopg2.extras import execute_values
 import os
 from dotenv import load_dotenv
 
+from pacs2go.data_interface.tests.test_config import DATABASE_HOST, DATABASE_PORT
+
 load_dotenv()
 
 class PACS_DB():
-    def __init__(self) -> None:
-        # Connect to the Postgres service
-        self.conn = psycopg2.connect(
-            host="data-structure-db",
-            port=5432,
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            database=os.getenv("POSTGRES_DB")
-        )
-        # Get cursor object to operate db
-        self.cursor = self.conn.cursor()
+    def __init__(self, host:str = "data-structure-db", port:int=5432) -> None:
+        try:
+            # Connect to the Postgres service
+            self.conn = psycopg2.connect(
+                host=DATABASE_HOST,
+                port=DATABASE_PORT,
+                user=os.getenv("POSTGRES_USER"),
+                password=os.getenv("POSTGRES_PASSWORD"),
+                database=os.getenv("POSTGRES_DB")
+            )
+            # Get cursor object to operate db
+            self.cursor = self.conn.cursor()
+        except:
+            raise Exception("No DB connection possible")
 
         # On inital setup create tables (all statements possess IF NOT EXISTS keyword)
         self.create_tables()
@@ -45,7 +50,7 @@ class PACS_DB():
             # Create a table
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Project (
-                    name VARCHAR(60) NOT NULL,
+                    name VARCHAR(256) NOT NULL,
                     PRIMARY KEY(name)
                 )
             """)
@@ -60,10 +65,10 @@ class PACS_DB():
             # Create a table
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Directory (
-                    unique_name VARCHAR(60) NOT NULL,
-                    dir_name VARCHAR(60) NOT NULL,
-                    parent_project VARCHAR(60) REFERENCES Project(name) ON DELETE CASCADE,
-                    parent_directory VARCHAR(60) REFERENCES Directory(unique_name) ON DELETE CASCADE,
+                    unique_name VARCHAR(256) NOT NULL,
+                    dir_name VARCHAR(256) NOT NULL,
+                    parent_project VARCHAR(256) REFERENCES Project(name) ON DELETE CASCADE,
+                    parent_directory VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE,
                     PRIMARY KEY(unique_name)
                 )
             """)
@@ -78,8 +83,8 @@ class PACS_DB():
             # Create a table
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS File (
-                    file_name VARCHAR(60) NOT NULL,
-                    parent_directory VARCHAR(60) NOT NULL,
+                    file_name VARCHAR(256) NOT NULL,
+                    parent_directory VARCHAR(256) NOT NULL,
                     PRIMARY KEY(file_name, parent_directory),
                     FOREIGN KEY (parent_directory) REFERENCES Directory(unique_name) ON DELETE CASCADE
                 )
