@@ -27,7 +27,7 @@ import zipfile
 
 
 class Connection():
-    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '', db_host:str = 'data-structure-db', db_port:int=5432) -> None:
+    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '', db_host: str = 'data-structure-db', db_port: int = 5432) -> None:
         self.kind = kind
         self.server = server
         self.username = username
@@ -104,7 +104,8 @@ class Connection():
         try:
             return Directory(self.get_project(project_name), directory_name)
         except Exception as err:
-            raise UnsuccessfulGetException(f"Directory '{directory_name}' {err}")
+            raise UnsuccessfulGetException(
+                f"Directory '{directory_name}' {err}")
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
         try:
@@ -197,10 +198,10 @@ class Project():
         except:
             try:
                 with PACS_DB() as db:
-                    unique_name = self.name + '-' + name
+                    unique_name = self.name + '::' + name
                     db.insert_into_directory(DirectoryData(
                         unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=None))
-        
+
                 dir = self._xnat_project.create_directory(unique_name)
                 return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
             except Exception as err:
@@ -229,12 +230,19 @@ class Project():
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
             if directory_name == '':
+                # No desired name was given, set the name as the current timestamp
                 directory_name = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
-            if directory_name.count('-') == 1 or directory_name.count('-') == 0:
+            if directory_name.count('::') == 1 or directory_name.count('::') == 0:
+                # Name is not an inherited name and is directly under a project, create/get directory
                 directory = self.create_directory(directory_name)
             else:
-                parent_dir = self.get_directory(directory_name.rsplit('-', 1))
+                print(directory_name.rsplit('::', 1)[0])
+                # Get the parent directory of what is a subdirectory (contains a -) by its unique name
+                parent_dir = self.get_directory(
+                    directory_name.rsplit('::', 1)[0])
+
+                # Create/get the directory
                 directory = parent_dir.create_subdirectory(directory_name)
 
             # File path leads to a single file
@@ -253,11 +261,11 @@ class Project():
                     # Unzip the file to the temporary directory
                     with zipfile.ZipFile(file_path, 'r') as zip_ref:
                         zip_ref.extractall(temp_dir)
-                    
+
                     # Walk through the unzipped directory
                     for root, dirs, files in os.walk(temp_dir):
-                        print(root,dirs, files, flush=True)
-                        current_dir = directory.create_subdirectory(os.path.basename(root))
+                        current_dir = directory.create_subdirectory(
+                            os.path.basename(root))
                         for file_name in files:
                             self._xnat_project.insert_file_into_project(
                                 os.path.join(root, file_name), directory.name, tags_string)
@@ -267,15 +275,15 @@ class Project():
             else:
                 raise ValueError
         except ValueError:
-            raise WrongUploadFormatException(str(file_path.split("/")[-1]))
+            raise WrongUploadFormatException(str(file_path.split("-")[-1]))
         except Exception as err:
-            raise UnsuccessfulUploadException(str(file_path.split("/")[-1]) + str(err))
+            raise UnsuccessfulUploadException(str(file_path.split("-")[-1]))
 
 
 class Directory():
     def __init__(self, project: Project, name: str, _directory_filestorage_object=None) -> None:
         self.name = name  # unique
-        self.display_name = self.name.split('-')[-1]
+        self.display_name = self.name.split('::')[-1]
         self.project = project
 
         if _directory_filestorage_object:
@@ -303,7 +311,7 @@ class Directory():
             return self._xnat_directory.number_of_files
         except:
             raise UnsuccessfulGetException("Number of files in this directory")
-        
+
     @property
     def parent_directory_name(self) -> 'str':
         try:
@@ -332,14 +340,14 @@ class Directory():
         except:
             try:
                 with PACS_DB() as db:
-                    unique_name = self.name + '-' + name
+                    unique_name = self.name + '::' + name
                     db.insert_into_directory(DirectoryData(
                         unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name))
-        
+
                 dir = self.project._xnat_project.create_directory(unique_name)
                 return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
             except Exception as err:
-                raise UnsuccessfulCreationException(str(name) + str(err))
+                raise UnsuccessfulCreationException(str(name))
 
     def get_subdirectories(self) -> List['Directory']:
         with PACS_DB() as db:
@@ -361,10 +369,11 @@ class Directory():
     def get_all_files(self) -> List['File']:
         try:
             fs = self._xnat_directory.get_all_files()
-            files = [self.get_file(file_name=f.name, _file_filestorage_object=f) for f in fs]
+            files = [self.get_file(
+                file_name=f.name, _file_filestorage_object=f) for f in fs]
             return files
         except Exception as err:
-            raise UnsuccessfulGetException("Files" + str(err))
+            raise UnsuccessfulGetException("Files")
 
     def download(self, destination: str) -> str:
         try:

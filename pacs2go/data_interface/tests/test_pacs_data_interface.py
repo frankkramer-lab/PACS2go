@@ -95,8 +95,7 @@ class TestFile(unittest.TestCase):
     def setUp(self):
         self.connection = Connection('http://localhost:8888', 'test_user', 'test', kind='XNAT', db_host='localhost', db_port=5433)
         self.project = self.connection.create_project(str(uuid.uuid4()))
-        self.directory = self.project.create_directory(str(uuid.uuid4()).replace('-',''))
-        print(self.directory.name)
+        self.directory = self.project.create_directory(str(uuid.uuid4()))
         self.file_path = 'test_file.txt'
         with open(self.file_path, 'w') as f:
             f.write('Test content')
