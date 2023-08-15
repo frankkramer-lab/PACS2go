@@ -52,7 +52,17 @@ def get_project_names() -> List[str]:
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return ["No database connection."]
 
-def get_directory_names(project:Project) -> List[str]:
+def get_subdirectory_names_recursive(directory):
+    # Recursively fetch all nested subdirectories using depth-first traversal
+    dir_list = []
+    for d in directory.get_subdirectories():
+        label = f"{d.name.replace('::', ' / ')}"
+        dir_list.append(html.Option(label=label, value=d.name))
+        dir_list.extend(get_subdirectory_names_recursive(d))
+
+    return dir_list
+
+def get_directory_names(project: Project) -> List[str]:
     # Get List of all project names as html Options
     try:
         directories = get_connection().get_project(project).get_all_directories()
@@ -60,8 +70,10 @@ def get_directory_names(project:Project) -> List[str]:
 
         for d in directories:
             # html option to create a html datalist
-            dir_list.append(html.Option(label=d.name.replace('-',' / '),value=d.name))
-
+            dir_list.append(html.Option(label=d.name.replace('::', ' / '), value=d.name))
+            if len(d.get_subdirectories()) > 0:
+                dir_list.extend(get_subdirectory_names_recursive(d))
+            
         return dir_list
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
@@ -187,7 +199,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 # Remove tempdir after successful upload to XNAT
                 shutil.rmtree(dirpath)
                 return dbc.Alert(["The upload was successful! ",
-                                  dcc.Link(f"Click here to go to the directory {dir_name}.",
+                                  dcc.Link(f"Click here to go to the directory {dir_name.rsplit('::', 1)[-1]}.",
                                            href=f"/dir/{project_name}/{dir_name}",
                                            className="fw-bold text-decoration-none",
                                            style={'color': colors['links']})], color="success")

@@ -217,6 +217,11 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
 
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
+
+        if directory_name.count('::') >= 1:
+            breadcrumb_buffer = html.Span(" ...   \u00A0 >  ", style={"marginRight": "1%"})
+        else:
+            breadcrumb_buffer = None
         
         return html.Div([
             # dcc Store components for project and directory name strings
@@ -232,7 +237,8 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
                     html.Span(" > ", style={"marginRight": "1%"}),
                     dcc.Link(f"{project_name}", href=f"/project/{project_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
                     html.Span(" > ", style={"marginRight": "1%"}),
-                    dcc.Link(f"{directory_name.rsplit('-')[1]}", href=f"/dir/{project_name}/{directory_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
+                    breadcrumb_buffer,
+                    dcc.Link(f"{directory_name.rsplit('::', 1)[-1]}", href=f"/dir/{project_name}/{directory_name}", style={"color": colors['sage'], "marginRight": "1%"}), 
                     html.Span(" > ", style={"marginRight": "1%"}),
                     html.Span("File Viewer", className='active fw-bold',style={"color": "#707070"})
                 ],
@@ -240,7 +246,7 @@ def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = 
             ),
 
             dcc.Link(
-                html.H1(f"Directory {directory_name.rsplit('-')[1]}"), href=f"/dir/{project_name}/{directory_name}",
+                html.H1(f"Directory {directory_name.rsplit('::', 1)[-1]}"), href=f"/dir/{project_name}/{directory_name}",
                 className="mb-3 fw-bold text-decoration-none", style={'color': colors['links']}),
             # Get Dropdown with file names
             files_dropdown(files, file_name),

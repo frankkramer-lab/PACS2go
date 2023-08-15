@@ -354,7 +354,7 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
             project = connection.get_project(project_name)
             directory = project.create_directory(name)
             return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
-                                       html.Span(dcc.Link(f" Click here to go to the new directory {directory.name}.",
+                                       html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
                                                           href=f"/dir/{project.name}/{directory.name}",
                                                           className="fw-bold text-decoration-none",
                                                           style={'color': colors['links']}))], color="success")
@@ -455,10 +455,10 @@ def layout(project_name: Optional[str] = None):
 
             # Project Information (owners,..)
             dbc.Card([
-                dbc.CardHeader("Details"),
+                dbc.CardHeader(html.H4("Details")),
                 dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="mb-3"),
             dbc.Card([
-                dbc.CardHeader('Directories'),
+                dbc.CardHeader(html.H4('Directories')),
                 dbc.CardBody([
                     # Filter file tags
                     dbc.Row([

@@ -98,6 +98,64 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
     return table
 
 
+def get_subdirectories_table(directory: Directory, filter: str = ''):
+    # Get list of all directory names and number of files per directory
+    rows = []
+    for d in directory.get_subdirectories():
+        # Only show rows if no filter is applied of if the filter has a match in the directory's contained file tags
+        if filter.lower() in d.contained_file_tags.lower() or len(filter) == 0:
+            # Directory names represent links to individual directory pages
+            rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+                d.number_of_files), html.Td(d.contained_file_tags)]))
+
+    table_header = [
+        html.Thead(
+            html.Tr([html.Th("Directory Name"), html.Th("Number of Files"), html.Th("Contained File Tags in this Directory")]))
+    ]
+
+    table_body = [html.Tbody(rows)]
+
+    # Put together directory table
+    table = dbc.Table(table_header + table_body,
+                      striped=True, bordered=True, hover=True)
+    return table
+
+
+
+def modal_create_new_subdirectory(directory):
+    if directory.project.your_user_role == 'Owners':
+        # Modal view for subdir creation
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-plus me-2"),
+                            "Create Sub-Directory"], id="create_new_subdirectory_btn", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Create New Sub-Directory")),
+                    dbc.ModalBody([
+                        html.Div(id='create-subdirectory-content'),
+                        dbc.Label(
+                            "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
+                        # Input Text Field for project name
+                        dbc.Input(id="new_subdir_name",
+                                placeholder="Directory unique name...", required=True),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Create Directory",
+                                id="create_subdir_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_create_subdir")
+                    ]),
+                ],
+                id="modal_create_new_subdirectory",
+                is_open=False,
+            ),
+        ])
+
+
+
 def modal_delete(directory: Directory):
     if directory.project.your_user_role == 'Owners':
         # Modal view for directory deletion
@@ -243,6 +301,68 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     else:
         raise PreventUpdate
 
+# Callback for project creation modal view and executing project creation
+@callback(
+    [Output('modal_create_new_subdirectory', 'is_open'),
+     Output('create-subdirectory-content', 'children')],
+    [Input('create_new_subdirectory_btn', 'n_clicks'),
+     Input('close_modal_create_subdir', 'n_clicks'),
+     Input('create_subdir_and_close', 'n_clicks')],
+    State("modal_create_new_subdirectory", "is_open"),
+    State('new_subdir_name', 'value'),
+    State("directory", "data"),
+    State("project", "data"),
+    prevent_initial_call=True)
+def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, directory_name, project_name):
+    # Open/close modal via button click
+    if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
+        return not is_open, no_update
+
+    # User tries to create modal without specifying a project name -> show alert feedback
+    elif ctx.triggered_id == "create_subdir_and_close" and name is None:
+        return is_open, dbc.Alert("Please specify a name.", color="danger")
+
+    # User does everything "right" for project creation
+    elif ctx.triggered_id == "create_subdir_and_close" and name is not None:
+        # Directory name cannot contain whitespaces
+        name = str(name).replace(" ", "_")
+        try:
+            connection = get_connection()
+            directory = connection.get_directory(project_name,directory_name)
+            sd = directory.create_subdirectory(name)
+            
+            return is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
+                                       html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
+                                                          href=f"/dir/{project_name}/{sd.name}",
+                                                          className="fw-bold text-decoration-none",
+                                                          style={'color': colors['links']}))], color="success")
+
+        except Exception as err:
+            return is_open, dbc.Alert(str(err), color="danger")
+
+    else:
+        raise PreventUpdate
+
+@callback(
+    Output('subdirectory_table', 'children'),
+    Input('filter_subdirectory_tags_btn', 'n_clicks'),
+    Input('filter_subdirectory_tags', 'value'),
+    State('directory', 'data'),
+    State('project', 'data'),
+    prevent_initial_call=True)
+def filter_directory_table(btn, filter, directory_name, project_name):
+    # Apply filter to the directories table
+    if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
+        if filter or filter == "":
+            try:
+                connection = get_connection()
+                return get_subdirectories_table(connection.get_directory(project_name, directory_name), filter)
+            except (FailedConnectionException, UnsuccessfulGetException) as err:
+                return dbc.Alert(str(err), color="danger")
+        else:
+            raise PreventUpdate
+    else:
+        raise PreventUpdate
 
 @callback(
     Output('files_table', 'children'),
@@ -339,6 +459,18 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
 
+        # Breadcrumbs for nested directories
+        breadcrumb_buffer = None
+        link_to_direct_parent = None
+        extra_span = None
+        
+        if directory_name.count('::') > 1:
+            link_to_direct_parent = dcc.Link(f"{directory.parent_directory_name.rsplit('::', 1)[-1]}", href=f"/dir/{project_name}/{directory.parent_directory_name}",
+                             style={"color": colors['sage'], "marginRight": "1%"})
+            extra_span = html.Span(" > ", style={"marginRight": "1%"})
+            if directory_name.count('::') > 2:
+                breadcrumb_buffer = html.Span(" ...   \u00A0 >  ", style={"marginRight": "1%"})
+
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory.name),
@@ -356,12 +488,16 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     dcc.Link(f"{project_name}", href=f"/project/{project_name}",
                              style={"color": colors['sage'], "marginRight": "1%"}),
                     html.Span(" > ", style={"marginRight": "1%"}),
+                    breadcrumb_buffer,
+                    link_to_direct_parent,
+                    extra_span,
                     html.Span(
-                        f"{directory_name}", className='active fw-bold', style={"color": "#707070"})
+                        f"{directory.display_name}", className='active fw-bold', style={"color": "#707070"})
                 ],
                 className='breadcrumb'
             ),
 
+            # Header + Buttons
             dbc.Row([
                     dbc.Col(
                         html.H1(f"Directory {directory.display_name}", style={
@@ -382,10 +518,27 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 dcc.Download(id="download_directory"), dcc.Download(id="download_single_file")])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
+                
+            # Sub-Directories Table
+            dbc.Card([
+                dbc.CardHeader(html.H4('Directories')),
+                dbc.CardBody([
+                    # Filter file tags
+                    dbc.Row([
+                        dbc.Col(dbc.Input(id="filter_subdirectory_tags",
+                            placeholder="Search keywords.. (e.g. 'CT')")),
+                        dbc.Col(dbc.Button(
+                            "Filter", id="filter_subdirectory_tags_btn")),
+                        dbc.Col(modal_create_new_subdirectory(directory), className="d-grid gap-2 d-md-flex justify-content-md-end")
+                    ], class_name="mb-3"),
+                    # Directories Table
+                    dbc.Spinner(html.Div(get_subdirectories_table(
+                        directory), id='subdirectory_table')),
+                ])], class_name="mb-3"),
 
             # Files Table
             dbc.Card([
-                dbc.CardHeader('Files'),
+                dbc.CardHeader(html.H4('Files')),
                 dbc.CardBody([
                     # Filter file tags
                     dbc.Row([

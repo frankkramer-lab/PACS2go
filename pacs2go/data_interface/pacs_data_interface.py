@@ -230,20 +230,25 @@ class Project():
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
         try:
             if directory_name == '':
-                # No desired name was given, set the name as the current timestamp
-                directory_name = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+                if zipfile.is_zipfile(file_path):
+                    # get the name of the zipfile
+                    directory_name = file_path.rsplit(
+                        "/", 1)[-1].rsplit(".", 1)[0]
+                else:
+                    # No desired name was given, set the name as the current timestamp
+                    directory_name = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
             if directory_name.count('::') == 1 or directory_name.count('::') == 0:
                 # Name is not an inherited name and is directly under a project, create/get directory
                 directory = self.create_directory(directory_name)
             else:
-                print(directory_name.rsplit('::', 1)[0])
                 # Get the parent directory of what is a subdirectory (contains a -) by its unique name
                 parent_dir = self.get_directory(
                     directory_name.rsplit('::', 1)[0])
 
-                # Create/get the directory
-                directory = parent_dir.create_subdirectory(directory_name)
+                # Create/get the subdirectory from parent directory
+                directory = parent_dir.create_subdirectory(
+                    directory_name.rsplit('::', 1)[-1])
 
             # File path leads to a single file
             if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
@@ -262,15 +267,27 @@ class Project():
                     with zipfile.ZipFile(file_path, 'r') as zip_ref:
                         zip_ref.extractall(temp_dir)
 
+                    root_dir = directory
+
                     # Walk through the unzipped directory
                     for root, dirs, files in os.walk(temp_dir):
-                        current_dir = directory.create_subdirectory(
-                            os.path.basename(root))
+                        if root == temp_dir:
+                            # Skip tempdir name
+                            continue
+                        if os.path.basename(root) == root_dir.display_name:
+                            # First level directory is already created
+                            current_dir = root_dir
+                        else:
+                            # Create sub-directory according to zipfile
+                            current_dir = directory.create_subdirectory(
+                                os.path.basename(root))
+    
                         for file_name in files:
+                            # Insert files of current level to current directory
                             self._xnat_project.insert_file_into_project(
-                                os.path.join(root, file_name), directory.name, tags_string)
+                                os.path.join(root, file_name), current_dir.name, tags_string)
                         directory = current_dir
-                    return None
+                    return root_dir
 
             else:
                 raise ValueError
@@ -335,7 +352,7 @@ class Directory():
 
     def create_subdirectory(self, name: str) -> 'Directory':
         try:
-            d = self.project.get_directory(name)
+            d = self.project.get_directory(self.name + '::' + name)
             return d
         except:
             try:
