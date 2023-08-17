@@ -1,4 +1,5 @@
 import datetime
+import shutil
 import tempfile
 from pacs2go.data_interface.exceptions.exceptions import DownloadException
 from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
@@ -179,7 +180,14 @@ class Project():
 
     def download(self, destination: str) -> str:
         try:
-            return self._xnat_project.download(destination)
+            # Create project filder
+            os.makedirs(os.path.join(destination, self.name), exist_ok=True)
+            for d in self.get_all_directories():
+                # Copy directories with all their subdirectories to destination
+                d.download(os.path.join(destination, self.name), zip = False)
+            # Zip it
+            destination_zip = shutil.make_archive(os.path.join(destination, self.name), 'zip', destination, self.name)
+            return destination_zip
         except:
             raise DownloadException
 
@@ -391,12 +399,28 @@ class Directory():
             return files
         except Exception as err:
             raise UnsuccessfulGetException("Files")
+    
+    def download(self, destination, zip: bool = True) -> str:
+        self._create_folders_and_copy_files_for_download(destination)
+        if zip:
+            destination_zip = shutil.make_archive(os.path.join(destination, self.display_name), 'zip', destination, self.display_name)
+            print(destination_zip, flush=True)
+            return destination_zip
+        else:
+            return destination
+        
+    
+    def _create_folders_and_copy_files_for_download(self, target_folder):
+        current_folder = os.path.join(target_folder, self.display_name)
+        os.makedirs(current_folder, exist_ok=True)
 
-    def download(self, destination: str) -> str:
-        try:
-            return self._xnat_directory.download(destination)
-        except:
-            raise DownloadException
+        for file in self.get_all_files():
+            # Copy files to the current folder
+            file._xnat_file.download(current_folder)
+
+        for subdirectory in self.get_subdirectories():
+            subdirectory._create_folders_and_copy_files_for_download(current_folder)
+
 
 
 class File():
