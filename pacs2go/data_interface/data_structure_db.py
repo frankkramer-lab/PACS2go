@@ -6,6 +6,8 @@ import os
 from dotenv import load_dotenv
 
 from pacs2go.data_interface.tests.test_config import DATABASE_HOST, DATABASE_PORT
+from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException, FailedDisconnectException
+
 
 load_dotenv()
 
@@ -23,7 +25,7 @@ class PACS_DB():
             # Get cursor object to operate db
             self.cursor = self.conn.cursor()
         except:
-            raise Exception("No DB connection possible")
+            raise FailedConnectionException("No DB connection possible")
 
         # On inital setup create tables (all statements possess IF NOT EXISTS keyword)
         self.create_tables()
@@ -35,65 +37,92 @@ class PACS_DB():
         self.close()
 
     def close(self):
-        self.cursor.close()
-        self.conn.close()
+        try:
+            self.cursor.close()
+            self.conn.close()
+        except:
+            raise FailedDisconnectException("DB server disconnect was not successful.")
 
     # -------- Create Tables ------- #
 
     def create_tables(self):
         self.create_table_project()
         self.create_table_directory()
+        self.create_table_citation()
         self.create_table_file()
 
     def create_table_project(self):
         try:
-            # Create a table
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Project (
-                    name VARCHAR(256) NOT NULL,
-                    PRIMARY KEY(name)
+                    name VARCHAR(256) PRIMARY KEY,
+                    keywords VARCHAR(256),
+                    description VARCHAR(256),
+                    parameters VARCHAR(256),
+                    timestamp_creation TIMESTAMP,
+                    timestamp_last_updated TIMESTAMP
                 )
             """)
-            # Commit the changes
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Project table could not be created. " + str(err))
+            print(err)
+            raise Exception("Project table could not be created. ")
 
     def create_table_directory(self):
         try:
-            # Create a table
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Directory (
-                    unique_name VARCHAR(256) NOT NULL,
-                    dir_name VARCHAR(256) NOT NULL,
+                    unique_name VARCHAR(256) PRIMARY KEY,
+                    dir_name VARCHAR(256),
                     parent_project VARCHAR(256) REFERENCES Project(name) ON DELETE CASCADE,
                     parent_directory VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE,
-                    PRIMARY KEY(unique_name)
+                    timestamp_creation TIMESTAMP,
+                    parameters VARCHAR(256),
+                    timestamp_last_updated TIMESTAMP
                 )
             """)
-            # Commit the changes
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Directory table could not be created. " + str(err))
-            
+            print(err)
+            raise Exception("Directory table could not be created. ")
+    
+    def create_table_citation(self):
+        try:
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Citation (
+                    cit_id SERIAL PRIMARY KEY,
+                    citation VARCHAR(256),
+                    link VARCHAR(256),
+                    directory_unique_name VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE
+                )
+            """)
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print(err)
+            raise Exception("Citation table could not be created. ")
+
     def create_table_file(self):
         try:
-            # Create a table
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS File (
-                    file_name VARCHAR(256) NOT NULL,
-                    parent_directory VARCHAR(256) NOT NULL,
-                    PRIMARY KEY(file_name, parent_directory),
-                    FOREIGN KEY (parent_directory) REFERENCES Directory(unique_name) ON DELETE CASCADE
+                    file_name VARCHAR(256),
+                    parent_directory VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE,
+                    format VARCHAR(256),
+                    tags VARCHAR(256),
+                    modality VARCHAR(256),
+                    timestamp_creation TIMESTAMP,
+                    timestamp_last_updated TIMESTAMP,
+                    PRIMARY KEY (file_name, parent_directory)
                 )
             """)
-            # Commit the changes
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("File table could not be created. " + str(err))
+            print(err)
+            raise Exception("File table could not be created. ")
 
 
     # -------- Insert Into Tables ------- #
@@ -101,76 +130,94 @@ class PACS_DB():
     def insert_into_project(self, data: 'ProjectData') -> None:
         try:
             self.cursor.execute("""
-                INSERT INTO Project (name) VALUES (%s)
-            """, (data.name,))
+                INSERT INTO Project (name, keywords, description, parameters, timestamp_creation, timestamp_last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (data.name, data.keywords, data.description, data.parameters, data.timestamp_creation, data.timestamp_last_updated))
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Error inserting into Project table: " + str(err))
+            print(err)
+            raise Exception(f"Error inserting {data.name} into Project table")
 
     def insert_into_directory(self, data: 'DirectoryData') -> None:
         try:
             self.cursor.execute("""
-                INSERT INTO Directory (unique_name, dir_name, parent_project, parent_directory)
-                VALUES (%s, %s, %s, %s)
-            """, (data.unique_name, data.dir_name, data.parent_project, data.parent_directory))
+                INSERT INTO Directory (unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (data.unique_name, data.dir_name, data.parent_project, data.parent_directory, data.timestamp_creation, data.parameters, data.timestamp_last_updated))
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Error inserting into Directory table: " + str(err))
+            print(err)
+            raise Exception(f"Error inserting {data.dir_name} into Directory table")
+
+    def insert_into_citation(self, data: 'CitationData') -> None:
+        try:
+            self.cursor.execute("""
+                INSERT INTO Citation (citation, link, directory_unique_name)
+                VALUES (%s, %s, %s)
+            """, (data.citation, data.link, data.directory_unique_name))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print(err)
+            raise Exception("Error inserting into Citation table")
 
     def insert_into_file(self, data: 'FileData') -> None:
         try:
             self.cursor.execute("""
-                INSERT INTO File (file_name, parent_directory) VALUES (%s, %s)
-            """, (data.file_name, data.parent_directory))
+                INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (data.file_name, data.parent_directory, data.format, data.tags, data.modality, data.timestamp_creation, data.timestamp_last_updated))
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Error inserting into File table: " + str(err))
-    
+            print(err)
+            raise Exception("Error inserting into File table")
         
     def insert_multiple_files(self, files: List['FileData']) -> None:
         try:
             # Construct a list of tuples with (file_name, parent_directory) for each file
-            file_values = [(file.file_name, file.parent_directory) for file in files]
+            file_values = [(file.file_name, file.parent_directory, file.format, file.tags, file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
 
             query = """
-                INSERT INTO File (file_name, parent_directory)
-                VALUES %s
+                INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (file_name) DO NOTHING
             """
             execute_values(self.cursor, query, file_values)
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print(f"Error inserting multiple files: {err}")
+            print(err)
+            raise Exception(f"Error inserting multiple files")
 
 
     # -------- Select From Tables ------- #
 
-    def get_all_projects(self) -> list:
+    def get_all_projects(self) -> List['ProjectData']:
         try:
             query = """
-                SELECT name FROM Project
+                SELECT name, keywords, description, parameters, timestamp_creation, timestamp_last_updated
+                FROM Project
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
 
             project_list = []
             for row in results:
-                project_name = row[0]
-                project_list.append(project_name)
+                project = ProjectData(*row)
+                project_list.append(project)
 
             return project_list
         except Exception as err:
-            print("Error retrieving all projects: " + str(err))
-            return []
-        
-    def get_all_directories(self) -> list:
+            print(err)
+            raise Exception("Error retrieving all projects")
+
+    def get_all_directories(self) -> List['DirectoryData']:
         try:
             query = """
-                SELECT unique_name, dir_name, parent_project, parent_directory
+                SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM Directory
             """
             self.cursor.execute(query)
@@ -183,11 +230,10 @@ class PACS_DB():
 
             return directory_list
         except Exception as err:
-            print("Error retrieving all directories: " + str(err))
-            return []
+            print(err)
+            raise Exception("Error retrieving all directories")
 
-
-    def get_all_files(self) -> list:
+    def get_all_files(self) -> List[str]:
         try:
             query = """
                 SELECT file_name FROM File
@@ -202,13 +248,12 @@ class PACS_DB():
 
             return file_list
         except Exception as err:
-            print("Error retrieving all projects: " + str(err))
-            return []
+            raise Exception("Error retrieving all files")
 
-    def get_directories_by_project(self, project_name: str) -> list:
+    def get_directories_by_project(self, project_name: str) -> List['DirectoryData']:
         try:
             query = """
-                SELECT unique_name, dir_name, parent_project, parent_directory
+                SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM Directory
                 WHERE parent_project = %s
             """
@@ -222,13 +267,13 @@ class PACS_DB():
 
             return directory_list
         except Exception as err:
-            print("Error retrieving directories by project: " + str(err))
-            return []
+            print(err)
+            raise Exception("Error retrieving directories by project")
 
     def get_directory_by_name(self, unique_name: str) -> 'DirectoryData':
         try:
             query = """
-                SELECT unique_name, dir_name, parent_project, parent_directory
+                SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM Directory
                 WHERE unique_name = %s
             """
@@ -242,13 +287,13 @@ class PACS_DB():
                 # Directory does not exist in the database
                 return None
         except Exception as err:
-            print("Error retrieving directory from the database: " + str(err))
-            return None
+            print(err)
+            raise Exception("Error retrieving directory from the database")
 
-    def get_subdirectories_by_directory(self, parent_directory: str) -> list:
+    def get_subdirectories_by_directory(self, parent_directory: str) -> List['DirectoryData']:
         try:
             query = """
-                SELECT unique_name, dir_name, parent_project, parent_directory
+                SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM Directory
                 WHERE parent_directory = %s
             """
@@ -262,8 +307,9 @@ class PACS_DB():
 
             return directory_list
         except Exception as err:
-            print("Error retrieving directories by directory: " + str(err))
-            return []
+            print(err)
+            raise Exception("Error retrieving subdirectories by directory")
+
         
 
    # -------- Delete From Tables ------- #
@@ -277,7 +323,8 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Error deleting project by name: " + str(err))
+            print(err)
+            raise Exception("Error deleting project by name")
 
     def delete_directory_by_name(self, unique_name: str) -> None:
         try:
@@ -288,7 +335,8 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Error deleting directory by unique name: " + str(err))
+            print(err)
+            raise Exception("Error deleting directory by unique name")
 
     def delete_file_by_name(self, file_name: str) -> None:
         try:
@@ -299,24 +347,43 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
-            print("Error deleting file by name: " + str(err))
+            print(err)
+            raise Exception("Error deleting file by name")
+
 
 
 # Named Tuples
 class ProjectData(NamedTuple):
     name: str
-
+    keywords: str
+    description: str
+    parameters: str
+    timestamp_creation: str
+    timestamp_last_updated: str
 
 class DirectoryData(NamedTuple):
     unique_name: str
     dir_name: str
     parent_project: str
     parent_directory: str
+    timestamp_creation: str
+    parameters: str
+    timestamp_last_updated: str
 
+class CitationData(NamedTuple):
+    cit_id: int
+    citation: str
+    link: str
+    directory_unique_name: str
 
 class FileData(NamedTuple):
     file_name: str
     parent_directory: str
+    format: str
+    tags: str
+    modality: str
+    timestamp_creation: str
+    timestamp_last_updated: str
 
 
 # with PACS_DB() as db:
