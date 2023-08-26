@@ -1,13 +1,14 @@
-from typing import NamedTuple, List
+import os
+from typing import List, NamedTuple
 
 import psycopg2
-from psycopg2.extras import execute_values
-import os
 from dotenv import load_dotenv
+from psycopg2.extras import execute_values
 
-from pacs2go.data_interface.tests.test_config import DATABASE_HOST, DATABASE_PORT
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException, FailedDisconnectException
-
+from pacs2go.data_interface.exceptions.exceptions import (
+    FailedConnectionException, FailedDisconnectException)
+from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
+                                                      DATABASE_PORT)
 
 load_dotenv()
 
@@ -250,6 +251,24 @@ class PACS_DB():
         except Exception as err:
             raise Exception("Error retrieving all files")
 
+    def get_project_by_name(self, project_name: str) -> 'ProjectData':
+        try:
+            query = """
+                SELECT name, keywords, description, parameters, timestamp_creation, timestamp_last_updated
+                FROM Project
+                WHERE name = %s
+            """
+            self.cursor.execute(query, (project_name,))
+            result = self.cursor.fetchone()
+
+            if result:
+                return ProjectData(*result)
+            else:
+                return None
+        except Exception as err:
+            print(err)
+            raise Exception("Error retrieving project by name")        
+
     def get_directories_by_project(self, project_name: str) -> List['DirectoryData']:
         try:
             query = """
@@ -310,7 +329,30 @@ class PACS_DB():
             print(err)
             raise Exception("Error retrieving subdirectories by directory")
 
-        
+
+    # --------- Update Tables -------- #
+
+    def update_attribute(self, table_name: str, attribute_name: str, new_value: str, condition_column: str = None, condition_value: str = None) -> None:
+        try:
+            if condition_column and condition_value:
+                query = f"""
+                    UPDATE {table_name}
+                    SET {attribute_name} = %s
+                    WHERE {condition_column} = %s
+                """
+                self.cursor.execute(query, (new_value, condition_value))
+            else:
+                query = f"""
+                    UPDATE {table_name}
+                    SET {attribute_name} = %s
+                """
+                self.cursor.execute(query, (new_value,))
+
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print(err)
+            raise Exception(f"Error updating {attribute_name} in {table_name}")
 
    # -------- Delete From Tables ------- #
 
