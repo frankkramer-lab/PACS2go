@@ -1,9 +1,16 @@
 import os
 import unittest
-from unittest.mock import MagicMock, patch
 import uuid
-from pacs2go.data_interface.pacs_data_interface import Connection, Project, Directory, File
-from pacs2go.data_interface.exceptions.exceptions import DownloadException, FailedConnectionException, FailedDisconnectException, UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException, UnsuccessfulGetException, UnsuccessfulCreationException, UnsuccessfulUploadException, WrongUploadFormatException
+from unittest.mock import MagicMock, patch
+
+from pacs2go.data_interface.exceptions.exceptions import (
+    DownloadException, FailedConnectionException, FailedDisconnectException,
+    UnsuccessfulAttributeUpdateException, UnsuccessfulCreationException,
+    UnsuccessfulDeletionException, UnsuccessfulGetException,
+    UnsuccessfulUploadException, WrongUploadFormatException)
+from pacs2go.data_interface.pacs_data_interface import (Connection, Directory,
+                                                        File, Project)
+
 
 class TestConnection(unittest.TestCase):
     def test_successful_connection(self):

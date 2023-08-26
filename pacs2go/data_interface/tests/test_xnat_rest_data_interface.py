@@ -7,8 +7,7 @@ from zipfile import ZipFile
 
 from werkzeug.exceptions import HTTPException
 
-from pacs2go.data_interface.xnat_rest_wrapper import XNAT
-from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
+from pacs2go.data_interface.xnat_rest_wrapper import XNAT, XNATProject
 
 
 class TestConnection(unittest.TestCase):

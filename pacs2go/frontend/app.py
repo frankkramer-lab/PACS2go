@@ -1,29 +1,17 @@
 import os
 from datetime import timedelta
-from pacs2go.frontend.auth import XNATAuthBackend
-from pacs2go.frontend.helpers import colors
 
 import dash_bootstrap_components as dbc
-from dash import ALL
-from dash import Dash
-from dash import dcc
-from dash import html
-from dash import Input
-from dash import no_update
-from dash import Output
-from dash import page_container
-from dash import page_registry
+from dash import (ALL, Dash, Input, Output, dcc, html, no_update,
+                  page_container, page_registry)
 from dash.exceptions import PreventUpdate
 from dotenv import load_dotenv
-from flask import Flask
-from flask import redirect
-from flask import request
-from flask import session
-from flask_login import current_user
-from flask_login import login_user
-from flask_login import LoginManager
+from flask import Flask, redirect, request, session
+from flask_login import LoginManager, current_user, login_user
 from werkzeug.middleware.profiler import ProfilerMiddleware
 
+from pacs2go.frontend.auth import XNATAuthBackend
+from pacs2go.frontend.helpers import colors
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -180,4 +168,4 @@ if __name__ == '__main__':
     #         restrictions=[50],
     #     )
     # Start App
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)

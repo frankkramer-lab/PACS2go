@@ -4,15 +4,11 @@ import pathlib
 import uuid
 import zipfile
 from tempfile import TemporaryDirectory
-from typing import List
-from typing import Sequence
-from typing import Union
+from typing import List, Sequence, Union
 
-from natsort import natsorted
 import requests
-from werkzeug.exceptions import Forbidden
-from werkzeug.exceptions import HTTPException
-from werkzeug.exceptions import NotFound
+from natsort import natsorted
+from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (

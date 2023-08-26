@@ -1,28 +1,18 @@
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
 from tempfile import TemporaryDirectory
 from typing import Optional
 
 import dash_bootstrap_components as dbc
-from dash import callback
-from dash import ctx
-from dash import dcc
-from dash import html
-from dash import Input
-from dash import no_update
-from dash import Output
-from dash import register_page
-from dash import State
+from dash import (Input, Output, State, callback, ctx, dcc, html, no_update,
+                  register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
-
+from pacs2go.data_interface.exceptions.exceptions import (
+    FailedConnectionException, UnsuccessfulAttributeUpdateException,
+    UnsuccessfulDeletionException, UnsuccessfulGetException)
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import (colors, get_connection,
+                                      login_required_interface)
 
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')

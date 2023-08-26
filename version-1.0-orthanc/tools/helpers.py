@@ -1,9 +1,10 @@
-from zipfile import ZipFile
-from pyorthanc import Orthanc
-from tempfile import TemporaryDirectory
-from pydicom.uid import generate_uid
-import uuid
 import os
+import uuid
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
+
+from pydicom.uid import generate_uid
+from pyorthanc import Orthanc
 
 
 # saves a given dicom dataset to a temp directory as dicom file and uploads dicom file to orthanc

@@ -1,32 +1,20 @@
 import shutil
 import tempfile
 import uuid
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
-from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
 import dash_bootstrap_components as dbc
 import dash_uploader as du  # https://github.com/np-8/dash-uploader
-from dash import callback
-from dash import ctx
-from dash import dcc
-from dash import get_app
-from dash import html
-from dash import no_update
-from dash import register_page
-from dash.dependencies import Input
-from dash.dependencies import Output
-from dash.dependencies import State
+from dash import callback, ctx, dcc, get_app, html, no_update, register_page
+from dash.dependencies import Input, Output, State
 from flask_login import current_user
 
-
+from pacs2go.data_interface.exceptions.exceptions import (
+    FailedConnectionException, UnsuccessfulGetException,
+    UnsuccessfulUploadException, WrongUploadFormatException)
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import (colors, get_connection,
+                                      login_required_interface)
 
 register_page(__name__, title='Upload - PACS2go',
               path_template='/upload/<project_name>')
