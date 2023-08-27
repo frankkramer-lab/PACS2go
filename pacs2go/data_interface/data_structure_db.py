@@ -12,8 +12,9 @@ from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
 
 load_dotenv()
 
+
 class PACS_DB():
-    def __init__(self, host:str = "data-structure-db", port:int=5432) -> None:
+    def __init__(self, host: str = "data-structure-db", port: int = 5432) -> None:
         try:
             # Connect to the Postgres service
             self.conn = psycopg2.connect(
@@ -42,7 +43,8 @@ class PACS_DB():
             self.cursor.close()
             self.conn.close()
         except:
-            raise FailedDisconnectException("DB server disconnect was not successful.")
+            raise FailedDisconnectException(
+                "DB server disconnect was not successful.")
 
     # -------- Create Tables ------- #
 
@@ -88,7 +90,7 @@ class PACS_DB():
             self.conn.rollback()
             print(err)
             raise Exception("Directory table could not be created. ")
-    
+
     def create_table_citation(self):
         try:
             self.cursor.execute("""
@@ -125,7 +127,6 @@ class PACS_DB():
             print(err)
             raise Exception("File table could not be created. ")
 
-
     # -------- Insert Into Tables ------- #
 
     def insert_into_project(self, data: 'ProjectData') -> None:
@@ -150,7 +151,8 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             print(err)
-            raise Exception(f"Error inserting {data.dir_name} into Directory table")
+            raise Exception(
+                f"Error inserting {data.dir_name} into Directory table")
 
     def insert_into_citation(self, data: 'CitationData') -> None:
         try:
@@ -175,11 +177,12 @@ class PACS_DB():
             self.conn.rollback()
             print(err)
             raise Exception("Error inserting into File table")
-        
+
     def insert_multiple_files(self, files: List['FileData']) -> None:
         try:
             # Construct a list of tuples with (file_name, parent_directory) for each file
-            file_values = [(file.file_name, file.parent_directory, file.format, file.tags, file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
+            file_values = [(file.file_name, file.parent_directory, file.format, file.tags,
+                            file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
 
             query = """
                 INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
@@ -192,7 +195,6 @@ class PACS_DB():
             self.conn.rollback()
             print(err)
             raise Exception(f"Error inserting multiple files")
-
 
     # -------- Select From Tables ------- #
 
@@ -267,7 +269,7 @@ class PACS_DB():
                 return None
         except Exception as err:
             print(err)
-            raise Exception("Error retrieving project by name")        
+            raise Exception("Error retrieving project by name")
 
     def get_directories_by_project(self, project_name: str) -> List['DirectoryData']:
         try:
@@ -309,6 +311,26 @@ class PACS_DB():
             print(err)
             raise Exception("Error retrieving directory from the database")
 
+    def get_file_by_name_and_directory(self, file_name: str, parent_directory: str) -> 'FileData':
+        try:
+            query = """
+                SELECT file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated
+                FROM File
+                WHERE file_name = %s AND parent_directory = %s
+            """
+            self.cursor.execute(query, (file_name, parent_directory))
+            result = self.cursor.fetchone()
+
+            if result:
+                # File exists in the database
+                return FileData(*result)
+            else:
+                # File does not exist in the database
+                return None
+        except Exception as err:
+            print(err)
+            raise Exception("Error retrieving file from the database")
+
     def get_subdirectories_by_directory(self, parent_directory: str) -> List['DirectoryData']:
         try:
             query = """
@@ -329,12 +351,38 @@ class PACS_DB():
             print(err)
             raise Exception("Error retrieving subdirectories by directory")
 
+    def get_citation_for_directory(self, directory_unique_name: str) -> List['CitationData']:
+        try:
+            query = """
+                SELECT citation, link
+                FROM Citation
+                WHERE directory_unique_name = %s
+            """
+            self.cursor.execute(query, (directory_unique_name,))
+            results = self.cursor.fetchall()
+
+            citation_list = []
+            for row in results:
+                citation = CitationData(*row)
+                citation_list.append(citation)
+
+            return citation_list
+        except Exception as err:
+            print(err)
+            raise Exception("Error retrieving citations for directory")
 
     # --------- Update Tables -------- #
 
-    def update_attribute(self, table_name: str, attribute_name: str, new_value: str, condition_column: str = None, condition_value: str = None) -> None:
+    def update_attribute(self, table_name: str, attribute_name: str, new_value: str, condition_column: str = None, condition_value: str = None, second_condition_column: str = None, second_condition_value: str = None) -> None:
         try:
-            if condition_column and condition_value:
+            if second_condition_column and second_condition_value:
+                query = f"""
+                    UPDATE {table_name}
+                    SET {attribute_name} = %s
+                    WHERE {condition_column} = %s AND {second_condition_column} = %s
+                """
+                self.cursor.execute(query, (new_value, condition_value, second_condition_value))
+            elif condition_column and condition_value:
                 query = f"""
                     UPDATE {table_name}
                     SET {attribute_name} = %s
@@ -393,7 +441,6 @@ class PACS_DB():
             raise Exception("Error deleting file by name")
 
 
-
 # Named Tuples
 class ProjectData(NamedTuple):
     name: str
@@ -402,6 +449,7 @@ class ProjectData(NamedTuple):
     parameters: str
     timestamp_creation: str
     timestamp_last_updated: str
+
 
 class DirectoryData(NamedTuple):
     unique_name: str
@@ -412,11 +460,13 @@ class DirectoryData(NamedTuple):
     parameters: str
     timestamp_last_updated: str
 
+
 class CitationData(NamedTuple):
     cit_id: int
     citation: str
     link: str
     directory_unique_name: str
+
 
 class FileData(NamedTuple):
     file_name: str
