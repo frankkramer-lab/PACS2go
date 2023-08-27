@@ -21,10 +21,12 @@ register_page(__name__, title='Project - PACS2go',
 def get_details(project: Project):
     description = "Description: " + project.description
     keywords = "Keywords: " + project.keywords
+    parameters = "Parameters: " + project.parameters
+    time = "Created on: " + project.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S") + " | Last updated on: " + project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
     owners = "Owners: " + ', '.join(project.owners)
     user_role = "You're part of the '" + project.your_user_role.capitalize() + \
         "' user group."
-    return [html.H6(owners), html.H6(description), html.H6(keywords), html.H6(user_role)]
+    return [html.H6(description), html.H6(keywords), html.H6(parameters), html.H6(time), html.H6(owners), html.H6(user_role)]
 
 
 def get_directories_table(project: Project, filter: str = ''):

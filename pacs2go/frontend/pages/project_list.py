@@ -7,7 +7,6 @@ from flask_login import current_user
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulAttributeUpdateException,
     UnsuccessfulCreationException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface)
 
@@ -25,13 +24,13 @@ def get_projects_table(filter: str = ''):
             if filter.lower() in p.keywords.lower() or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
-                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords)]))
+                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Project Name"), html.Th("Your user role"), html.Th("Number of Directories"), html.Th("Keywords")]))
+            html.Tr([html.Th("Project Name"), html.Th("Your user role"), html.Th("Number of Directories"), html.Th("Keywords"),  html.Th("Created on"),  html.Th("Last Updated on")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -61,14 +60,19 @@ def modal_create():
                               placeholder="Project Name...", required=True),
                     dbc.Label(
                         "Please enter a description for your project.", class_name="mt-2"),
-                    # Input Text Field for project name
+                    # Input Text Field for project description
                     dbc.Input(id="project_description",
                               placeholder="This project is used to..."),
                     dbc.Label(
                         "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
-                    # Input Text Field for project name
+                    # Input Text Field for project keywords
                     dbc.Input(id="project_keywords",
                               placeholder="Dermatology Skin Cancer...."),
+                    dbc.Label(
+                        "Please enter desired parameters.", class_name="mt-2"),
+                    # Input Text Field for project parameters
+                    dbc.Input(id="project_parameters",
+                              placeholder="..."),
                 ]),
                 dbc.ModalFooter([
                     # Button which triggers the creation of a project (see modal_and_project_creation)
@@ -99,8 +103,9 @@ def modal_create():
     State('project_name', 'value'),
     State('project_description', 'value'),
     State('project_keywords', 'value'),
+    State('project_parameters', 'value'),
     prevent_initial_call=True)
-def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords):
+def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords, parameters):
     # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
         return not is_open, no_update
@@ -117,7 +122,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             connection = get_connection()
             # Try to create project
             project = connection.create_project(
-                name=project_name, description=description, keywords=keywords)
+                name=project_name, description=description, keywords=keywords, parameters=parameters)
             return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new project {project.name}.",
                                                           href=f"/project/{project.name}",

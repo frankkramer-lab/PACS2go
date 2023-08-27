@@ -105,7 +105,7 @@ class Connection():
         try:
             with PACS_DB() as db:
                 pjs = db.get_all_projects()
-            projects = [self.get_project(project) for project in pjs]
+            projects = [self.get_project(project.name) for project in pjs]
             return projects
         except Exception as err:
             raise UnsuccessfulGetException(f"{err} Projects")
@@ -199,27 +199,31 @@ class Project():
                 f"the project parameters to '{parameters_string}'")
 
     @property
-    def last_updated(self) -> str:
+    def last_updated(self) -> datetime:
         try:
-            return self._db_project.timestamp_last_updated
-        except:
+            # Convert the timestamp string to a datetime object
+            timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_last_updated), "%Y-%m-%d %H:%M:%S")
+            return timestamp_datetime
+        except Exception as err:
             raise UnsuccessfulGetException(
-                "The timestamp of the last project update")
+                "The timestamp of the last project update" + str(err))
 
     def set_last_updated(self, timestamp: datetime) -> None:
         try:
             with PACS_DB() as db:
                 timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 db.update_attribute(
-                    table_name='Project', attribute_name='parameters', new_value=timestamp, condition_column='name', condition_value=self.name)
+                    table_name='Project', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='name', condition_value=self.name)
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the project's 'last_updated' to '{timestamp}'")
 
     @property
-    def timestamp_creation(self) -> str:
+    def timestamp_creation(self) -> datetime:
         try:
-            return self._db_project.timestamp_creation
+            # Convert the timestamp string to a datetime object
+            timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_creation), "%Y-%m-%d %H:%M:%S")
+            return timestamp_datetime
         except:
             raise UnsuccessfulGetException("The timestamp of project creation")
 
