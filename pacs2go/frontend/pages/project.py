@@ -22,7 +22,8 @@ def get_details(project: Project):
     description = "Description: " + project.description
     keywords = "Keywords: " + project.keywords
     parameters = "Parameters: " + project.parameters
-    time = "Created on: " + project.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S") + " | Last updated on: " + project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
+    time = "Created on: " + project.timestamp_creation.strftime(
+        "%dth %B %Y, %H:%M:%S") + " | Last updated on: " + project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
     owners = "Owners: " + ', '.join(project.owners)
     user_role = "You're part of the '" + project.your_user_role.capitalize() + \
         "' user group."
@@ -33,15 +34,15 @@ def get_directories_table(project: Project, filter: str = ''):
     # Get list of all directory names and number of files per directory
     rows = []
     for d in project.get_all_directories():
-        # Only show rows if no filter is applied of if the filter has a match in the directory's contained file tags
-        if filter.lower() in d.contained_file_tags.lower() or len(filter) == 0:
+        # Only show rows if no filter is applied of if the filter has a match in the directory's name
+        if filter.lower() in d.name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d.number_of_files), html.Td(d.contained_file_tags)]))
+                d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Directory Name"), html.Th("Number of Files"), html.Th("Contained File Tags in this Directory")]))
+            html.Tr([html.Th("Directory Name"), html.Th("Number of Files"), html.Th("Created on"), html.Th("Last Updated on")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -142,6 +143,11 @@ def modal_edit_project(project: Project):
                         # Input Text Field for project name
                         dbc.Input(id="new_project_keywords",
                                   placeholder=project.keywords, value=project.keywords),
+                        dbc.Label(
+                            "Please enter desired parameters.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="new_project_parameters",
+                                  placeholder="...", value=project.parameters),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the update of a project
@@ -162,7 +168,7 @@ def modal_create_new_directory():
     return html.Div([
         # Button which triggers modal activation
         dbc.Button([html.I(className="bi bi-plus me-2"),
-                        "Create Directory"], id="create_new_directory_btn", color="success"),
+                    "Create Directory"], id="create_new_directory_btn", color="success"),
         # Actual modal view
         dbc.Modal(
             [
@@ -174,6 +180,11 @@ def modal_create_new_directory():
                     # Input Text Field for project name
                     dbc.Input(id="new_dir_name",
                               placeholder="Directory unique name...", required=True),
+                    dbc.Label(
+                        "Please enter desired parameters.", class_name="mt-2"),
+                    # Input Text Field for project parameters
+                    dbc.Input(id="new_dir_parameters",
+                              placeholder="..."),
                 ]),
                 dbc.ModalFooter([
                     # Button which triggers the creation of a project (see modal_and_project_creation)
@@ -187,7 +198,6 @@ def modal_create_new_directory():
             is_open=False,
         ),
     ])
-
 
 
 def insert_data(project: Project):
@@ -244,14 +254,14 @@ def modal_and_project_deletion(open, close, delete_and_close, is_open, project_n
 
 
 @callback(
-    [Output('modal_delete_data', 'is_open'), 
-     Output('delete-project-data-content', 'children'), 
+    [Output('modal_delete_data', 'is_open'),
+     Output('delete-project-data-content', 'children'),
      Output('directory_table', 'children', allow_duplicate=True), ],
     [Input('delete_project_data', 'n_clicks'),
      Input('close_modal_delete_data', 'n_clicks'),
      Input('delete_data_and_close', 'n_clicks')],
     State("modal_delete_data", "is_open"),
-    State("project_2", "value"), 
+    State("project_2", "value"),
     prevent_initial_call=True)
 # Callback used to delete all directories of a project (open modal view + actual deletion)
 def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open, project_name):
@@ -281,23 +291,24 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
 
 
 @callback(
-    [Output('modal_edit_project', 'is_open'), 
-     Output('edit-project-content', 'children'), 
+    [Output('modal_edit_project', 'is_open'),
+     Output('edit-project-content', 'children'),
      Output('details_card', 'children')],
     [Input('edit_project', 'n_clicks'),
      Input('close_modal_edit', 'n_clicks'),
      Input('edit_and_close', 'n_clicks')],
-     State("modal_edit_project", "is_open"),
-     State('project_store', 'data'),
-     State('new_project_description', 'value'),
-     State('new_project_keywords', 'value'),
+    State("modal_edit_project", "is_open"),
+    State('project_store', 'data'),
+    State('new_project_description', 'value'),
+    State('new_project_keywords', 'value'),
+    State('new_project_parameters', 'value'),
     prevent_initial_call=True)
-# Callback used to edit project description and keywords
-def modal_edit_project_callback(open, close, edit_and_close, is_open, project_name, description, keywords):
+# Callback used to edit project description, parameters and keywords
+def modal_edit_project_callback(open, close, edit_and_close, is_open, project_name, description, keywords, parameters):
     # Open/close modal via button click
     if ctx.triggered_id == "edit_project" or ctx.triggered_id == "close_modal_edit":
         return not is_open, no_update, no_update
-    
+
     # User does everything "right"
     elif ctx.triggered_id == "edit_and_close":
         try:
@@ -309,15 +320,20 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
             if keywords:
                 # Set new keywords
                 project.set_keywords(keywords)
+            if parameters:
+                # Set new parameter string
+                project.set_parameters(parameters)
             return not is_open, no_update, get_details(project)
-        
+
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
-        
+
     else:
         raise PreventUpdate
 
 # Callback for project creation modal view and executing project creation
+
+
 @callback(
     [Output('modal_create_new_directory', 'is_open'),
      Output('create-directory-content', 'children')],
@@ -326,9 +342,10 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
      Input('create_dir_and_close', 'n_clicks')],
     State("modal_create_new_directory", "is_open"),
     State('new_dir_name', 'value'),
+    State('new_dir_parameters', 'value'),
     State("project", "value"),
     prevent_initial_call=True)
-def modal_and_directory_creation(open, close, create_and_close, is_open, name, project_name):
+def modal_and_directory_creation(open, close, create_and_close, is_open, name, parameters, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_directory_btn" or ctx.triggered_id == "close_modal_create_dir":
         return not is_open, no_update
@@ -344,7 +361,7 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
-            directory = project.create_directory(name)
+            directory = project.create_directory(name, parameters)
             return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
                                                           href=f"/dir/{project.name}/{directory.name}",
@@ -357,11 +374,12 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
     else:
         raise PreventUpdate
 
+
 @callback(
     Output('directory_table', 'children'),
     Input('filter_directory_tags_btn', 'n_clicks'),
     Input('filter_directory_tags', 'value'),
-    State('project_store', 'data'), 
+    State('project_store', 'data'),
     prevent_initial_call=True)
 def filter_directory_table(btn, filter, project_name):
     # Apply filter to the directories table
@@ -380,7 +398,7 @@ def filter_directory_table(btn, filter, project_name):
 
 @callback(
     Output("download_project", "data"),
-    Input("btn_download_project", "n_clicks"), 
+    Input("btn_download_project", "n_clicks"),
     State("project_store", "data"),
     prevent_initial_call=True,
 )
@@ -393,10 +411,10 @@ def download_project(n_clicks, project_name):
                 # Get directory as zip to a tempdir and then send it to browser
                 zipped_project_data = project.download(tempdir)
                 return dcc.send_file(zipped_project_data)
-            
+
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
-        
+
     else:
         raise PreventUpdate
 
@@ -432,14 +450,13 @@ def layout(project_name: Optional[str] = None):
                 ],
                 className='breadcrumb'
             ),
-            
+
             # Header including page title and action buttons
             dbc.Row([
                 dbc.Col(html.H1(f"Project {project.name}", style={
                         'textAlign': 'left', })),
                 dbc.Col(
                     [insert_data(project),
-                        modal_edit_project(project),
                         download_project_data(),
                         modal_delete(project),
                         modal_delete_data(project)], className="d-grid gap-2 d-md-flex justify-content-md-end"),
@@ -447,18 +464,24 @@ def layout(project_name: Optional[str] = None):
 
             # Project Information (owners,..)
             dbc.Card([
-                dbc.CardHeader(html.H4("Details")),
+                dbc.CardHeader(
+                    children=[
+                        html.H4("Details"),
+                        modal_edit_project(project)],
+                    className="d-flex justify-content-between align-items-center"),
                 dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="mb-3"),
             dbc.Card([
-                dbc.CardHeader(html.H4('Directories')),
+                dbc.CardHeader(children=[
+                        html.H4("Directories"),
+                        modal_create_new_directory()],
+                    className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
                     # Filter file tags
                     dbc.Row([
                         dbc.Col(dbc.Input(id="filter_directory_tags",
-                            placeholder="Search keywords.. (e.g. 'CT')")),
+                            placeholder="Search directory... ")),
                         dbc.Col(dbc.Button(
-                            "Filter", id="filter_directory_tags_btn")),
-                        dbc.Col(modal_create_new_directory(), className="d-grid gap-2 d-md-flex justify-content-md-end")
+                            "Filter", id="filter_directory_tags_btn"))
                     ], class_name="mb-3"),
                     # Directories Table
                     dbc.Spinner(html.Div(get_directories_table(

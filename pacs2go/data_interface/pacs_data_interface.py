@@ -20,6 +20,7 @@ from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
 from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
 from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
 from pathlib import Path
+from pytz import timezone
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -32,6 +33,8 @@ import zipfile
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
+
+timezone = timezone("Europe/Berlin")
 
 
 class Connection():
@@ -88,7 +91,7 @@ class Connection():
                     xnat_project = xnat.create_project(
                         name, description, keywords)
                 with PACS_DB() as db:
-                    timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
                     db.insert_into_project(ProjectData(name=name, keywords=keywords, description=description,
                                            parameters=parameters, timestamp_creation=timestamp_now, timestamp_last_updated=timestamp_now))
                 return Project(self, name, _project_filestorage_object=xnat_project)
@@ -159,7 +162,7 @@ class Project():
             with PACS_DB() as db:
                 db.update_attribute(
                     table_name='Project', attribute_name='description', new_value=description_string, condition_column='name', condition_value=self.name)
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"a new description ('{description_string}')")
@@ -176,7 +179,7 @@ class Project():
             with PACS_DB() as db:
                 db.update_attribute(
                     table_name='Project', attribute_name='keywords', new_value=keywords_string, condition_column='name', condition_value=self.name)
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the project keywords to '{keywords_string}'")
@@ -193,7 +196,7 @@ class Project():
             with PACS_DB() as db:
                 db.update_attribute(
                     table_name='Project', attribute_name='parameters', new_value=parameters_string, condition_column='name', condition_value=self.name)
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the project parameters to '{parameters_string}'")
@@ -275,12 +278,12 @@ class Project():
             try:
                 with PACS_DB() as db:
                     unique_name = self.name + '::' + name
-                    timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
                     db.insert_into_directory(DirectoryData(
                         unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=None, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now))
 
                 dir = self._xnat_project.create_directory(unique_name)
-                self.set_last_updated(datetime.now())
+                self.set_last_updated(datetime.now(timezone))
                 return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
             except Exception as err:
                 raise UnsuccessfulCreationException(str(name))
@@ -314,7 +317,7 @@ class Project():
                         "/", 1)[-1].rsplit(".", 1)[0]
                 else:
                     # No desired name was given, set the name as the current timestamp
-                    directory_name = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+                    directory_name = datetime.datetime.now(timezone).strftime("%Y_%m_%d_%H_%M_%S")
 
             if directory_name.count('::') == 1 or directory_name.count('::') == 0:
                 # Name is not an inherited name and is directly under a project, create/get directory
@@ -334,12 +337,12 @@ class Project():
                     file_path, directory.name, tags_string)
 
                 with PACS_DB() as db:
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
                     # Get the file's suffix
                     format = file_format[Path(file_path).suffix]
                     db.insert_into_file(
                         FileData(file_name=file.name, parent_directory=directory.name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
-                self.set_last_updated(datetime.now())
+                self.set_last_updated(datetime.now(timezone))
                 return File(directory=directory, name=file.name, _file_filestorage_object=file)
 
             # File path equals a zip file
@@ -390,7 +393,7 @@ class Project():
                             db.insert_multiple_files(file_data_list)
 
                         directory = current_dir
-                    self.set_last_updated(datetime.now())
+                    self.set_last_updated(datetime.now(timezone))
                     return root_dir
 
             else:
@@ -410,6 +413,7 @@ class Directory():
         try:
             with PACS_DB() as db:
                 self._db_directory = db.get_directory_by_name(name)
+
         except:
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
@@ -434,12 +438,11 @@ class Directory():
             raise UnsuccessfulGetException("Number of files in this directory")
 
     @property
-    def parent_directory_name(self) -> 'str':
+    def parent_directory(self) -> 'Directory':
         try:
-            with PACS_DB() as db:
-                return db.get_directory_by_name(self.name).parent_directory
+            return self.project.get_directory(self._db_directory.parent_directory)
         except:
-            raise UnsuccessfulGetException("Number of files in this directory")
+            raise UnsuccessfulGetException("Parent directory name")
 
     @property
     def parameters(self) -> str:
@@ -453,7 +456,7 @@ class Directory():
             with PACS_DB() as db:
                 db.update_attribute(
                     table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.name)
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the directory parameters to '{parameters_string}'")
@@ -501,7 +504,7 @@ class Directory():
                 # Insert new citation (use cit_id 0 as this id will be generated by Postgres during insert)
                 db.insert_into_citation(CitationData(
                     cit_id=0, citation=citations_string, link=link, directory_unique_name=self.name))
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException("New citation")
 
@@ -515,6 +518,13 @@ class Directory():
             with PACS_DB() as db:
                 db.delete_directory_by_name(self.name)
 
+            # Update the parents last updated
+            if self._db_directory.parent_directory == None:
+                # Top level directory -> change last updated of project
+                self.project.set_last_updated(datetime.now(timezone))
+            else:
+                self.parent_directory.set_last_updated(datetime.now(timezone))
+
         except:
             raise UnsuccessfulDeletionException(f"directory '{self.name}'")
 
@@ -526,12 +536,12 @@ class Directory():
             try:
                 with PACS_DB() as db:
                     unique_name = self.name + '::' + name
-                    timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
                     db.insert_into_directory(DirectoryData(
                         unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now, ))
 
                 dir = self.project._xnat_project.create_directory(unique_name)
-                self.set_last_updated(datetime.now())
+                self.set_last_updated(datetime.now(timezone))
                 return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
             except Exception:
                 raise UnsuccessfulCreationException(str(name))
@@ -628,7 +638,7 @@ class File():
                 db.update_attribute(
                     table_name='File', attribute_name='tags', new_value=tags, condition_column='file_name', 
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the file's 'modality' to '{tags}'")
@@ -646,7 +656,7 @@ class File():
                 db.update_attribute(
                     table_name='File', attribute_name='modality', new_value=modality, condition_column='file_name', 
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
-            self.set_last_updated(datetime.now())
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the file's 'modality' to '{modality}'")
@@ -712,6 +722,8 @@ class File():
 
             with PACS_DB() as db:
                 db.delete_file_by_name(self.name)
+            
+            self.directory.set_last_updated(datetime.now(timezone))
 
         except:
             raise UnsuccessfulDeletionException(f"file '{self.name}'")

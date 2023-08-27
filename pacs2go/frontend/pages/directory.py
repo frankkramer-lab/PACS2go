@@ -23,6 +23,14 @@ register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
 
 
+def get_details(directory: Directory):
+    parameters = "Parameters: " + directory.parameters if directory.parameters else ''
+    time = "Created on: " + directory.timestamp_creation.strftime(
+        "%dth %B %Y, %H:%M:%S") + " | Last updated on: " + directory.last_updated.strftime("%dth %B %Y, %H:%M:%S")
+    citations = directory.citations if directory.citations else ''
+    return [html.H6(parameters), html.H6(time), html.H6(citations)]
+
+
 def get_single_file_preview(directory: Directory):
     # Preview first image within the directory
     if len(directory.get_all_files()) > 0:
@@ -65,15 +73,18 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
                                  html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
                                          ),
                                 html.Td(f.format),
-                                html.Td(f.tags),
+                                html.Td(f.modality),
                                 html.Td(
                                     f"{round(f.size/1024,2)} KB ({f.size} Bytes)"),
+                                html.Td(f.timestamp_creation.strftime(
+                                    "%dth %B %Y, %H:%M:%S")),
+                                html.Td(f.tags),
                                 html.Td([modal_delete_file(directory, f), dbc.Button([html.I(className="bi bi-download"), ], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]))
 
     # Table header
     table_header = [
         html.Thead(
-            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Tags"), html.Th("File Size"), html.Th("Actions")]))
+            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"),  html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
     ]
 
     # Only show 20 rows at a time - pagination
@@ -90,15 +101,15 @@ def get_subdirectories_table(directory: Directory, filter: str = ''):
     # Get list of all directory names and number of files per directory
     rows = []
     for d in directory.get_subdirectories():
-        # Only show rows if no filter is applied of if the filter has a match in the directory's contained file tags
-        if filter.lower() in d.contained_file_tags.lower() or len(filter) == 0:
+        # Only show rows if no filter is applied of if the filter has a match in the directory's name
+        if filter.lower() in d.name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d.number_of_files), html.Td(d.contained_file_tags)]))
+                d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Directory Name"), html.Th("Number of Files"), html.Th("Contained File Tags in this Directory")]))
+            html.Tr([html.Th("Directory Name"), html.Th("Number of Files"), html.Th("Created on"), html.Th("Last Updated on")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -109,30 +120,35 @@ def get_subdirectories_table(directory: Directory, filter: str = ''):
     return table
 
 
-
 def modal_create_new_subdirectory(directory):
     if directory.project.your_user_role == 'Owners':
         # Modal view for subdir creation
         return html.Div([
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-plus me-2"),
-                            "Create Sub-Directory"], id="create_new_subdirectory_btn", color="success"),
+                        "Create Sub-Directory"], id="create_new_subdirectory_btn", color="success"),
             # Actual modal view
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle("Create New Sub-Directory")),
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        "Create New Sub-Directory")),
                     dbc.ModalBody([
                         html.Div(id='create-subdirectory-content'),
                         dbc.Label(
                             "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
                         # Input Text Field for project name
                         dbc.Input(id="new_subdir_name",
-                                placeholder="Directory unique name...", required=True),
+                                  placeholder="Directory unique name...", required=True),
+                        dbc.Label(
+                            "Please enter desired parameters.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="new_subdir_parameters",
+                                  placeholder="..."),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the creation of a project (see modal_and_project_creation)
                         dbc.Button("Create Directory",
-                                id="create_subdir_and_close", color="success"),
+                                   id="create_subdir_and_close", color="success"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_create_subdir")
                     ]),
@@ -141,7 +157,6 @@ def modal_create_new_subdirectory(directory):
                 is_open=False,
             ),
         ])
-
 
 
 def modal_delete(directory: Directory):
@@ -290,6 +305,8 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
         raise PreventUpdate
 
 # Callback for project creation modal view and executing project creation
+
+
 @callback(
     [Output('modal_create_new_subdirectory', 'is_open'),
      Output('create-subdirectory-content', 'children')],
@@ -298,10 +315,11 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
      Input('create_subdir_and_close', 'n_clicks')],
     State("modal_create_new_subdirectory", "is_open"),
     State('new_subdir_name', 'value'),
+    State('new_subdir_parameters', 'value'),
     State("directory", "data"),
     State("project", "data"),
     prevent_initial_call=True)
-def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, directory_name, project_name):
+def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
         return not is_open, no_update
@@ -316,9 +334,9 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
         name = str(name).replace(" ", "_")
         try:
             connection = get_connection()
-            directory = connection.get_directory(project_name,directory_name)
-            sd = directory.create_subdirectory(name)
-            
+            directory = connection.get_directory(project_name, directory_name)
+            sd = directory.create_subdirectory(name, parameters)
+
             return is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
                                                           href=f"/dir/{project_name}/{sd.name}",
@@ -330,6 +348,7 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
 
     else:
         raise PreventUpdate
+
 
 @callback(
     Output('subdirectory_table', 'children'),
@@ -351,6 +370,7 @@ def filter_directory_table(btn, filter, directory_name, project_name):
             raise PreventUpdate
     else:
         raise PreventUpdate
+
 
 @callback(
     Output('files_table', 'children'),
@@ -451,13 +471,15 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
         breadcrumb_buffer = None
         link_to_direct_parent = None
         extra_span = None
-        
+
         if directory_name.count('::') > 1:
-            link_to_direct_parent = dcc.Link(f"{directory.parent_directory_name.rsplit('::', 1)[-1]}", href=f"/dir/{project_name}/{directory.parent_directory_name}",
-                             style={"color": colors['sage'], "marginRight": "1%"})
+            parent = directory.parent_directory.name
+            link_to_direct_parent = dcc.Link(f"{parent.rsplit('::')[-1]}", href=f"/dir/{project_name}/{parent}",
+                                             style={"color": colors['sage'], "marginRight": "1%"})
             extra_span = html.Span(" > ", style={"marginRight": "1%"})
             if directory_name.count('::') > 2:
-                breadcrumb_buffer = html.Span(" ...   \u00A0 >  ", style={"marginRight": "1%"})
+                breadcrumb_buffer = html.Span(
+                    " ...   \u00A0 >  ", style={"marginRight": "1%"})
 
         return html.Div([
             # dcc Store components for project and directory name strings
@@ -506,18 +528,25 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 dcc.Download(id="download_directory"), dcc.Download(id="download_single_file")])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
-                
+            # Directory Details
+            dbc.Card([
+                dbc.CardHeader(
+                    children=[
+                        html.H4("Details"), ],
+                    className="d-flex justify-content-between align-items-center"),
+                dbc.Spinner(dbc.CardBody(get_details(directory), id="dir_details_card"))], class_name="mb-3"),
             # Sub-Directories Table
             dbc.Card([
-                dbc.CardHeader(html.H4('Directories')),
+                dbc.CardHeader(children=[html.H4('Directories'),
+                                         modal_create_new_subdirectory(directory)],
+                               className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
                     # Filter file tags
                     dbc.Row([
                         dbc.Col(dbc.Input(id="filter_subdirectory_tags",
-                            placeholder="Search keywords.. (e.g. 'CT')")),
+                            placeholder="Search subdirectories...")),
                         dbc.Col(dbc.Button(
                             "Filter", id="filter_subdirectory_tags_btn")),
-                        dbc.Col(modal_create_new_subdirectory(directory), className="d-grid gap-2 d-md-flex justify-content-md-end")
                     ], class_name="mb-3"),
                     # Directories Table
                     dbc.Spinner(html.Div(get_subdirectories_table(
