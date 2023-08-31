@@ -183,11 +183,10 @@ class PACS_DB():
             # Construct a list of tuples with (file_name, parent_directory) for each file
             file_values = [(file.file_name, file.parent_directory, file.format, file.tags,
                             file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
-
+            print(file_values)
             query = """
                 INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (file_name) DO NOTHING
+                VALUES %s
             """
             execute_values(self.cursor, query, file_values)
             self.conn.commit()

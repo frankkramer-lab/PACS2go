@@ -311,13 +311,8 @@ class Project():
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '') -> Union['Directory', 'File']:
         try:
             if directory_name == '':
-                if zipfile.is_zipfile(file_path):
-                    # get the name of the zipfile
-                    directory_name = file_path.rsplit(
-                        "/", 1)[-1].rsplit(".", 1)[0]
-                else:
-                    # No desired name was given, set the name as the current timestamp
-                    directory_name = datetime.datetime.now(timezone).strftime("%Y_%m_%d_%H_%M_%S")
+                # No desired name was given, set the name as the current timestamp
+                directory_name = datetime.now(timezone).strftime("%Y_%m_%d_%H_%M_%S")
 
             if directory_name.count('::') == 1 or directory_name.count('::') == 0:
                 # Name is not an inherited name and is directly under a project, create/get directory
@@ -331,13 +326,14 @@ class Project():
                 directory = parent_dir.create_subdirectory(
                     directory_name.rsplit('::', 1)[-1])
 
+            timestamp = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+
             # File path leads to a single file
             if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
                 file = self._xnat_project.insert_file_into_project(
                     file_path, directory.name, tags_string)
 
                 with PACS_DB() as db:
-                    timestamp = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
                     # Get the file's suffix
                     format = file_format[Path(file_path).suffix]
                     db.insert_into_file(
@@ -370,27 +366,27 @@ class Project():
                         # Create a list to store FileData objects
                         file_data_list = []
 
-                        # Handle files of current directory
-                        for file_name in files:
-                            # Create a FileData object and add it to the list
-                            file_data = FileData(
-                                file_name=file_name,
-                                parent_directory=current_dir.name,
-                                format=file_format[Path(file_path).suffix],
-                                tags=tags_string,
-                                modality=modality,
-                                timestamp_creation=timestamp,
-                                timestamp_last_updated=timestamp
-                            )
-                            file_data_list.append(file_data)
+                        if len(files) > 0:
+                            # Handle files of current directory
+                            for file_name in files:
+                                # Create a FileData object and add it to the list
+                                file_data = FileData(
+                                    file_name=file_name,
+                                    parent_directory=current_dir.name,
+                                    format=file_format[Path(file_name).suffix],
+                                    tags=tags_string,
+                                    modality=modality,
+                                    timestamp_creation=timestamp,
+                                    timestamp_last_updated=timestamp
+                                )
+                                file_data_list.append(file_data)
+                                # Insert file to current directory
+                                self._xnat_project.insert_file_into_project(
+                                    os.path.join(root, file_name), current_dir.name, tags_string)
 
-                            # Insert file to current directory
-                            self._xnat_project.insert_file_into_project(
-                                os.path.join(root, file_name), current_dir.name, tags_string)
-
-                        with PACS_DB() as db:
-                            # Insert all file objects of the current directory at once
-                            db.insert_multiple_files(file_data_list)
+                            with PACS_DB() as db:
+                                # Insert all file objects of the current directory at once
+                                db.insert_multiple_files(file_data_list)
 
                         directory = current_dir
                     self.set_last_updated(datetime.now(timezone))
@@ -401,6 +397,7 @@ class Project():
         except ValueError:
             raise WrongUploadFormatException(str(file_path.split("-")[-1]))
         except Exception as err:
+            print("This is the error: " + str(err))
             raise UnsuccessfulUploadException(str(file_path.split("-")[-1]))
 
 
@@ -577,7 +574,6 @@ class Directory():
         if zip:
             destination_zip = shutil.make_archive(os.path.join(
                 destination, self.display_name), 'zip', destination, self.display_name)
-            print(destination_zip, flush=True)
             return destination_zip
         else:
             return destination
