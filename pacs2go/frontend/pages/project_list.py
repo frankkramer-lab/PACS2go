@@ -71,7 +71,7 @@ def modal_create():
                     dbc.Label(
                         "Please enter desired parameters.", class_name="mt-2"),
                     # Input Text Field for project parameters
-                    dbc.Input(id="project_parameters",
+                    dbc.Textarea(id="project_parameters",
                               placeholder="..."),
                 ]),
                 dbc.ModalFooter([

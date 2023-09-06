@@ -11,7 +11,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulAttributeUpdateException,
     UnsuccessfulDeletionException, UnsuccessfulGetException)
 from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import (colors, get_connection,
+from pacs2go.frontend.helpers import (colors, format_linebreaks, get_connection,
                                       login_required_interface)
 
 register_page(__name__, title='Project - PACS2go',
@@ -21,13 +21,15 @@ register_page(__name__, title='Project - PACS2go',
 def get_details(project: Project):
     description = "Description: " + project.description
     keywords = "Keywords: " + project.keywords
-    parameters = "Parameters: " + project.parameters
+    parameters = "Parameters: \n " + project.parameters
+    formatted_parameters = format_linebreaks(parameters)
     time = "Created on: " + project.timestamp_creation.strftime(
         "%dth %B %Y, %H:%M:%S") + " | Last updated on: " + project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
     owners = "Owners: " + ', '.join(project.owners)
     user_role = "You're part of the '" + project.your_user_role.capitalize() + \
         "' user group."
-    return [html.H6(description), html.H6(keywords), html.H6(parameters), html.H6(time), html.H6(owners), html.H6(user_role)]
+    #citations = project.citations if project.citations else ''
+    return [html.H6(description), html.H6(keywords), html.H6(formatted_parameters), html.H6(time), html.H6(owners), html.H6(user_role)]
 
 
 def get_directories_table(project: Project, filter: str = ''):
@@ -146,7 +148,7 @@ def modal_edit_project(project: Project):
                         dbc.Label(
                             "Please enter desired parameters.", class_name="mt-2"),
                         # Input Text Field for project parameters
-                        dbc.Input(id="new_project_parameters",
+                        dbc.Textarea(id="new_project_parameters",
                                   placeholder="...", value=project.parameters),
                     ]),
                     dbc.ModalFooter([
@@ -163,41 +165,42 @@ def modal_edit_project(project: Project):
         ])
 
 
-def modal_create_new_directory():
+def modal_create_new_directory(project:Project):
     # Modal view for project creation
-    return html.Div([
-        # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-plus me-2"),
-                    "Create Directory"], id="create_new_directory_btn", color="success"),
-        # Actual modal view
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle("Create New Directory")),
-                dbc.ModalBody([
-                    html.Div(id='create-directory-content'),
-                    dbc.Label(
-                        "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
-                    # Input Text Field for project name
-                    dbc.Input(id="new_dir_name",
-                              placeholder="Directory unique name...", required=True),
-                    dbc.Label(
-                        "Please enter desired parameters.", class_name="mt-2"),
-                    # Input Text Field for project parameters
-                    dbc.Input(id="new_dir_parameters",
-                              placeholder="..."),
-                ]),
-                dbc.ModalFooter([
-                    # Button which triggers the creation of a project (see modal_and_project_creation)
-                    dbc.Button("Create Directory",
-                               id="create_dir_and_close", color="success"),
-                    # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_create_dir")
-                ]),
-            ],
-            id="modal_create_new_directory",
-            is_open=False,
-        ),
-    ])
+    if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-plus me-2"),
+                        "Create Directory"], id="create_new_directory_btn", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Create New Directory")),
+                    dbc.ModalBody([
+                        html.Div(id='create-directory-content'),
+                        dbc.Label(
+                            "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
+                        # Input Text Field for project name
+                        dbc.Input(id="new_dir_name",
+                                placeholder="Directory unique name...", required=True),
+                        dbc.Label(
+                            "Please enter desired parameters.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Textarea(id="new_dir_parameters",
+                                placeholder="..."),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Create Directory",
+                                id="create_dir_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_create_dir")
+                    ]),
+                ],
+                id="modal_create_new_directory",
+                is_open=False,
+            ),
+        ])
 
 
 def insert_data(project: Project):
@@ -323,6 +326,7 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
             if parameters:
                 # Set new parameter string
                 project.set_parameters(parameters)
+            project = connection.get_project(project_name)
             return not is_open, no_update, get_details(project)
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
@@ -473,7 +477,7 @@ def layout(project_name: Optional[str] = None):
             dbc.Card([
                 dbc.CardHeader(children=[
                         html.H4("Directories"),
-                        modal_create_new_directory()],
+                        modal_create_new_directory(project)],
                     className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
                     # Filter file tags

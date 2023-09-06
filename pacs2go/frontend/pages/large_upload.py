@@ -106,8 +106,13 @@ def uploader(passed_project: Optional[str]):
         dbc.Row(dbc.Col(
                 [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
                  dbc.Input(id="upload_file_tags",
-                           placeholder="File tags like \'CT, Dermatology,...\' (optional)"),
+                           placeholder="File tags like \'Control group, Dermatology,...\' (optional)"),
                  dbc.FormText("Tags will be added to every file.")], className="mb-3")),
+        dbc.Row(dbc.Col(
+                [dbc.Label("Modality - In case that the modality is consistent for all files."),
+                 dbc.Input(id="upload_file_modality",
+                           placeholder="CT, MRI,... (optional)"),
+                 dbc.FormText("Modality will be added to every file.")], className="mb-3")),
         dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
                          'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
         dbc.Row(
@@ -150,9 +155,11 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
     State('project_name', 'value'),
     State('directory_name', 'value'),
     State('filename-storage', 'data'),
-    State('upload_file_tags', 'value'), prevent_initial_call=True
+    State('upload_file_tags', 'value'), 
+    State('upload_file_modality', 'value'), 
+    prevent_initial_call=True
 )
-def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str):
+def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str, modality: str):
     if ctx.triggered_id == "click-upload":
         if project_name:
             # Project name shall not contain whitespaces
@@ -163,21 +170,14 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 if project.your_user_role == 'Collaborators':
                     return dbc.Alert("Upload not possible! Your user role in the project '" + project.name + "' does not allow you to upload files.", color="danger")
 
-                if dir_name and tags:
-                    new_location = project.insert(filename, dir_name, tags)
+                tags = tags if tags else ''
+                modality = modality if modality else '-'
+                if dir_name:
+                    new_location = project.insert(filename, dir_name, tags, modality)
 
-                elif tags:
-                    # If the user entered no diretory name but tags
-                    new_location = project.insert(
-                        file_path=filename, tags_string=tags)
-
-                elif dir_name:
-                    # If the user entered a diretory name but no tags
-                    new_location = project.insert(
-                        file_path=filename, directory_name=dir_name)
                 else:
-                    # If the user entered no diretory name or tags
-                    new_location = project.insert(file_path=filename)
+                    # If the user entered no diretory name
+                    new_location = project.insert(file_path=filename, tags_string=tags, modality=modality)
 
                 if filename.endswith('.zip'):
                     dir_name = new_location.name

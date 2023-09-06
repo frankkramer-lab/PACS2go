@@ -9,13 +9,14 @@ import numpy as np
 import pandas as pd
 import pydicom
 from dash import (Input, Output, State, callback, ctx, dash_table, dcc, html,
-                  register_page)
+                  register_page, no_update)
+from dash.exceptions import PreventUpdate
 from flask_login import current_user
 from PIL import Image
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    DownloadException, FailedConnectionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import File
+    DownloadException, FailedConnectionException, UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException, UnsuccessfulGetException)
+from pacs2go.data_interface.pacs_data_interface import Directory, File, Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface, pil_to_b64)
 
@@ -40,11 +41,13 @@ def get_file_list(project_name: str, directory_name: str) -> List[File]:
 
 
 def show_file(file: File):
+    if file == None:
+        return dbc.Alert("No choosen file.", color='warning')
     if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
         # Display JPEG contents as html Img
         encoded_image = base64.b64encode(file.data).decode("utf-8")
         content = html.Img(id="my-img", className="image", width="100%",
-                           src=f"data:image/png;base64,{encoded_image}")
+                        src=f"data:image/png;base64,{encoded_image}")
 
     elif file.format == 'JSON':
         # Display contents of a JSON file
@@ -93,7 +96,7 @@ def show_file(file: File):
             html.H5(f"Study Description: {dcm.StudyDescription}"),
             # ... (add any other relevant information that you want to display)
             html.Img(id="my-img", className="image", width="100%",
-                     src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
+                    src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
         ]))
 
     else:
@@ -106,15 +109,20 @@ def show_file(file: File):
         dbc.CardBody(
             [
                 html.H6([html.B("File Name: "), f"{file.name}"]),
-                html.H6([html.B("File Format: "), f"{file.format}"]),
+                html.H6([html.B("Format: "), f"{file.format}"]),
+                html.H6([html.B("Modality: "), f"{file.modality}"]), 
                 html.H6([html.B("File Content Type: "),
                         f"{file.content_type}"]),
-                html.H6([html.B("File Tags: "), f"{file.tags}"]),
+                html.H6([html.B("Tags: "), f"{file.tags}"]),
                 html.H6([html.B("File Size: "),
                          f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
+                html.H6([html.B("Uploaded on: "), f"{file.timestamp_creation.strftime('%dth %B %Y, %H:%M:%S')}"]), 
+                html.H6([html.B("Last updated on: "), f"{file.last_updated.strftime('%dth %B %Y, %H:%M:%S')}"]), 
                 html.Div([content]),
-                html.Div([dbc.Button("Download File", id="btn_download"), dcc.Download(
-                    id="download-file"), dcc.Store(data=file.name, id='file_name')], className="mt-3")
+                html.Div([dbc.Button("Download File", id="btn_download"), 
+                          dcc.Download(id="download-file"), 
+                          dcc.Store(data=file.name, id='file_name'), 
+                          modal_edit_file(file), modal_delete_file(file)], className="mt-3 d-grid gap-2 d-md-flex justify-content-md-end")
             ],))
 
     return data
@@ -146,10 +154,151 @@ def file_card_view():
     ], className="d-flex justify-content-center")
 
 
+def modal_delete_file(file: File):
+    if file.directory.project.your_user_role == 'Owners':
+        # Modal view for directory deletion
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-trash")],id='delete_file_viewer' , size="md", color="danger"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Delete File")),
+                    dbc.ModalBody([
+                        html.Div("Are you sure you want to delete this file?",
+                            id='delete_file_viewer_content'),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the deletion of the file
+                        dbc.Button("Delete File",'delete_file_and_close_viewer', color="danger"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button(
+                            "Close", id='close_modal_delete_file_viewer'),
+                    ]),
+                ],
+                id='modal_delete_file_viewer',
+                is_open=False,
+            ),
+        ])
+
+
+
+def modal_edit_file(file:File):
+    # Modal view for project creation
+    if file.directory.project.your_user_role == 'Owners' or file.directory.project.your_user_role == 'Members':
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-pencil")], id="edit_file_metadata", size="md", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(f"Edit {file.name}")),
+                    dbc.ModalBody([
+                        html.Div(id='edit_file_metadata_content'),
+                        dbc.Label(
+                            "Please enter desired modality.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="edit_file_modality",
+                                placeholder="e.g.: CT, MRI", value=file.modality),
+                        dbc.Label(
+                            "Please enter desired tags.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="edit_file_tags",
+                                placeholder="e.g.: Dermatology, control group", value=file.tags),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Update Directory Metadata",
+                                id="edit_file_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_edit_file")
+                    ]),
+                ],
+                id="modal_edit_file_metadata",
+                is_open=False,
+            ),
+        ])
+
+
 #################
 #   Callbacks   #
 #################
+@callback(
+    [Output('modal_edit_file_metadata', 'is_open'),
+     Output('edit_file_metadata_content', 'children'),
+     Output('current_image', 'children', allow_duplicate=True)],
+    [Input('edit_file_metadata', 'n_clicks'),
+     Input('close_modal_edit_file', 'n_clicks'),
+     Input('edit_file_and_close', 'n_clicks')],
+    State("modal_edit_file_metadata", "is_open"),
+    State('project', 'data'),
+    State('directory', 'data'),
+    State('file_name', 'data'),
+    State('edit_file_modality', 'value'),
+    State('edit_file_tags', 'value'),
+    prevent_initial_call=True)
+# Callback used to edit project description, parameters and keywords
+def modal_edit_file_callback(open, close, edit_and_close, is_open, project_name, directory_name, file_name, modality, tags):
+    # Open/close modal via button click
+    if (ctx.triggered_id == "edit_file_metadata" or ctx.triggered_id == "close_modal_edit_file") and open != None:
+        return not is_open, no_update, no_update
 
+    # User does everything "right"
+    elif ctx.triggered_id == "edit_file_and_close":
+        try:
+            connection = get_connection()
+            file = connection.get_file(project_name, directory_name, file_name)
+            if modality:
+                file.set_modality(modality)
+            if modality:
+                file.set_tags(tags)
+            # Retrieve updated file to forece reload
+            file = connection.get_file(project_name, directory_name, file_name)
+            return not is_open, no_update, show_file(file)
+
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
+
+    else:
+        raise PreventUpdate
+    
+
+@callback(
+    [Output('modal_delete_file_viewer', 'is_open'),
+     Output('delete_file_viewer_content', 'children'),Output('current_image', 'children', allow_duplicate=True)],
+    [Input('delete_file_viewer', 'n_clicks'),
+     Input('close_modal_delete_file_viewer', 'n_clicks'),
+     Input('delete_file_and_close_viewer', 'n_clicks')],
+    [State('modal_delete_file_viewer', 'is_open'),
+     State('directory', 'data'),
+     State('project', 'data'),
+     State('file_name', 'data')],
+    prevent_initial_call=True
+)
+# Callback for the file deletion modal view and the actual file deletion
+def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
+    # Delete Button in File list - open/close Modal View
+    if (ctx.triggered_id == "delete_file_viewer" or ctx.triggered_id == "close_modal_delete_file_viewer") and open != None:
+        return not is_open, no_update, no_update
+    
+    # Delete Button in the Modal View
+    elif ctx.triggered_id == 'delete_file_and_close_viewer':
+        try:
+            connection = get_connection()
+            file = connection.get_file(
+                project_name, directory_name, file_name)
+            # Delete File
+            file.delete_file()
+            # Close Modal and show message
+            return is_open, dbc.Alert(
+                [f"The file {file_name} has been successfully deleted! "], color="success"), show_file(None)
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+            return not is_open, dbc.Alert(str(err), color="danger"), no_update
+            
+    else:
+        raise PreventUpdate
+    
 
 @callback(
     [Output('current_image', 'children')], 
@@ -158,6 +307,8 @@ def file_card_view():
     State('project', 'data'))
 # Callback to show the contents of a selected file in the viewer
 def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: str):
+    if chosen_file_name == 'none':
+        return [dbc.Alert("No choosen file.", color='warning')]
     try:
         connection = get_connection()
         # Get file

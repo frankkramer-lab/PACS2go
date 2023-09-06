@@ -13,10 +13,10 @@ from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    DownloadException, FailedConnectionException,
+    DownloadException, FailedConnectionException, UnsuccessfulAttributeUpdateException,
     UnsuccessfulDeletionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Directory, File
-from pacs2go.frontend.helpers import (colors, get_connection,
+from pacs2go.data_interface.pacs_data_interface import Directory, File, Project
+from pacs2go.frontend.helpers import (colors, format_linebreaks, get_connection,
                                       login_required_interface)
 
 register_page(__name__, title='Directory - PACS2go',
@@ -24,12 +24,12 @@ register_page(__name__, title='Directory - PACS2go',
 
 
 def get_details(directory: Directory):
-    parameters = "Parameters: " + directory.parameters if directory.parameters else ''
+    parameters = "Parameters: \n " + directory.parameters if directory.parameters else ''
+    formatted_parameters = format_linebreaks(parameters)
     time = "Created on: " + directory.timestamp_creation.strftime(
         "%dth %B %Y, %H:%M:%S") + " | Last updated on: " + directory.last_updated.strftime("%dth %B %Y, %H:%M:%S")
     citations = directory.citations if directory.citations else ''
-    return [html.H6(parameters), html.H6(time), html.H6(citations)]
-
+    return [html.H6(formatted_parameters), html.H6(time), html.H6(citations)]
 
 def get_single_file_preview(directory: Directory):
     # Preview first image within the directory
@@ -142,7 +142,7 @@ def modal_create_new_subdirectory(directory):
                         dbc.Label(
                             "Please enter desired parameters.", class_name="mt-2"),
                         # Input Text Field for project parameters
-                        dbc.Input(id="new_subdir_parameters",
+                        dbc.Textarea(id="new_subdir_parameters",
                                   placeholder="..."),
                     ]),
                     dbc.ModalFooter([
@@ -217,6 +217,38 @@ def modal_delete_file(directory: Directory, file: File):
                     ]),
                 ],
                 id='modal_delete_file',
+                is_open=False,
+            ),
+        ])
+    
+def modal_edit_directory(project: Project, directory: Directory):
+    # Modal view for project creation
+    if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-pencil me-2"),
+                        "Edit Directory"], id="edit_directory_metadata", size="md", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(f"Edit Directory {directory.display_name}")),
+                    dbc.ModalBody([
+                        html.Div(id='edit_directory_metadata_content'),
+                        dbc.Label(
+                            "Please enter desired parameters.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Textarea(id="edit_directory_parameters",
+                                placeholder="...", value=directory.parameters),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Update Directory Metadata",
+                                id="edit_dir_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_edit_dir")
+                    ]),
+                ],
+                id="modal_edit_directory_metadata",
                 is_open=False,
             ),
         ])
@@ -304,8 +336,42 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     else:
         raise PreventUpdate
 
-# Callback for project creation modal view and executing project creation
 
+@callback(
+    [Output('modal_edit_directory_metadata', 'is_open'),
+     Output('edit_directory_metadata_content', 'children'),
+     Output('dir_details_card', 'children')],
+    [Input('edit_directory_metadata', 'n_clicks'),
+     Input('close_modal_edit_dir', 'n_clicks'),
+     Input('edit_dir_and_close', 'n_clicks')],
+    State("modal_edit_directory_metadata", "is_open"),
+    State('project', 'data'),
+    State('directory', 'data'),
+    State('edit_directory_parameters', 'value'),
+    prevent_initial_call=True)
+# Callback used to edit project description, parameters and keywords
+def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_name, directory_name, parameters):
+    # Open/close modal via button click
+    if ctx.triggered_id == "edit_directory_metadata" or ctx.triggered_id == "close_modal_edit_dir":
+        return not is_open, no_update, no_update
+
+    # User does everything "right"
+    elif ctx.triggered_id == "edit_dir_and_close":
+        try:
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            if parameters:
+                # Set new parameters
+                directory.set_parameters(parameters)
+            # Retrieve updated directory to forece reload
+            directory = connection.get_directory(project_name, directory_name)
+            return not is_open, no_update, get_details(directory)
+
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
+
+    else:
+        raise PreventUpdate
 
 @callback(
     [Output('modal_create_new_subdirectory', 'is_open'),
@@ -461,8 +527,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
     if project_name and directory_name:
         try:
             connection = get_connection()
-            directory = connection.get_directory(
-                project_name, directory_name)
+            project = connection.get_project(project_name)
+            directory = project.get_directory(directory_name)
 
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
@@ -532,7 +598,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             dbc.Card([
                 dbc.CardHeader(
                     children=[
-                        html.H4("Details"), ],
+                        html.H4("Details"), 
+                        modal_edit_directory(project, directory)],
                     className="d-flex justify-content-between align-items-center"),
                 dbc.Spinner(dbc.CardBody(get_details(directory), id="dir_details_card"))], class_name="mb-3"),
             # Sub-Directories Table
