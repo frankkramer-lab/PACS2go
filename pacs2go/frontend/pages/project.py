@@ -29,7 +29,7 @@ def get_details(project: Project):
     user_role = "You're part of the '" + project.your_user_role.capitalize() + \
         "' user group."
     #citations = project.citations if project.citations else ''
-    return [html.H6(description), html.H6(keywords), html.H6(formatted_parameters), html.H6(time), html.H6(owners), html.H6(user_role)]
+    return [html.H6(description), html.H6(keywords), html.H6(formatted_parameters), html.H6(time), html.H6(owners), html.H6(user_role), html.H6("Citations:"), html.Div(id='citation-list')]
 
 
 def get_directories_table(project: Project, filter: str = ''):
@@ -378,6 +378,23 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
 
     else:
         raise PreventUpdate
+
+@callback(
+    Output('citation-list', 'children'),
+    [Input('project_store', 'data')]
+)
+def update_citation_list(project_name):
+    try:
+        connection = get_connection()
+        project = connection.get_project(project_name)
+        citations = project.citations
+        citation_list = html.Ul([
+            html.Li(f"{index+1}. {citation.citation} - {citation.link}")
+            for index, citation in enumerate(citations)
+        ])
+        return citation_list
+    except Exception as err:
+        return html.P(f"Error retrieving citations: {str(err)}")
 
 
 @callback(

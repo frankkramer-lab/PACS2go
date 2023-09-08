@@ -61,7 +61,7 @@ class PACS_DB():
                     name VARCHAR(256) PRIMARY KEY,
                     keywords VARCHAR(256),
                     description VARCHAR(256),
-                    parameters VARCHAR(256),
+                    parameters VARCHAR(1024),
                     timestamp_creation TIMESTAMP,
                     timestamp_last_updated TIMESTAMP
                 )
@@ -81,7 +81,7 @@ class PACS_DB():
                     parent_project VARCHAR(256) REFERENCES Project(name) ON DELETE CASCADE,
                     parent_directory VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE,
                     timestamp_creation TIMESTAMP,
-                    parameters VARCHAR(256),
+                    parameters VARCHAR(1024),
                     timestamp_last_updated TIMESTAMP
                 )
             """)
@@ -96,9 +96,9 @@ class PACS_DB():
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Citation (
                     cit_id SERIAL PRIMARY KEY,
-                    citation VARCHAR(256),
-                    link VARCHAR(256),
-                    directory_unique_name VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE
+                    citation VARCHAR(512),
+                    link VARCHAR(512),
+                    project_name VARCHAR(256) REFERENCES Project(name) ON DELETE CASCADE
                 )
             """)
             self.conn.commit()
@@ -157,9 +157,9 @@ class PACS_DB():
     def insert_into_citation(self, data: 'CitationData') -> None:
         try:
             self.cursor.execute("""
-                INSERT INTO Citation (citation, link, directory_unique_name)
+                INSERT INTO Citation (citation, link, project_name)
                 VALUES (%s, %s, %s)
-            """, (data.citation, data.link, data.directory_unique_name))
+            """, (data.citation, data.link, data.project_name))
             self.conn.commit()
         except Exception as err:
             self.conn.rollback()
@@ -350,14 +350,14 @@ class PACS_DB():
             print(err)
             raise Exception("Error retrieving subdirectories by directory")
 
-    def get_citation_for_directory(self, directory_unique_name: str) -> List['CitationData']:
+    def get_citations_for_project(self, project_name: str) -> List['CitationData']:
         try:
             query = """
                 SELECT citation, link
                 FROM Citation
-                WHERE directory_unique_name = %s
+                WHERE project_name = %s
             """
-            self.cursor.execute(query, (directory_unique_name,))
+            self.cursor.execute(query, (project_name,))
             results = self.cursor.fetchall()
 
             citation_list = []
@@ -464,7 +464,7 @@ class CitationData(NamedTuple):
     cit_id: int
     citation: str
     link: str
-    directory_unique_name: str
+    project_name: str
 
 
 class FileData(NamedTuple):
