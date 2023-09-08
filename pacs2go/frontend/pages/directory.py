@@ -79,7 +79,7 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
                                 html.Td(f.timestamp_creation.strftime(
                                     "%dth %B %Y, %H:%M:%S")),
                                 html.Td(f.tags),
-                                html.Td([modal_delete_file(directory, f), dbc.Button([html.I(className="bi bi-download"), ], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]))
+                                html.Td([modal_delete_file(directory, f), modal_edit_file(f), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]))
 
     # Table header
     table_header = [
@@ -253,52 +253,47 @@ def modal_edit_directory(project: Project, directory: Directory):
             ),
         ])
 
+def modal_edit_file(file:File):
+    # Modal view for project creation
+    if file.directory.project.your_user_role == 'Owners' or file.directory.project.your_user_role == 'Members':
+        return html.Div([
+            dcc.Store('file_for_edit', data=file.name),
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-pencil")], id={'type': 'edit_file_in_list', 'index': file.name}, size="md", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(f"Edit {file.name}")),
+                    dbc.ModalBody([
+                        html.Div(id='edit_file_in_list_content'),
+                        dbc.Label(
+                            "Please enter desired modality.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="edit_file_in_list_modality",
+                                placeholder="e.g.: CT, MRI", value=file.modality),
+                        dbc.Label(
+                            "Please enter desired tags.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="edit_file_in_list_tags",
+                                placeholder="e.g.: Dermatology, control group", value=file.tags),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Update Directory Metadata",
+                                id={'type': 'edit_file_in_list_and_close', 'index': file.name}, color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_edit_file_in_list")
+                    ]),
+                ],
+                id="modal_edit_file_in_list",
+                is_open=False,
+            ),
+        ])
+
 
 #################
 #   Callbacks   #
 #################
-
-@callback(
-    [Output('modal_delete_file', 'is_open'),
-     Output('delete-file-content', 'children'), Output('file', 'data')],
-    [Input({'type': 'delete_file', 'index': ALL}, 'n_clicks'),
-     Input('close_modal_delete_file', 'n_clicks'),
-     Input({'type': 'delete_file_and_close', 'index': ALL}, 'n_clicks')],
-    [State('modal_delete_file', 'is_open'),
-     State('directory', 'data'),
-     State('project', 'data'),
-     State('file', 'data')],
-    prevent_initial_call=True
-)
-# Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
-    if isinstance(ctx.triggered_id, dict):
-        # Delete Button in File list - open/close Modal View
-        if ctx.triggered_id['type'] == "delete_file":
-            return not is_open, dbc.Label(
-                f"Are you sure you want to delete this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index']
-        # Delete Button in the Modal View
-        if ctx.triggered_id['type'] == 'delete_file_and_close':
-            try:
-                connection = get_connection()
-                file = connection.get_file(
-                    project_name, directory_name, file_name)
-                # Delete File
-                file.delete_file()
-                # Close Modal and show message
-                return is_open, dbc.Alert(
-                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update
-            except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-                return not is_open, dbc.Alert(str(err), color="danger"), no_update
-
-    elif isinstance(ctx.triggered_id, str):
-        if ctx.triggered_id == "close_modal_delete_file":
-            # Close Modal View
-            return not is_open, no_update, no_update
-
-    else:
-        raise PreventUpdate
-
 
 @callback(
     [Output('modal_delete_directory', 'is_open'),
@@ -375,7 +370,8 @@ def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_
 
 @callback(
     [Output('modal_create_new_subdirectory', 'is_open'),
-     Output('create-subdirectory-content', 'children')],
+     Output('create-subdirectory-content', 'children'),
+     Output('subdirectory_table', 'children', allow_duplicate=True),],
     [Input('create_new_subdirectory_btn', 'n_clicks'),
      Input('close_modal_create_subdir', 'n_clicks'),
      Input('create_subdir_and_close', 'n_clicks')],
@@ -388,11 +384,11 @@ def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_
 def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
-        return not is_open, no_update
+        return not is_open, no_update, no_update
 
     # User tries to create modal without specifying a project name -> show alert feedback
     elif ctx.triggered_id == "create_subdir_and_close" and name is None:
-        return is_open, dbc.Alert("Please specify a name.", color="danger")
+        return is_open, dbc.Alert("Please specify a name.", color="danger"), no_update
 
     # User does everything "right" for project creation
     elif ctx.triggered_id == "create_subdir_and_close" and name is not None:
@@ -407,10 +403,10 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
                                                           href=f"/dir/{project_name}/{sd.name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success")
+                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(directory)
 
         except Exception as err:
-            return is_open, dbc.Alert(str(err), color="danger")
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
 
     else:
         raise PreventUpdate
@@ -514,6 +510,94 @@ def download_single_file(n_clicks, directory_name, project_name):
     else:
         raise PreventUpdate
 
+@callback(
+    [Output('modal_delete_file', 'is_open'),
+     Output('delete-file-content', 'children'), Output('file', 'data'),
+     Output('files_table', 'children', allow_duplicate=True),],
+    [Input({'type': 'delete_file', 'index': ALL}, 'n_clicks'),
+     Input('close_modal_delete_file', 'n_clicks'),
+     Input({'type': 'delete_file_and_close', 'index': ALL}, 'n_clicks')],
+    [State('modal_delete_file', 'is_open'),
+     State('directory', 'data'),
+     State('project', 'data'),
+     State('file', 'data')],
+    prevent_initial_call=True
+)
+# Callback for the file deletion modal view and the actual file deletion
+def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
+    if open != [None]:
+        if isinstance(ctx.triggered_id, dict):
+            # Delete Button in File list - open/close Modal View
+            if ctx.triggered_id['type'] == "delete_file":
+                return not is_open, dbc.Label(
+                    f"Are you sure you want to delete this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
+            # Delete Button in the Modal View
+            if ctx.triggered_id['type'] == 'delete_file_and_close':
+                try:
+                    connection = get_connection()
+                    directory = connection.get_directory(project_name, directory_name)
+                    file = directory.get_file(file_name)
+                    # Delete File
+                    file.delete_file()
+                    # Close Modal and show message
+                    return is_open, dbc.Alert(
+                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, get_files_table(directory)
+                except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+                    return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
+
+        elif isinstance(ctx.triggered_id, str):
+            if ctx.triggered_id == "close_modal_delete_file":
+                # Close Modal View
+                return not is_open, no_update, no_update, no_update
+        else:
+            raise PreventUpdate
+    else:
+        raise PreventUpdate
+
+@callback(
+    [Output('modal_edit_file_in_list', 'is_open'),
+     Output('edit_file_in_list_content', 'children'), Output('file_for_edit', 'data'),
+     Output('files_table', 'children', allow_duplicate=True),],
+    [Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
+     Input('close_modal_edit_file_in_list', 'n_clicks'),
+     Input({'type': 'edit_file_in_list_and_close', 'index': ALL}, 'n_clicks')],
+    [State('modal_edit_file_in_list', 'is_open'),
+     State('directory', 'data'),
+     State('project', 'data'),
+     State('file_for_edit', 'data'),
+     State('edit_file_in_list_modality', 'value'),
+     State('edit_file_in_list_tags', 'value'),],
+    prevent_initial_call=True
+)
+# Callback for the file deletion modal view and the actual file deletion
+def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, project_name, file_name, modality, tags):
+    if isinstance(ctx.triggered_id, dict):
+        # Delete Button in File list - open/close Modal View
+        if ctx.triggered_id['type'] == "edit_file_in_list":
+            return not is_open, dbc.Label(
+                f"Are you sure you want to edit this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
+        # Delete Button in the Modal View
+        if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
+            try:
+                connection = get_connection()
+                directory = connection.get_directory(project_name, directory_name)
+                file = directory.get_file(file_name)
+                if modality:
+                    file.set_modality(modality)
+                if tags:
+                    file.set_tags(tags)
+                return not is_open, dbc.Alert(
+                    [f"The file {file.name} has been successfully edited! "], color="success"), no_update, get_files_table(directory)
+            except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+                return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
+
+    elif isinstance(ctx.triggered_id, str):
+        if ctx.triggered_id == "close_modal_edit_file_in_list":
+            # Close Modal View
+            return not is_open, no_update, no_update, no_update
+
+    else:
+        raise PreventUpdate
 
 #################
 #  Page Layout  #

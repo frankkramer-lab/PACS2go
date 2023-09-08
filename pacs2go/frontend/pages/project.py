@@ -340,7 +340,8 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
 
 @callback(
     [Output('modal_create_new_directory', 'is_open'),
-     Output('create-directory-content', 'children')],
+     Output('create-directory-content', 'children'),
+     Output('directory_table', 'children', allow_duplicate=True)],
     [Input('create_new_directory_btn', 'n_clicks'),
      Input('close_modal_create_dir', 'n_clicks'),
      Input('create_dir_and_close', 'n_clicks')],
@@ -352,11 +353,11 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
 def modal_and_directory_creation(open, close, create_and_close, is_open, name, parameters, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_directory_btn" or ctx.triggered_id == "close_modal_create_dir":
-        return not is_open, no_update
+        return not is_open, no_update, no_update
 
     # User tries to create modal without specifying a project name -> show alert feedback
     elif ctx.triggered_id == "create_dir_and_close" and name is None:
-        return is_open, dbc.Alert("Please specify a name.", color="danger")
+        return is_open, dbc.Alert("Please specify a name.", color="danger"), no_update
 
     # User does everything "right" for project creation
     elif ctx.triggered_id == "create_dir_and_close" and name is not None:
@@ -370,10 +371,10 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
                                                           href=f"/dir/{project.name}/{directory.name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success")
+                                                          style={'color': colors['links']}))], color="success"), get_directories_table(project)
 
         except Exception as err:
-            return is_open, dbc.Alert(str(err), color="danger")
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
 
     else:
         raise PreventUpdate

@@ -251,7 +251,7 @@ def modal_edit_file_callback(open, close, edit_and_close, is_open, project_name,
             file = connection.get_file(project_name, directory_name, file_name)
             if modality:
                 file.set_modality(modality)
-            if modality:
+            if tags:
                 file.set_tags(tags)
             # Retrieve updated file to forece reload
             file = connection.get_file(project_name, directory_name, file_name)
