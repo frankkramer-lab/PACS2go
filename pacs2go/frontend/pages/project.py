@@ -19,17 +19,16 @@ register_page(__name__, title='Project - PACS2go',
 
 
 def get_details(project: Project):
-    description = "Description: " + project.description
-    keywords = "Keywords: " + project.keywords
-    parameters = "Parameters: \n " + project.parameters
-    formatted_parameters = format_linebreaks(parameters)
-    time = "Created on: " + project.timestamp_creation.strftime(
-        "%dth %B %Y, %H:%M:%S") + " | Last updated on: " + project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
-    owners = "Owners: " + ', '.join(project.owners)
-    user_role = "You're part of the '" + project.your_user_role.capitalize() + \
-        "' user group."
+    description = html.B("Description: "), project.description
+    keywords = html.B("Keywords: "), project.keywords
+    formatted_parameters = format_linebreaks(project.parameters)
+    parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
+    time = html.B("Created on: "), project.timestamp_creation.strftime(
+        "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
+    owners = html.B("Owners: "), ', '.join(project.owners)
+    user_role = "You're part of the '", html.B(project.your_user_role.capitalize()), "' user group."
     #citations = project.citations if project.citations else ''
-    return [html.H6(description), html.H6(keywords), html.H6(formatted_parameters), html.H6(time), html.H6(owners), html.H6(user_role), html.H6("Citations:"), html.Div(id='citation-list')]
+    return [html.H6(description), html.H6(keywords), html.H6(parameters), html.H6(time), html.H6(owners), html.H6(user_role), html.H6("Citations:"), html.Div(id='citation-list')]
 
 
 def get_directories_table(project: Project, filter: str = ''):
