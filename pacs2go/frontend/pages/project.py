@@ -2,7 +2,7 @@ from tempfile import TemporaryDirectory
 from typing import Optional
 
 import dash_bootstrap_components as dbc
-from dash import (Input, Output, State, callback, ctx, dcc, html, no_update,
+from dash import (ALL, Input, Output, State, callback, ctx, dcc, html, no_update,
                   register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
@@ -21,14 +21,13 @@ register_page(__name__, title='Project - PACS2go',
 def get_details(project: Project):
     description = html.B("Description: "), project.description
     keywords = html.B("Keywords: "), project.keywords
-    formatted_parameters = format_linebreaks(project.parameters)
+    formatted_parameters = format_linebreaks(project.parameters if project.parameters else '')
     parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
     time = html.B("Created on: "), project.timestamp_creation.strftime(
         "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
     owners = html.B("Owners: "), ', '.join(project.owners)
     user_role = "You're part of the '", html.B(project.your_user_role.capitalize()), "' user group."
-    #citations = project.citations if project.citations else ''
-    return [html.H6(description), html.H6(keywords), html.H6(parameters), html.H6(time), html.H6(owners), html.H6(user_role), html.H6("Citations:"), html.Div(id='citation-list')]
+    return [html.H6(description), html.H6(keywords), html.H6(parameters), html.H6(time), html.H6(owners), html.H6(user_role)]
 
 
 def get_directories_table(project: Project, filter: str = ''):
@@ -38,8 +37,12 @@ def get_directories_table(project: Project, filter: str = ''):
         # Only show rows if no filter is applied of if the filter has a match in the directory's name
         if filter.lower() in d.name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
-            rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
+            rows.append(html.Tr([
+                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), 
+                html.Td(d.number_of_files), 
+                html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), 
+                html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))
+            ]))
 
     table_header = [
         html.Thead(
@@ -51,6 +54,32 @@ def get_directories_table(project: Project, filter: str = ''):
     # Put together directory table
     table = dbc.Table(table_header + table_body,
                       striped=True, bordered=True, hover=True)
+    return table
+
+
+def get_citations(project:Project):
+    rows = []
+    if project.your_user_role == "Owners" or project.your_user_role == "Members":
+        for citation in project.citations:
+            rows.append(html.Tr([
+                html.Td(citation.cit_id), 
+                html.Td(citation.citation), 
+                html.Td(dcc.Link(citation.link, href=f"{citation.link}", className="text-decoration-none", style={'color': colors['links']})),
+                html.Td(dbc.Button(html.I(className="bi bi-trash"), color="danger", id={'type': 'delete_citation', 'index': citation.cit_id}))
+            ]))
+    else:
+        for citation in project.citations:
+            rows.append(html.Tr([
+                html.Td(citation.cit_id), html.Td(citation.citation), html.Td(dcc.Link(citation.link, href=f"{citation.link}", className="text-decoration-none", style={'color': colors['links']}))
+            ]))
+
+    table_header = [
+        html.Thead(html.Tr([html.Th("ID"), html.Th("Citation"), html.Th("Link")]))]
+    
+    table_body = [html.Tbody(rows)]
+
+    table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True)
+
     return table
 
 
@@ -197,6 +226,42 @@ def modal_create_new_directory(project:Project):
                     ]),
                 ],
                 id="modal_create_new_directory",
+                is_open=False,
+            ),
+        ])
+    
+def modal_add_citation(project:Project):
+    if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-plus me-2"),
+                        "Add Citation"], id="add_citation_btn", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Add Citation")),
+                    dbc.ModalBody([
+                        html.Div(id='add_citation_content'),
+                        dbc.Label(
+                            "Please enter source."),
+                        # Input Text Field for project name
+                        dbc.Textarea(id="new_cit_citation",
+                                placeholder="Mustermann et al...", required=True),
+                        dbc.Label(
+                            "If necessary, provide a link.", class_name="mt-2"),
+                        # Input Text Field for project parameters
+                        dbc.Input(id="new_cit_link",
+                                placeholder="https://www..."),
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Add",
+                                id="add_cit_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_add_cit")
+                    ]),
+                ],
+                id="modal_create_add_citation",
                 is_open=False,
             ),
         ])
@@ -354,13 +419,13 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
     if ctx.triggered_id == "create_new_directory_btn" or ctx.triggered_id == "close_modal_create_dir":
         return not is_open, no_update, no_update
 
-    # User tries to create modal without specifying a project name -> show alert feedback
+    # User tries to create modal without specifying a directory name -> show alert feedback
     elif ctx.triggered_id == "create_dir_and_close" and name is None:
         return is_open, dbc.Alert("Please specify a name.", color="danger"), no_update
 
-    # User does everything "right" for project creation
+    # User does everything "right" for directory creation
     elif ctx.triggered_id == "create_dir_and_close" and name is not None:
-        # Project name cannot contain whitespaces
+        # Directory name cannot contain whitespaces
         name = str(name).replace(" ", "_")
         try:
             connection = get_connection()
@@ -379,21 +444,53 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
         raise PreventUpdate
 
 @callback(
-    Output('citation-list', 'children'),
-    [Input('project_store', 'data')]
+    [Output('modal_create_add_citation', 'is_open'),
+     Output('add_citation_content', 'children'),
+     Output('citation_table', 'children', allow_duplicate=True)],
+    [Input('add_citation_btn', 'n_clicks'),
+     Input('close_modal_add_cit', 'n_clicks'),
+     Input('add_cit_and_close', 'n_clicks')],
+    State("modal_create_add_citation", "is_open"),
+    State('new_cit_citation', 'value'),
+    State('new_cit_link', 'value'),
+    State("project", "value"),
+    prevent_initial_call=True)
+def modal_and_directory_creation(open, close, create_and_close, is_open, citation, citation_link, project_name):
+    # Open/close modal via button click
+    if ctx.triggered_id == "add_citation_btn" or ctx.triggered_id == "close_modal_add_cit":
+        return not is_open, no_update, no_update
+
+    # User tries to create modal without specifying a project name -> show alert feedback
+    elif ctx.triggered_id == "add_cit_and_close" and citation is None:
+        return is_open, dbc.Alert("Please specify the source.", color="danger"), no_update
+
+    # User does everything "right" for project creation
+    elif ctx.triggered_id == "add_cit_and_close" and citation is not None:
+        try:
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            project.add_citation(citation, citation_link)
+            return is_open, dbc.Alert([html.Span("A new source has been added! ")], color="success"), get_citations(project)
+
+        except Exception as err:
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
+
+    else:
+        raise PreventUpdate
+
+
+@callback(
+    Output('citation_table', 'children', allow_duplicate=True),
+    Input({'type': 'delete_citation', 'index': ALL}, 'n_clicks'),
+    State("project", "value"),
+    prevent_initial_call=True
 )
-def update_citation_list(project_name):
-    try:
+def delete_citation(btn, project_name):
+    if ctx.triggered_id['type'] == 'delete_citation' and any(btn):
         connection = get_connection()
         project = connection.get_project(project_name)
-        citations = project.citations
-        citation_list = html.Ul([
-            html.Li(f"{index+1}. {citation.citation} - {citation.link}")
-            for index, citation in enumerate(citations)
-        ])
-        return citation_list
-    except Exception as err:
-        return html.P(f"Error retrieving citations: {str(err)}")
+        project.delete_citation(ctx.triggered_id['index'])
+        return get_citations(project)
 
 
 @callback(
@@ -508,6 +605,15 @@ def layout(project_name: Optional[str] = None):
                     dbc.Spinner(html.Div(get_directories_table(
                         project), id='directory_table')),
                 ])], class_name="mb-3"),
+            dbc.Card([
+                dbc.CardHeader([
+                    html.H4("Sources"),
+                    modal_add_citation(project)], 
+                    className="d-flex justify-content-between align-items-center"),
+                dbc.CardBody([
+                    dbc.Spinner(html.Div(get_citations(project), id='citation_table'))
+                ])
+            ],class_name="mb-3"),
         ])
 
     else:

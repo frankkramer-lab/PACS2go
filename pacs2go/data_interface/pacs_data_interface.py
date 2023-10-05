@@ -265,6 +265,14 @@ class Project():
             self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException("New citation")
+        
+    def delete_citation(self, citation_id: int) -> None:
+        try:
+            with PACS_DB() as db:
+                db.delete_citation(citation_id)
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulDeletionException("Citation")
 
     def exists(self) -> bool:
         return self._xnat_project.exists()

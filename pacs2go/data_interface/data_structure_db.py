@@ -98,7 +98,7 @@ class PACS_DB():
                     cit_id SERIAL PRIMARY KEY,
                     citation VARCHAR(512),
                     link VARCHAR(512),
-                    project_name VARCHAR(256) REFERENCES Project(name) ON DELETE CASCADE
+                    project_name VARCHAR(256) REFERENCES Project(name) ON DELETE SET NULL
                 )
             """)
             self.conn.commit()
@@ -353,7 +353,7 @@ class PACS_DB():
     def get_citations_for_project(self, project_name: str) -> List['CitationData']:
         try:
             query = """
-                SELECT citation, link
+                SELECT cit_id, citation, link, project_name
                 FROM Citation
                 WHERE project_name = %s
             """
@@ -380,7 +380,8 @@ class PACS_DB():
                     SET {attribute_name} = %s
                     WHERE {condition_column} = %s AND {second_condition_column} = %s
                 """
-                self.cursor.execute(query, (new_value, condition_value, second_condition_value))
+                self.cursor.execute(
+                    query, (new_value, condition_value, second_condition_value))
             elif condition_column and condition_value:
                 query = f"""
                     UPDATE {table_name}
@@ -438,6 +439,18 @@ class PACS_DB():
             self.conn.rollback()
             print(err)
             raise Exception("Error deleting file by name")
+
+    def delete_citation(self, cit_id: int) -> None:
+        try:
+            query = """
+                DELETE FROM Citation WHERE cit_id = %s
+            """
+            self.cursor.execute(query, (cit_id, ))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            print(err)
+            raise Exception("Error deleting citation by id.")
 
 
 # Named Tuples
