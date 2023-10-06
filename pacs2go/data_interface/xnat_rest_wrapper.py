@@ -383,7 +383,7 @@ class XNATProject():
             raise ValueError("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', use_original_file_name:bool=True) -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, file_id:str='', directory_name: str = '', tags_string: str = '') -> 'XNATFile':
         if os.path.exists(file_path):
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
@@ -400,13 +400,9 @@ class XNATProject():
 
             # Only continue if file format/suffix is an accepted one
             if suffix in allowed_file_suffixes:
-                if use_original_file_name:
+                # Get unique file name 
+                if file_id == '':
                     file_id = file_path.split("/")[-1]
-                else:
-                    # File names are unique, duplicate file names can not be inserted
-                    file_id = str(uuid.uuid4())
-                    # Add file suffix to generated unique file_id
-                    file_id = file_id + suffix
 
                 # Get correct content tag for REST query parameter
                 if suffix in image_file_suffixes:

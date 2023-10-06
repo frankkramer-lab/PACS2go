@@ -166,13 +166,30 @@ class PACS_DB():
             print(err)
             raise Exception("Error inserting into Citation table")
 
-    def insert_into_file(self, data: 'FileData') -> None:
+    def insert_into_file(self, data: 'FileData') -> 'FileData':
         try:
             self.cursor.execute("""
                 INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (data.file_name, data.parent_directory, data.format, data.tags, data.modality, data.timestamp_creation, data.timestamp_last_updated))
             self.conn.commit()
+            return data
+        except psycopg2.IntegrityError as e:
+            # Check if the error message contains "duplicate key value violates unique constraint"
+            if "duplicate key value violates unique constraint" in str(e):
+                print("Duplicate primary key violation:", e)
+                self.conn.rollback()
+                # Create a new instance of FileData with the updated file_name
+                data = self.get_next_available_file_data(data)
+                # Retry the insertion
+                self.insert_into_file(data)
+                # Return updated data with new name
+                return data
+            else:
+                # Handle other IntegrityError cases
+                self.conn.rollback()
+                print("IntegrityError:", e)
+                raise Exception("Error inserting into File table")
         except Exception as err:
             self.conn.rollback()
             print(err)
@@ -183,7 +200,6 @@ class PACS_DB():
             # Construct a list of tuples with (file_name, parent_directory) for each file
             file_values = [(file.file_name, file.parent_directory, file.format, file.tags,
                             file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
-            print(file_values)
             query = """
                 INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
                 VALUES %s
@@ -451,6 +467,40 @@ class PACS_DB():
             self.conn.rollback()
             print(err)
             raise Exception("Error deleting citation by id.")
+        
+    # -------- Helpers ------- #
+
+    def get_next_available_filename(self, original_filename):
+        # Extract the base name without extension
+        base_name, extension = os.path.splitext(original_filename)
+        # Initialize a counter
+        counter = 1
+        while True:
+            # Construct the new file name
+            new_filename = f"{base_name}({counter}){extension}"
+            # Check if this filename exists in the database
+            if not self.filename_exists(new_filename):
+                return new_filename
+            counter += 1
+
+    def filename_exists(self, filename):
+        # Check if the given filename already exists in the database
+        self.cursor.execute("SELECT COUNT(*) FROM File WHERE file_name = %s", (filename,))
+        count = self.cursor.fetchone()[0]
+        return count > 0
+    
+    def get_next_available_file_data(self, original_data):
+        # Create a new instance of FileData with an updated file_name
+        new_file_name = self.get_next_available_filename(original_data.file_name)
+        return FileData(
+            file_name=new_file_name,
+            parent_directory=original_data.parent_directory,
+            format=original_data.format,
+            tags=original_data.tags,
+            modality=original_data.modality,
+            timestamp_creation=original_data.timestamp_creation,
+            timestamp_last_updated=original_data.timestamp_last_updated
+        )
 
 
 # Named Tuples
