@@ -24,10 +24,16 @@ register_page(__name__, title='Directory - PACS2go',
 
 
 def get_details(directory: Directory):
-    formatted_parameters = html.B("Parameters"), format_linebreaks(directory.parameters if directory.parameters else '')
+    detail_data = []
+    if directory.parameters:
+        formatted_parameters = html.B("Parameters"), format_linebreaks(directory.parameters)
+        detail_data.append(html.H6(formatted_parameters))
+
     time = html.B("Created on: "), directory.timestamp_creation.strftime(
         "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%dth %B %Y, %H:%M:%S")
-    return [html.H6(formatted_parameters), html.H6(time)]
+    detail_data.append(html.H6(time))
+
+    return detail_data
 
 def get_single_file_preview(directory: Directory):
     # Preview first image within the directory

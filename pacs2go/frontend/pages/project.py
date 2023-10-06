@@ -19,15 +19,31 @@ register_page(__name__, title='Project - PACS2go',
 
 
 def get_details(project: Project):
-    description = html.B("Description: "), project.description
-    keywords = html.B("Keywords: "), project.keywords
-    formatted_parameters = format_linebreaks(project.parameters if project.parameters else '')
-    parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
+    detail_data = []
+    # Optional Data
+    if project.description:
+        description = html.B("Description: "), project.description
+        detail_data.append(html.H6(description))
+    if project.keywords:
+        keywords = html.B("Keywords: "), project.keywords
+        detail_data.append(html.H6(keywords))
+    if project.parameters:
+        formatted_parameters = format_linebreaks(project.parameters)
+        parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
+        detail_data.append(html.H6(parameters))
+
     time = html.B("Created on: "), project.timestamp_creation.strftime(
         "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), project.last_updated.strftime("%dth %B %Y, %H:%M:%S")
+    detail_data.append(html.H6(time))
+
     owners = html.B("Owners: "), ', '.join(project.owners)
-    user_role = "You're part of the '", html.B(project.your_user_role.capitalize()), "' user group."
-    return [html.H6(description), html.H6(keywords), html.H6(parameters), html.H6(time), html.H6(owners), html.H6(user_role)]
+    detail_data.append(html.H6(owners))
+
+    user_role = "You're part of the '", html.B(
+        project.your_user_role.capitalize()), "' user group."
+    detail_data.append(html.H6(user_role))
+
+    return detail_data
 
 
 def get_directories_table(project: Project, filter: str = ''):
@@ -38,9 +54,10 @@ def get_directories_table(project: Project, filter: str = ''):
         if filter.lower() in d.name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([
-                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), 
-                html.Td(d.number_of_files), 
-                html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), 
+                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}",
+                        className="text-decoration-none", style={'color': colors['links']})),
+                html.Td(d.number_of_files),
+                html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")),
                 html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))
             ]))
 
@@ -57,28 +74,34 @@ def get_directories_table(project: Project, filter: str = ''):
     return table
 
 
-def get_citations(project:Project):
+def get_citations(project: Project):
     rows = []
     if project.your_user_role == "Owners" or project.your_user_role == "Members":
         for citation in project.citations:
             rows.append(html.Tr([
-                html.Td(citation.cit_id), 
-                html.Td(citation.citation), 
-                html.Td(dcc.Link(citation.link, href=f"{citation.link}", className="text-decoration-none", style={'color': colors['links']})),
-                html.Td(dbc.Button(html.I(className="bi bi-trash"), color="danger", id={'type': 'delete_citation', 'index': citation.cit_id}))
+                html.Td(citation.cit_id),
+                html.Td(citation.citation),
+                html.Td(dcc.Link(
+                    citation.link, href=f"{citation.link}", className="text-decoration-none", style={'color': colors['links']})),
+                html.Td(dbc.Button(html.I(className="bi bi-trash"), color="danger",
+                        id={'type': 'delete_citation', 'index': citation.cit_id}))
             ]))
     else:
         for citation in project.citations:
             rows.append(html.Tr([
-                html.Td(citation.cit_id), html.Td(citation.citation), html.Td(dcc.Link(citation.link, href=f"{citation.link}", className="text-decoration-none", style={'color': colors['links']}))
+                html.Td(citation.cit_id), 
+                html.Td(citation.citation), 
+                html.Td(dcc.Link(
+                    citation.link, href=f"{citation.link}", className="text-decoration-none", style={'color': colors['links']}))
             ]))
 
     table_header = [
         html.Thead(html.Tr([html.Th("ID"), html.Th("Citation"), html.Th("Link")]))]
-    
+
     table_body = [html.Tbody(rows)]
 
-    table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True)
+    table = dbc.Table(table_header + table_body,
+                      striped=True, bordered=True, hover=True)
 
     return table
 
@@ -96,7 +119,7 @@ def modal_delete(project: Project):
                     dbc.ModalHeader(dbc.ModalTitle(
                         f"Delete Project {project.name}")),
                     dbc.ModalBody([
-                        html.Div(id="delete-project-content"),
+                        html.Div(id="delete_project_content"),
                         dbc.Label(
                             "Are you sure you want to delete this project and all its data?"),
                         dbc.Input(id="project", value=project.name,
@@ -177,7 +200,7 @@ def modal_edit_project(project: Project):
                             "Please enter desired parameters.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Textarea(id="new_project_parameters",
-                                  placeholder="...", value=project.parameters),
+                                     placeholder="...", value=project.parameters),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the update of a project
@@ -193,7 +216,7 @@ def modal_edit_project(project: Project):
         ])
 
 
-def modal_create_new_directory(project:Project):
+def modal_create_new_directory(project: Project):
     # Modal view for project creation
     if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
         return html.Div([
@@ -210,17 +233,17 @@ def modal_create_new_directory(project:Project):
                             "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
                         # Input Text Field for project name
                         dbc.Input(id="new_dir_name",
-                                placeholder="Directory unique name...", required=True),
+                                  placeholder="Directory unique name...", required=True),
                         dbc.Label(
                             "Please enter desired parameters.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Textarea(id="new_dir_parameters",
-                                placeholder="..."),
+                                     placeholder="..."),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the creation of a project (see modal_and_project_creation)
                         dbc.Button("Create Directory",
-                                id="create_dir_and_close", color="success"),
+                                   id="create_dir_and_close", color="success"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_create_dir")
                     ]),
@@ -229,8 +252,9 @@ def modal_create_new_directory(project:Project):
                 is_open=False,
             ),
         ])
-    
-def modal_add_citation(project:Project):
+
+
+def modal_add_citation(project: Project):
     if project.your_user_role == 'Owners' or project.your_user_role == 'Members':
         return html.Div([
             # Button which triggers modal activation
@@ -246,17 +270,17 @@ def modal_add_citation(project:Project):
                             "Please enter source."),
                         # Input Text Field for project name
                         dbc.Textarea(id="new_cit_citation",
-                                placeholder="Mustermann et al...", required=True),
+                                     placeholder="Mustermann et al...", required=True),
                         dbc.Label(
                             "If necessary, provide a link.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Input(id="new_cit_link",
-                                placeholder="https://www..."),
+                                  placeholder="https://www..."),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the creation of a project (see modal_and_project_creation)
                         dbc.Button("Add",
-                                id="add_cit_and_close", color="success"),
+                                   id="add_cit_and_close", color="success"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_add_cit")
                     ]),
@@ -287,7 +311,7 @@ def download_project_data():
 
 @callback(
     [Output('modal_delete', 'is_open'),
-     Output('delete-project-content', 'children')],
+     Output('delete_project_content', 'children')],
     [Input('delete_project', 'n_clicks'),
      Input('close_modal_delete', 'n_clicks'),
      Input('delete_and_close', 'n_clicks')],
@@ -443,6 +467,7 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
     else:
         raise PreventUpdate
 
+
 @callback(
     [Output('modal_create_add_citation', 'is_open'),
      Output('add_citation_content', 'children'),
@@ -590,8 +615,8 @@ def layout(project_name: Optional[str] = None):
                 dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="mb-3"),
             dbc.Card([
                 dbc.CardHeader(children=[
-                        html.H4("Directories"),
-                        modal_create_new_directory(project)],
+                    html.H4("Directories"),
+                    modal_create_new_directory(project)],
                     className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
                     # Filter file tags
@@ -608,12 +633,13 @@ def layout(project_name: Optional[str] = None):
             dbc.Card([
                 dbc.CardHeader([
                     html.H4("Sources"),
-                    modal_add_citation(project)], 
+                    modal_add_citation(project)],
                     className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
-                    dbc.Spinner(html.Div(get_citations(project), id='citation_table'))
+                    dbc.Spinner(html.Div(get_citations(
+                        project), id='citation_table'))
                 ])
-            ],class_name="mb-3"),
+            ], class_name="mb-3"),
         ])
 
     else:
