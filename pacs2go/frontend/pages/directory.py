@@ -268,7 +268,7 @@ def modal_edit_file(file:File):
             # Actual modal view
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle(f"Edit {file.name}")),
+                    dbc.ModalHeader(dbc.ModalTitle(f"Edit File")),
                     dbc.ModalBody([
                         html.Div(id='edit_file_in_list_content'),
                         dbc.Label(
@@ -525,12 +525,13 @@ def download_single_file(n_clicks, directory_name, project_name):
     [State('modal_delete_file', 'is_open'),
      State('directory', 'data'),
      State('project', 'data'),
-     State('file', 'data')],
+     State('file', 'data'),
+     State('pagination-files', 'active_page')],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
-    if open != [None]:
+def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name, page):
+    if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
             # Delete Button in File list - open/close Modal View
             if ctx.triggered_id['type'] == "delete_file":
@@ -546,7 +547,7 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
                     file.delete_file()
                     # Close Modal and show message
                     return is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, get_files_table(directory)
+                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, get_files_table(directory, active_page=page if page==0 else page - 1)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
 
@@ -571,30 +572,33 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
      State('project', 'data'),
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
-     State('edit_file_in_list_tags', 'value'),],
+     State('edit_file_in_list_tags', 'value'),
+     State('pagination-files', 'active_page')],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, project_name, file_name, modality, tags):
-    if isinstance(ctx.triggered_id, dict):
-        # Delete Button in File list - open/close Modal View
-        if ctx.triggered_id['type'] == "edit_file_in_list":
-            return not is_open, dbc.Label(
-                f"Are you sure you want to edit this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
-        # Delete Button in the Modal View
-        if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
-            try:
-                connection = get_connection()
-                directory = connection.get_directory(project_name, directory_name)
-                file = directory.get_file(file_name)
-                if modality:
-                    file.set_modality(modality)
-                if tags:
-                    file.set_tags(tags)
-                return not is_open, dbc.Alert(
-                    [f"The file {file.name} has been successfully edited! "], color="success"), no_update, get_files_table(directory)
-            except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-                return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
+def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, project_name, file_name, modality, tags, page):
+    if any(item is not None for item in open):
+        if isinstance(ctx.triggered_id, dict):
+            # Delete Button in File list - open/close Modal View
+            if ctx.triggered_id['type'] == "edit_file_in_list":
+                return not is_open, dbc.Label(
+                    f"Are you sure you want to edit this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
+            # Delete Button in the Modal View
+            if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
+                try:
+                    connection = get_connection()
+                    print(page)
+                    directory = connection.get_directory(project_name, directory_name)
+                    file = directory.get_file(file_name)
+                    if modality:
+                        file.set_modality(modality)
+                    if tags:
+                        file.set_tags(tags)
+                    return not is_open, dbc.Alert(
+                        [f"The file {file.name} has been successfully edited! "], color="success"), no_update, get_files_table(directory, active_page=page if page==0 else page - 1)
+                except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+                    return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
 
     elif isinstance(ctx.triggered_id, str):
         if ctx.triggered_id == "close_modal_edit_file_in_list":
@@ -725,7 +729,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     dbc.Spinner(html.Div(get_files_table(
                         directory), id='files_table')),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
-                        int(directory.number_of_files)/20), first_last=True, previous_next=True)
+                        int(directory.number_of_files)/20), first_last=True, previous_next=True, active_page=0)
                 ])], class_name="mb-3"),
 
             # Display a preview of the first file's content
