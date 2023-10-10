@@ -120,6 +120,9 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         project_name = str(project_name).replace(" ", "_")
         try:
             connection = get_connection()
+            keywords if keywords else "No keywords."
+            description if description else "No description."
+            parameters if parameters else "No parameters."
             # Try to create project
             project = connection.create_project(
                 name=project_name, description=description, keywords=keywords, parameters=parameters)
