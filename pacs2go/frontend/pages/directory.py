@@ -8,7 +8,7 @@ from typing import Optional
 import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import (ALL, Input, Output, State, callback, ctx, dash_table, dcc,
-                  get_app, html, no_update, register_page)
+                  html, no_update, register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
@@ -26,8 +26,9 @@ register_page(__name__, title='Directory - PACS2go',
 def get_details(directory: Directory):
     detail_data = []
     if directory.parameters:
-        formatted_parameters = html.B("Parameters"), format_linebreaks(directory.parameters)
-        detail_data.append(html.H6(formatted_parameters))
+        formatted_parameters = format_linebreaks(directory.parameters)
+        parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
+        detail_data.append(html.H6(parameters))
 
     time = html.B("Created on: "), directory.timestamp_creation.strftime(
         "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%dth %B %Y, %H:%M:%S")
