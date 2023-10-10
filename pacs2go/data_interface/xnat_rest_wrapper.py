@@ -272,9 +272,11 @@ class XNATProject():
                 'Something went wrong trying to delete the project.' + str(response.status_code))
         
     def create_directory(self, name) -> 'XNATDirectory':
+        # To create an empty directory in XNAT, it is necessary to temporarily insert a file.
         file_path = 'empty_dir.txt'
         with open(file_path, 'w') as f:
             f.write('No content')
+        
         file = self.insert(file_path=file_path,directory_name=name)
         dir = file.directory
         file.delete_file()
@@ -311,7 +313,7 @@ class XNATProject():
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
         # File path leads to a single file
         if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
-            return self.insert_file_into_project(file_path, directory_name, tags_string)
+            return self.insert_file_into_project(file_path=file_path, directory_name=directory_name, tags_string=tags_string)
 
         # File path equals a zip file
         elif zipfile.is_zipfile(file_path):
@@ -375,7 +377,7 @@ class XNATProject():
                         # Insert files
                         for f in onlyfiles:
                             self.insert_file_into_project(
-                                os.path.join(dir_path, f), directory_name, tags_string)
+                                file_path=os.path.join(dir_path, f), directory_name=directory_name, tags_string=tags_string)
 
                 return XNATDirectory(self, directory_name)
 

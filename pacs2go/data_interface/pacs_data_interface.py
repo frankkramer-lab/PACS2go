@@ -363,11 +363,11 @@ class Project():
                     # Get the file's suffix
                     format = file_format[Path(file_path).suffix]
                     file_id = file_path.split("/")[-1]
-                    file_data = db.insert_into_file(
+                    updated_file_data = db.insert_into_file(
                         FileData(file_name=file_id, parent_directory=directory.name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
                 
                 file = self._xnat_project.insert_file_into_project(
-                    file_path=file_path, file_id=file_data.file_name, directory_name=directory.name, tags_string=tags_string)
+                    file_path=file_path, file_id=updated_file_data.file_name, directory_name=directory.name, tags_string=tags_string)
                 
                 self.set_last_updated(datetime.now(timezone))
     
@@ -399,7 +399,7 @@ class Project():
                         if len(files) > 0:
                             # Handle files of current directory
                             for file_name in files:
-                                # Create a FileData object and add it to the list
+                                # Create a FileData object
                                 file_data = FileData(
                                     file_name=file_name,
                                     parent_directory=current_dir.name,
@@ -412,22 +412,21 @@ class Project():
                     
                                 # Insert file to current directory
                                 with PACS_DB() as db:
-                                    # Insert all file objects of the current directory at once
-                                    file_data = db.insert_into_file(file_data)
+                                    updated_file_data = db.insert_into_file(file_data)
                                 self._xnat_project.insert_file_into_project(
-                                    file_path=os.path.join(root, file_name), file_id=file_data.file_name, directory_name=current_dir.name, tags_string=tags_string)
+                                    file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.name, tags_string=tags_string)
 
                         directory = current_dir
                     self.set_last_updated(datetime.now(timezone))
-                    return root_dir
+                return root_dir
 
             else:
                 raise ValueError
         except ValueError:
-            raise WrongUploadFormatException(str(file_path.split("-")[-1]))
+            raise WrongUploadFormatException(str(file_path.split("/")[-1]))
         except Exception as err:
             print("This is the error: " + str(err))
-            raise UnsuccessfulUploadException(str(file_path.split("-")[-1]))
+            raise UnsuccessfulUploadException(str(file_path.split("/")[-1]))
 
 
 class Directory():
@@ -609,11 +608,11 @@ class File():
                 self._db_file = db.get_file_by_name_and_directory(
                     self.name, self.directory.name)
         except:
-            raise UnsuccessfulGetException(f"File '{name}'")
+            raise UnsuccessfulGetException(f"DB-File '{name}'")
 
         if _file_filestorage_object:
             self._xnat_file = _file_filestorage_object
-        if self.directory.project.connection._kind == "XNAT":
+        elif self.directory.project.connection._kind == "XNAT":
             try:
                 self._xnat_file = XNATFile(directory._xnat_directory, name)
             except:

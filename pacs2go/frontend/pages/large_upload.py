@@ -174,7 +174,6 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 modality = modality if modality else '-'
                 if dir_name:
                     new_location = project.insert(filename, dir_name, tags, modality)
-
                 else:
                     # If the user entered no diretory name
                     new_location = project.insert(file_path=filename, tags_string=tags, modality=modality)
