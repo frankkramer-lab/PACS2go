@@ -455,12 +455,14 @@ class Directory():
             raise FailedConnectionException
 
     @property
-    def number_of_files(self) -> str:
-        # TODO: calculate complete number by retrieving number_of_files recursively for each subdir
-        try:
-            return self._xnat_directory.number_of_files
-        except:
-            raise UnsuccessfulGetException("Number of files in this directory")
+    def number_of_files(self) -> int:
+        total_files = len(self.get_all_files())
+
+        # Recursively calculate the number of files in subdirectories
+        for subdirectory in self.get_subdirectories():
+            total_files += subdirectory.number_of_files
+
+        return total_files
 
     @property
     def parent_directory(self) -> 'Directory':
