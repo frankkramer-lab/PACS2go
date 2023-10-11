@@ -51,7 +51,7 @@ def get_directories_table(project: Project, filter: str = ''):
     rows = []
     for d in project.get_all_directories():
         # Only show rows if no filter is applied of if the filter has a match in the directory's name
-        if filter.lower() in d.name.lower() or len(filter) == 0:
+        if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([
                 html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}",

@@ -107,7 +107,7 @@ def get_subdirectories_table(directory: Directory, filter: str = ''):
     rows = []
     for d in directory.get_subdirectories():
         # Only show rows if no filter is applied of if the filter has a match in the directory's name
-        if filter.lower() in d.name.lower() or len(filter) == 0:
+        if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
                 d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
