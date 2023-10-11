@@ -1,12 +1,11 @@
 import base64
 from io import BytesIO
-from pacs2go.data_interface.pacs_data_interface import Connection
 
-from dash import dcc
-from dash import html
-from dash import page_registry
+from dash import dcc, html, page_registry
 from flask import session
 from flask_login import current_user
+
+from pacs2go.data_interface.pacs_data_interface import Connection
 
 server_url = "http://xnat-web:8080"
 connection_type = "XNAT" # To change Backend, change string here
@@ -85,3 +84,20 @@ def pil_to_b64(im, enc_format="png", **kwargs):
     encoded = base64.b64encode(buff.getvalue()).decode("utf-8")
 
     return encoded
+
+
+def format_linebreaks(to_be_formatted_string) -> list:
+    parameters_list = to_be_formatted_string.split('\n')
+    
+    # Create a list to hold the formatted content
+    formatted_parameters = []
+    
+    # Iterate over the split elements and insert html.Br() between them
+    for param in parameters_list:
+        formatted_parameters.append(param)
+        formatted_parameters.append(html.Br())
+    
+    # Remove the trailing <br> tag
+    formatted_parameters.pop()
+
+    return formatted_parameters

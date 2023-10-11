@@ -1,32 +1,20 @@
 import shutil
 import tempfile
 import uuid
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
-from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
 import dash_bootstrap_components as dbc
 import dash_uploader as du  # https://github.com/np-8/dash-uploader
-from dash import callback
-from dash import ctx
-from dash import dcc
-from dash import get_app
-from dash import html
-from dash import no_update
-from dash import register_page
-from dash.dependencies import Input
-from dash.dependencies import Output
-from dash.dependencies import State
+from dash import callback, ctx, dcc, get_app, html, no_update, register_page
+from dash.dependencies import Input, Output, State
 from flask_login import current_user
 
-
+from pacs2go.data_interface.exceptions.exceptions import (
+    FailedConnectionException, UnsuccessfulGetException,
+    UnsuccessfulUploadException, WrongUploadFormatException)
+from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.frontend.helpers import (colors, get_connection,
+                                      login_required_interface)
 
 register_page(__name__, title='Upload - PACS2go',
               path_template='/upload/<project_name>')
@@ -52,7 +40,17 @@ def get_project_names() -> List[str]:
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return ["No database connection."]
 
-def get_directory_names(project:Project) -> List[str]:
+def get_subdirectory_names_recursive(directory):
+    # Recursively fetch all nested subdirectories using depth-first traversal
+    dir_list = []
+    for d in directory.get_subdirectories():
+        label = f"{d.name.replace('::', ' / ')}"
+        dir_list.append(html.Option(label=label, value=d.name))
+        dir_list.extend(get_subdirectory_names_recursive(d))
+
+    return dir_list
+
+def get_directory_names(project: Project) -> List[str]:
     # Get List of all project names as html Options
     try:
         directories = get_connection().get_project(project).get_all_directories()
@@ -60,8 +58,10 @@ def get_directory_names(project:Project) -> List[str]:
 
         for d in directories:
             # html option to create a html datalist
-            dir_list.append(html.Option(value=d.name))
-
+            dir_list.append(html.Option(label=d.name.replace('::', ' / '), value=d.name))
+            if len(d.get_subdirectories()) > 0:
+                dir_list.extend(get_subdirectory_names_recursive(d))
+            
         return dir_list
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
@@ -106,8 +106,13 @@ def uploader(passed_project: Optional[str]):
         dbc.Row(dbc.Col(
                 [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
                  dbc.Input(id="upload_file_tags",
-                           placeholder="File tags like \'CT, Dermatology,...\' (optional)"),
+                           placeholder="File tags like \'Control group, Dermatology,...\' (optional)"),
                  dbc.FormText("Tags will be added to every file.")], className="mb-3")),
+        dbc.Row(dbc.Col(
+                [dbc.Label("Modality - In case that the modality is consistent for all files."),
+                 dbc.Input(id="upload_file_modality",
+                           placeholder="CT, MRI,... (optional)"),
+                 dbc.FormText("Modality will be added to every file.")], className="mb-3")),
         dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
                          'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
         dbc.Row(
@@ -150,9 +155,11 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
     State('project_name', 'value'),
     State('directory_name', 'value'),
     State('filename-storage', 'data'),
-    State('upload_file_tags', 'value'), prevent_initial_call=True
+    State('upload_file_tags', 'value'), 
+    State('upload_file_modality', 'value'), 
+    prevent_initial_call=True
 )
-def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str):
+def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename: str, tags: str, modality: str):
     if ctx.triggered_id == "click-upload":
         if project_name:
             # Project name shall not contain whitespaces
@@ -163,21 +170,13 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 if project.your_user_role == 'Collaborators':
                     return dbc.Alert("Upload not possible! Your user role in the project '" + project.name + "' does not allow you to upload files.", color="danger")
 
-                if dir_name and tags:
-                    new_location = project.insert(filename, dir_name, tags)
-
-                elif tags:
-                    # If the user entered no diretory name but tags
-                    new_location = project.insert(
-                        file_path=filename, tags_string=tags)
-
-                elif dir_name:
-                    # If the user entered a diretory name but no tags
-                    new_location = project.insert(
-                        file_path=filename, directory_name=dir_name)
+                tags = tags if tags else ''
+                modality = modality if modality else '-'
+                if dir_name:
+                    new_location = project.insert(filename, dir_name, tags, modality)
                 else:
-                    # If the user entered no diretory name or tags
-                    new_location = project.insert(file_path=filename)
+                    # If the user entered no diretory name
+                    new_location = project.insert(file_path=filename, tags_string=tags, modality=modality)
 
                 if filename.endswith('.zip'):
                     dir_name = new_location.name
@@ -187,7 +186,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 # Remove tempdir after successful upload to XNAT
                 shutil.rmtree(dirpath)
                 return dbc.Alert(["The upload was successful! ",
-                                  dcc.Link(f"Click here to go to the directory {dir_name}.",
+                                  dcc.Link(f"Click here to go to the directory {dir_name.rsplit('::', 1)[-1]}.",
                                            href=f"/dir/{project_name}/{dir_name}",
                                            className="fw-bold text-decoration-none",
                                            style={'color': colors['links']})], color="success")

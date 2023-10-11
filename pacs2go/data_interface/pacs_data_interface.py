@@ -1,28 +1,44 @@
+from datetime import datetime
+import shutil
+import tempfile
 from pacs2go.data_interface.exceptions.exceptions import DownloadException
 from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
 from pacs2go.data_interface.exceptions.exceptions import FailedDisconnectException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulProjectCreationException
+from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulCreationException
 from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
 from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNAT
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATDirectory
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATFile
-from pacs2go.data_interface.xnat_pacs_data_interface import pyXNATProject
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATDirectory
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATFile
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATProject
+from pacs2go.data_interface.data_structure_db import PACS_DB
+from pacs2go.data_interface.data_structure_db import ProjectData
+from pacs2go.data_interface.data_structure_db import DirectoryData
+from pacs2go.data_interface.data_structure_db import FileData
+from pacs2go.data_interface.data_structure_db import CitationData
+from pacs2go.data_interface.xnat_rest_wrapper import XNAT
+from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
+from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
+from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
+from pathlib import Path
+from pytz import timezone
 from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Union
 
+import os
+import zipfile
+
+
+# File format metadata
+file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
+               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
+
+timezone = timezone("Europe/Berlin")
+
 
 class Connection():
-    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '') -> None:
+    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '', db_host: str = 'data-structure-db', db_port: int = 5432) -> None:
         self.kind = kind
         self.server = server
         self.username = username
@@ -31,10 +47,9 @@ class Connection():
         self.cookies = None
 
         try:
-            if self.kind == "pyXNAT":
-                self._xnat_connection = pyXNAT(server, username, password)
-            elif self.kind == "XNAT":
-                self._xnat_connection = XNAT(server=server, username=username, password=password, session_id=session_id)
+            if self.kind == "XNAT":
+                self._xnat_connection = XNAT(
+                    server=server, username=username, password=password, session_id=session_id)
             else:
                 raise ValueError(kind)
         except:
@@ -42,7 +57,7 @@ class Connection():
 
     @property
     def _kind(self) -> str:
-        if self.kind in ['pyXNAT', 'XNAT']:
+        if self.kind in ['XNAT']:
             return self.kind
         else:
             # FailedConnectionException because only these connection types are supported atm
@@ -57,61 +72,80 @@ class Connection():
             raise FailedConnectionException
 
     def __enter__(self) -> 'Connection':
-        return self._xnat_connection.__enter__()
+        self._xnat_connection = self._xnat_connection.__enter__()
+        return self
 
     def __exit__(self, type, value, traceback) -> None:
         try:
-            return self._xnat_connection.__exit__(type, value, traceback)
+            self._xnat_connection.__exit__(type, value, traceback)
         except:
             raise FailedDisconnectException
 
-    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'Project':
+    def create_project(self, name: str, description: str = '', keywords: str = '', parameters: str = '') -> 'Project':
         try:
-            return self._xnat_connection.create_project(name, description, keywords)
-        except:
-            raise UnsuccessfulProjectCreationException(str(name))
+            p = self.get_project(name)
+            return p
+        except UnsuccessfulGetException as err:
+            try:
+                with self._xnat_connection as xnat:
+                    xnat_project = xnat.create_project(
+                        name, description, keywords)
+                with PACS_DB() as db:
+                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+                    db.insert_into_project(ProjectData(name=name, keywords=keywords, description=description,
+                                           parameters=parameters, timestamp_creation=timestamp_now, timestamp_last_updated=timestamp_now))
+                return Project(self, name, _project_filestorage_object=xnat_project)
+            except Exception as err:
+                raise UnsuccessfulCreationException(f"{err} {str(name)}")
 
     def get_project(self, name: str) -> Optional['Project']:
         try:
-            return self._xnat_connection.get_project(name)
+            return Project(self, name)
         except:
             raise UnsuccessfulGetException(f"Project '{name}'")
 
     def get_all_projects(self) -> List['Project']:
         try:
-            return self._xnat_connection.get_all_projects()
-        except:
-            raise UnsuccessfulGetException("Projects")
+            with PACS_DB() as db:
+                pjs = db.get_all_projects()
+            projects = [self.get_project(project.name) for project in pjs]
+            return projects
+        except Exception as err:
+            raise UnsuccessfulGetException(f"{err} Projects")
 
     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
         try:
-            return self._xnat_connection.get_directory(project_name, directory_name)
-        except:
-            raise UnsuccessfulGetException(f"Directory '{directory_name}'")
+            return Directory(self.get_project(project_name), directory_name)
+        except Exception as err:
+            raise UnsuccessfulGetException(
+                f"Directory '{directory_name}' {err}")
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
         try:
-            return self._xnat_connection.get_file(
-                project_name, directory_name, file_name)
-        except:
-            raise UnsuccessfulGetException(f"File '{file_name}'")
+            return File(directory=self.get_directory(project_name=project_name, directory_name=directory_name), name=file_name)
+        except Exception as err:
+            raise UnsuccessfulGetException(f"File '{file_name}' {err}")
 
 
 class Project():
-    def __init__(self, connection: Connection, name: str) -> None:
+    def __init__(self, connection: Connection, name: str, _project_filestorage_object=None) -> None:
         self.connection = connection
         self.name = name
 
-        if self.connection._kind == "pyXNAT":
-            try:
-                self._xnat_project = pyXNATProject(connection, name)
-            except:
-                raise UnsuccessfulGetException(f"Project '{name}'")
+        try:
+            with PACS_DB() as db:
+                self._db_project = db.get_project_by_name(name)
+        except:
+            raise UnsuccessfulGetException(f"Projectx '{name}'")
+
+        if _project_filestorage_object:
+            self._xnat_project = _project_filestorage_object
         elif self.connection._kind == "XNAT":
             try:
-                self._xnat_project = XNATProject(connection, name)
-            except:
-                raise UnsuccessfulGetException(f"Project '{name}'")
+                self._xnat_project = XNATProject(
+                    connection._xnat_connection, name)
+            except Exception as err:
+                raise UnsuccessfulGetException(f"Projectx '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
             raise FailedConnectionException
@@ -119,13 +153,16 @@ class Project():
     @property
     def description(self) -> str:
         try:
-            return self._xnat_project.description
+            return self._db_project.description
         except:
             raise UnsuccessfulGetException("Project description")
 
     def set_description(self, description_string: str) -> None:
         try:
-            return self._xnat_project.set_description(description_string)
+            with PACS_DB() as db:
+                db.update_attribute(
+                    table_name='Project', attribute_name='description', new_value=description_string, condition_column='name', condition_value=self.name)
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"a new description ('{description_string}')")
@@ -133,16 +170,65 @@ class Project():
     @property
     def keywords(self) -> str:
         try:
-            return self._xnat_project.keywords
+            return self._db_project.keywords
         except:
             raise UnsuccessfulGetException("Project-related keywords")
 
     def set_keywords(self, keywords_string: str) -> None:
         try:
-            return self._xnat_project.set_keywords(keywords_string)
+            with PACS_DB() as db:
+                db.update_attribute(
+                    table_name='Project', attribute_name='keywords', new_value=keywords_string, condition_column='name', condition_value=self.name)
+            self.set_last_updated(datetime.now(timezone))
         except:
             raise UnsuccessfulAttributeUpdateException(
                 f"the project keywords to '{keywords_string}'")
+
+    @property
+    def parameters(self) -> str:
+        try:
+            return self._db_project.parameters
+        except:
+            raise UnsuccessfulGetException("Project-related parameters")
+
+    def set_parameters(self, parameters_string: str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.update_attribute(
+                    table_name='Project', attribute_name='parameters', new_value=parameters_string, condition_column='name', condition_value=self.name)
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the project parameters to '{parameters_string}'")
+
+    @property
+    def last_updated(self) -> datetime:
+        try:
+            # Convert the timestamp string to a datetime object
+            timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_last_updated), "%Y-%m-%d %H:%M:%S")
+            return timestamp_datetime
+        except Exception as err:
+            raise UnsuccessfulGetException(
+                "The timestamp of the last project update" + str(err))
+
+    def set_last_updated(self, timestamp: datetime) -> None:
+        try:
+            with PACS_DB() as db:
+                timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                db.update_attribute(
+                    table_name='Project', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='name', condition_value=self.name)
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the project's 'last_updated' to '{timestamp}'")
+
+    @property
+    def timestamp_creation(self) -> datetime:
+        try:
+            # Convert the timestamp string to a datetime object
+            timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_creation), "%Y-%m-%d %H:%M:%S")
+            return timestamp_datetime
+        except:
+            raise UnsuccessfulGetException("The timestamp of project creation")
 
     @property
     def owners(self) -> List[str]:
@@ -158,57 +244,210 @@ class Project():
             return self._xnat_project.your_user_role
         except:
             raise UnsuccessfulGetException("Your user role")
+        
+    @property
+    def citations(self) -> List['CitationData']:
+        try:
+            with PACS_DB() as db:
+                # Get List of CitationsData objects (containing id, citation string, link)
+                citations = db.get_citations_for_project(self.name)
+                return citations
+        except:
+            raise UnsuccessfulGetException(
+                "The project citations")
+
+    def add_citation(self, citations_string: str, link: str) -> None:
+        try:
+            with PACS_DB() as db:
+                # Insert new citation (use cit_id 0 as this id will be generated by Postgres during insert)
+                db.insert_into_citation(CitationData(
+                    cit_id=0, citation=citations_string, link=link, project_name=self.name))
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulAttributeUpdateException("New citation")
+        
+    def delete_citation(self, citation_id: int) -> None:
+        try:
+            with PACS_DB() as db:
+                db.delete_citation(citation_id)
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulDeletionException("Citation")
 
     def exists(self) -> bool:
         return self._xnat_project.exists()
 
     def download(self, destination: str) -> str:
         try:
-            return self._xnat_project.download(destination)
+            # Create project filder
+            os.makedirs(os.path.join(destination, self.name), exist_ok=True)
+            for d in self.get_all_directories():
+                # Copy directories with all their subdirectories to destination
+                d.download(os.path.join(destination, self.name), zip=False)
+            # Zip it
+            destination_zip = shutil.make_archive(os.path.join(
+                destination, self.name), 'zip', destination, self.name)
+            return destination_zip
         except:
             raise DownloadException
 
     def delete_project(self) -> None:
         try:
-            return self._xnat_project.delete_project()
+            with PACS_DB() as db:
+                db.delete_project_by_name(self.name)
+            self._xnat_project.delete_project()
         except:
             raise UnsuccessfulDeletionException(f"Project '{self.name}'")
 
-    def get_directory(self, name) -> 'Directory':
+    def create_directory(self, name: str, parameters: str = None) -> 'Directory':
         try:
-            return self._xnat_project.get_directory(name)
+            d = self.get_directory(name)
+            return d
+        except:
+            try:
+                with PACS_DB() as db:
+                    unique_name = self.name + '::' + name
+                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+                    db.insert_into_directory(DirectoryData(
+                        unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=None, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now))
+
+                dir = self._xnat_project.create_directory(unique_name)
+                self.set_last_updated(datetime.now(timezone))
+                return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
+            except Exception as err:
+                raise UnsuccessfulCreationException(str(name))
+
+    def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
+        try:
+            return Directory(self, name=name, _directory_filestorage_object=_directory_filestorage_object)
         except:
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
     def get_all_directories(self) -> Sequence['Directory']:
         try:
-            return self._xnat_project.get_all_directories()
+            with PACS_DB() as db:
+                directories_from_db = db.get_directories_by_project(self.name)
+
+            # Get directory objects
+            filtered_directories = [self.get_directory(
+                dir_data.unique_name) for dir_data in directories_from_db]
+
+            return filtered_directories
+
         except:
             raise UnsuccessfulGetException("Directories")
 
-    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '') -> Union['Directory', 'File']:
         try:
-            return self._xnat_project.insert(file_path, directory_name, tags_string)
-        except ValueError:
-            raise WrongUploadFormatException(str(file_path))
-        except:
-            raise UnsuccessfulUploadException(str(file_path))
+            if directory_name == '':
+                # No desired name was given, set the name as the current timestamp
+                directory_name = datetime.now(timezone).strftime("%Y_%m_%d_%H_%M_%S")
 
+            if directory_name.count('::') == 1 or directory_name.count('::') == 0:
+                # Name is not an inherited name and is directly under a project, create/get directory
+                directory = self.create_directory(directory_name)
+            else:
+                # Get the parent directory of what is a subdirectory (contains a -) by its unique name
+                parent_dir = self.get_directory(
+                    directory_name.rsplit('::', 1)[0])
+
+                # Create/get the subdirectory from parent directory
+                directory = parent_dir.create_subdirectory(
+                    directory_name.rsplit('::', 1)[-1])
+
+            timestamp = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+
+            # File path leads to a single file
+            if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
+                with PACS_DB() as db:
+                    # Get the file's suffix
+                    format = file_format[Path(file_path).suffix]
+                    file_id = file_path.split("/")[-1]
+                    updated_file_data = db.insert_into_file(
+                        FileData(file_name=file_id, parent_directory=directory.name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
+                
+                file = self._xnat_project.insert_file_into_project(
+                    file_path=file_path, file_id=updated_file_data.file_name, directory_name=directory.name, tags_string=tags_string)
+                
+                self.set_last_updated(datetime.now(timezone))
+    
+                return File(directory=directory, name=file.name, _file_filestorage_object=file)
+
+            # File path equals a zip file
+            elif zipfile.is_zipfile(file_path):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    # Unzip the file to the temporary directory
+                    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                        zip_ref.extractall(temp_dir)
+
+                    root_dir = directory
+
+                    # Walk through the unzipped directory
+                    for root, dirs, files in os.walk(temp_dir):
+                        if root == temp_dir:
+                            # Skip tempdir name
+                            continue
+                        if os.path.basename(root) == root_dir.display_name:
+                            # First level directory is already created
+                            current_dir = root_dir
+                        else:
+                            # Create sub-directory according to zipfile
+                            current_dir = directory.create_subdirectory(
+                                os.path.basename(root))
+
+
+                        if len(files) > 0:
+                            # Handle files of current directory
+                            for file_name in files:
+                                # Create a FileData object
+                                file_data = FileData(
+                                    file_name=file_name,
+                                    parent_directory=current_dir.name,
+                                    format=file_format[Path(file_name).suffix],
+                                    tags=tags_string,
+                                    modality=modality,
+                                    timestamp_creation=timestamp,
+                                    timestamp_last_updated=timestamp
+                                )
+                    
+                                # Insert file to current directory
+                                with PACS_DB() as db:
+                                    updated_file_data = db.insert_into_file(file_data)
+                                self._xnat_project.insert_file_into_project(
+                                    file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.name, tags_string=tags_string)
+
+                        directory = current_dir
+                    self.set_last_updated(datetime.now(timezone))
+                return root_dir
+
+            else:
+                raise ValueError
+        except ValueError:
+            raise WrongUploadFormatException(str(file_path.split("/")[-1]))
+        except Exception as err:
+            print("This is the error: " + str(err))
+            raise UnsuccessfulUploadException(str(file_path.split("/")[-1]))
 
 
 class Directory():
-    def __init__(self, project: Project, name: str) -> None:
-        self.name = name
+    def __init__(self, project: Project, name: str, _directory_filestorage_object=None) -> None:
+        self.name = name  # unique
+        self.display_name = self.name.split('::')[-1]
         self.project = project
 
-        if self.project.connection._kind == "pyXNAT":
-            try:
-                self._xnat_directory = pyXNATDirectory(project, name)
-            except:
-                raise UnsuccessfulGetException(f"Directory '{name}'")
+        try:
+            with PACS_DB() as db:
+                self._db_directory = db.get_directory_by_name(name)
+
+        except:
+            raise UnsuccessfulGetException(f"Directory '{name}'")
+
+        if _directory_filestorage_object:
+            self._xnat_directory = _directory_filestorage_object
         elif self.project.connection._kind == "XNAT":
             try:
-                self._xnat_directory = XNATDirectory(project, name)
+                self._xnat_directory = XNATDirectory(
+                    project._xnat_project, name)
             except:
                 raise UnsuccessfulGetException(f"Directory '{name}'")
         else:
@@ -216,60 +455,168 @@ class Directory():
             raise FailedConnectionException
 
     @property
-    def contained_file_tags(self) -> str:
-        try:
-            return self._xnat_directory.contained_file_tags
-        except:
-            raise UnsuccessfulGetException("File tags")
+    def number_of_files(self) -> int:
+        total_files = len(self.get_all_files())
+
+        # Recursively calculate the number of files in subdirectories
+        for subdirectory in self.get_subdirectories():
+            total_files += subdirectory.number_of_files
+
+        return total_files
 
     @property
-    def number_of_files(self) -> str:
+    def parent_directory(self) -> 'Directory':
         try:
-            return self._xnat_directory.number_of_files
+            return self.project.get_directory(self._db_directory.parent_directory)
         except:
-            raise UnsuccessfulGetException("Number of files in this directory")
+            raise UnsuccessfulGetException("Parent directory name")
+
+    @property
+    def parameters(self) -> str:
+        try:
+            return self._db_directory.parameters
+        except:
+            raise UnsuccessfulGetException("Directory-related parameters")
+
+    def set_parameters(self, parameters_string: str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.update_attribute(
+                    table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.name)
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the directory parameters to '{parameters_string}'")
+
+    @property
+    def last_updated(self) -> str:
+        try:
+            return self._db_directory.timestamp_last_updated
+        except:
+            raise UnsuccessfulGetException(
+                "The timestamp of the last directory update")
+
+    def set_last_updated(self, timestamp: datetime) -> None:
+        try:
+            with PACS_DB() as db:
+                timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                db.update_attribute(
+                    table_name='Directory', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='unique_name', condition_value=self.name)
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the directory's 'last_updated' to '{timestamp}'")
+
+    @property
+    def timestamp_creation(self) -> str:
+        try:
+            return self._db_directory.timestamp_creation
+        except:
+            raise UnsuccessfulGetException(
+                "The timestamp of directory creation")
 
     def exists(self) -> bool:
         return self._xnat_directory.exists()
 
     def delete_directory(self) -> None:
         try:
-            return self._xnat_directory.delete_directory()
+            for subdir in self.get_subdirectories():
+                subdir.delete_directory()
+            with PACS_DB() as db:
+                db.delete_directory_by_name(self.name)
+
+            # Update the parents last updated
+            if self._db_directory.parent_directory == None:
+                # Top level directory -> change last updated of project
+                self.project.set_last_updated(datetime.now(timezone))
+            else:
+                self.parent_directory.set_last_updated(datetime.now(timezone))
+
         except:
             raise UnsuccessfulDeletionException(f"directory '{self.name}'")
 
-    def get_file(self, file_name: str) -> 'File':
+    def create_subdirectory(self, name: str, parameters: str = '') -> 'Directory':
         try:
-            return self._xnat_directory.get_file(file_name)
+            d = self.project.get_directory(self.name + '::' + name)
+            return d
+        except:
+            try:
+                with PACS_DB() as db:
+                    unique_name = self.name + '::' + name
+                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+                    db.insert_into_directory(DirectoryData(
+                        unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now, ))
+
+                dir = self.project._xnat_project.create_directory(unique_name)
+                self.set_last_updated(datetime.now(timezone))
+                return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
+            except Exception:
+                raise UnsuccessfulCreationException(str(name))
+
+    def get_subdirectories(self) -> List['Directory']:
+        with PACS_DB() as db:
+            subdirectories_from_db = db.get_subdirectories_by_directory(
+                self.name)
+
+        # Only return the directories that are subdirectories of this directory
+        filtered_directories = [
+            Directory(self.project, d.unique_name) for d in subdirectories_from_db]
+
+        return filtered_directories
+
+    def get_file(self, file_name: str, _file_filestorage_object=None) -> 'File':
+        try:
+            return File(self, name=file_name, _file_filestorage_object=_file_filestorage_object)
         except:
             raise UnsuccessfulGetException(f"File '{file_name}'")
 
     def get_all_files(self) -> List['File']:
         try:
-            return self._xnat_directory.get_all_files()
-        except:
+            fs = self._xnat_directory.get_all_files()
+            files = [self.get_file(
+                file_name=f.name, _file_filestorage_object=f) for f in fs]
+            return files
+        except Exception as err:
             raise UnsuccessfulGetException("Files")
 
-    def download(self, destination: str) -> str:
-        try:
-            return self._xnat_directory.download(destination)
-        except:
-            raise DownloadException
+    def download(self, destination, zip: bool = True) -> str:
+        self._create_folders_and_copy_files_for_download(destination)
+        if zip:
+            destination_zip = shutil.make_archive(os.path.join(
+                destination, self.display_name), 'zip', destination, self.display_name)
+            return destination_zip
+        else:
+            return destination
+
+    def _create_folders_and_copy_files_for_download(self, target_folder):
+        current_folder = os.path.join(target_folder, self.display_name)
+        os.makedirs(current_folder, exist_ok=True)
+
+        for file in self.get_all_files():
+            # Copy files to the current folder
+            file._xnat_file.download(current_folder)
+
+        for subdirectory in self.get_subdirectories():
+            subdirectory._create_folders_and_copy_files_for_download(
+                current_folder)
 
 
 class File():
-    def __init__(self, directory: Directory, name: str) -> None:
+    def __init__(self, directory: Directory, name: str, _file_filestorage_object=None) -> None:
         self.directory = directory
         self.name = name
-        if self.directory.project.connection._kind == "pyXNAT":
+
+        try:
+            with PACS_DB() as db:
+                self._db_file = db.get_file_by_name_and_directory(
+                    self.name, self.directory.name)
+        except:
+            raise UnsuccessfulGetException(f"DB-File '{name}'")
+
+        if _file_filestorage_object:
+            self._xnat_file = _file_filestorage_object
+        elif self.directory.project.connection._kind == "XNAT":
             try:
-                self._xnat_file = pyXNATFile(directory, name)
-            except:
-                raise UnsuccessfulGetException(f"File '{name}'")
-        
-        if self.directory.project.connection._kind == "XNAT":
-            try:
-                self._xnat_file = XNATFile(directory, name)
+                self._xnat_file = XNATFile(directory._xnat_directory, name)
             except:
                 raise UnsuccessfulGetException(f"File '{name}'")
         else:
@@ -279,9 +626,70 @@ class File():
     @property
     def format(self) -> str:
         try:
-            return self._xnat_file.format
+            return self._db_file.format
         except:
             raise UnsuccessfulGetException("File format")
+
+    @property
+    def tags(self) -> str:
+        try:
+            return self._db_file.tags
+        except:
+            raise UnsuccessfulGetException("File tags")
+
+    def set_tags(self, tags: str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.update_attribute(
+                    table_name='File', attribute_name='tags', new_value=tags, condition_column='file_name', 
+                    condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the file's 'modality' to '{tags}'")
+
+    @property
+    def modality(self) -> str:
+        try:
+            return self._db_file.modality
+        except:
+            raise UnsuccessfulGetException("File modality")
+        
+    def set_modality(self, modality: str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.update_attribute(
+                    table_name='File', attribute_name='modality', new_value=modality, condition_column='file_name', 
+                    condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
+            self.set_last_updated(datetime.now(timezone))
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the file's 'modality' to '{modality}'")
+
+    @property
+    def timestamp_creation(self) -> str:
+        try:
+            return self._db_file.timestamp_creation
+        except:
+            raise UnsuccessfulGetException("File creation timestamp")
+    
+    @property
+    def last_updated(self) -> str:
+        try:
+            return self._db_file.timestamp_last_updated
+        except:
+            raise UnsuccessfulGetException("File last update timestamp")
+
+    def set_last_updated(self, timestamp: datetime) -> None:
+        try:
+            with PACS_DB() as db:
+                timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                db.update_attribute(
+                    table_name='File', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='file_name', 
+                    condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
+        except:
+            raise UnsuccessfulAttributeUpdateException(
+                f"the file's 'last_updated' to '{timestamp}'")
 
     @property
     def content_type(self) -> str:
@@ -289,13 +697,6 @@ class File():
             return self._xnat_file.content_type
         except:
             raise UnsuccessfulGetException("File content type")
-
-    @property
-    def tags(self) -> str:
-        try:
-            return self._xnat_file.tags
-        except:
-            raise UnsuccessfulGetException("File tags")
 
     @property
     def size(self) -> int:
@@ -322,6 +723,12 @@ class File():
 
     def delete_file(self) -> None:
         try:
-            return self._xnat_file.delete_file()
+            self._xnat_file.delete_file()
+
+            with PACS_DB() as db:
+                db.delete_file_by_name(self.name)
+            
+            self.directory.set_last_updated(datetime.now(timezone))
+
         except:
             raise UnsuccessfulDeletionException(f"file '{self.name}'")

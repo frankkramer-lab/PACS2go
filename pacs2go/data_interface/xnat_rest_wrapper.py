@@ -4,26 +4,21 @@ import pathlib
 import uuid
 import zipfile
 from tempfile import TemporaryDirectory
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Union
+from typing import List, Sequence, Union
 
-from natsort import natsorted
 import requests
-from werkzeug.exceptions import Forbidden
-from werkzeug.exceptions import HTTPException
-from werkzeug.exceptions import NotFound
+from natsort import natsorted
+from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (
-    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json')
+    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json', '.txt')
 image_file_suffixes = (
     '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff')
 
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON'}
+               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
 
 
 class XNAT():
@@ -42,7 +37,7 @@ class XNAT():
             if response.status_code != 200:
                 # Non successful authentication
                 raise HTTPException(
-                    "Something went wrong connecting to XNAT. " + str(response.text))
+                    "Something went wrong connecting to XNAT. " + str(response.status_code))
             else:
                 # Return SessionID
                 self.session_id = response.text
@@ -79,7 +74,7 @@ class XNAT():
         response = requests.post(
             self.server + "/data/JSESSION/", cookies=self.cookies)
         if response.status_code != 200:
-            raise HTTPException("Unable to invalidate session Id.")
+            raise HTTPException("Unable to invalidate session Id." + str(response.status_code))
         else:
             print("XNAT session was successfully invalidated.")
 
@@ -149,12 +144,6 @@ class XNATProject():
             # Project was successfully retrieved
             # Get returned metadata to optimize number of XNAT REST calls (description and keywords don't require extra call)
             self._metadata = response.json()['items'][0]
-
-        elif (response.status_code == 401 or response.status_code == 404) and only_get_no_create is False:
-            # No project could be retrieved -> we want to create one with the given name
-            p = self.connection.create_project(self.name)
-            if p:
-                self._metadata = p._metadata
 
         else:
             # No project could be retrieved and we do not wish to create one
@@ -281,6 +270,18 @@ class XNATProject():
         elif response.status_code != 200:
             raise HTTPException(
                 'Something went wrong trying to delete the project.' + str(response.status_code))
+        
+    def create_directory(self, name) -> 'XNATDirectory':
+        # To create an empty directory in XNAT, it is necessary to temporarily insert a file.
+        file_path = 'empty_dir.txt'
+        with open(file_path, 'w') as f:
+            f.write('No content')
+        
+        file = self.insert(file_path=file_path,directory_name=name)
+        dir = file.directory
+        file.delete_file()
+        os.remove(file_path)
+        return dir
 
     def get_directory(self, name) -> 'XNATDirectory':
         return XNATDirectory(self, name)
@@ -312,7 +313,7 @@ class XNATProject():
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
         # File path leads to a single file
         if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
-            return self.insert_file_into_project(file_path, directory_name, tags_string)
+            return self.insert_file_into_project(file_path=file_path, directory_name=directory_name, tags_string=tags_string)
 
         # File path equals a zip file
         elif zipfile.is_zipfile(file_path):
@@ -365,7 +366,8 @@ class XNATProject():
                 with TemporaryDirectory() as tempdir:
                     with zipfile.ZipFile(file_path) as z:
                         z.extractall(tempdir)
-                        dir_path = next(os.scandir(tempdir)).path
+                        with os.scandir(tempdir) as entries:
+                            dir_path = next(entries).path
 
                         # Get all files, even those within a lower-level directory
                         onlyfiles = []
@@ -375,7 +377,7 @@ class XNATProject():
                         # Insert files
                         for f in onlyfiles:
                             self.insert_file_into_project(
-                                os.path.join(dir_path, f), directory_name, tags_string)
+                                file_path=os.path.join(dir_path, f), directory_name=directory_name, tags_string=tags_string)
 
                 return XNATDirectory(self, directory_name)
 
@@ -383,7 +385,7 @@ class XNATProject():
             raise ValueError("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', use_original_file_name:bool=True) -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, file_id:str='', directory_name: str = '', tags_string: str = '') -> 'XNATFile':
         if os.path.exists(file_path):
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
@@ -400,13 +402,9 @@ class XNATProject():
 
             # Only continue if file format/suffix is an accepted one
             if suffix in allowed_file_suffixes:
-                if use_original_file_name:
+                # Get unique file name 
+                if file_id == '':
                     file_id = file_path.split("/")[-1]
-                else:
-                    # File names are unique, duplicate file names can not be inserted
-                    file_id = str(uuid.uuid4())
-                    # Add file suffix to generated unique file_id
-                    file_id = file_id + suffix
 
                 # Get correct content tag for REST query parameter
                 if suffix in image_file_suffixes:
@@ -502,8 +500,8 @@ class XNATDirectory():
             raise HTTPException(
                 "Something went wrong trying to delete this directory. " + str(response.status_code))
 
-    def get_file(self, file_name: str, format: str = '', content_type: str = '', tags: str = '', size: int = None) -> 'XNATFile':
-        return XNATFile(self, file_name, format, content_type, tags, size)
+    def get_file(self, file_name: str, metadata: dict = None) -> 'XNATFile':
+        return XNATFile(self, file_name, metadata)
 
     def get_all_files(self) -> List['XNATFile']:
         response = requests.get(
@@ -518,9 +516,8 @@ class XNATDirectory():
 
             files = []
             for file in file_results:
-                # Create List of all Project objectss
-                file_object = self.get_file(file['Name'], format=file['file_format'],
-                                            content_type=file['file_content'], tags=file['file_tags'], size=file['Size'])
+                # Create List of all Project objects
+                file_object = self.get_file(file_name = file['Name'], metadata = file)
                 files.append(file_object)
             files = natsorted(files, key=lambda obj: obj.name)
 
@@ -549,14 +546,13 @@ class XNATDirectory():
 
 
 class XNATFile():
-    def __init__(self, directory: XNATDirectory, name: str, format: str = '', content_type: str = '', tags: str = '', size: int = None) -> None:
+    def __init__(self, directory: XNATDirectory, name: str, metadata:dict = None) -> None:
         self.directory = directory
         self.name = name
 
-        if format and content_type and tags and size:
+        if metadata:
             # Format etc will be passed in case of the Directory's get_all_files method, this will speed up the metadata extraction process
-            self._metadata = {
-                'file_format': format, 'file_content': content_type, 'file_tags': tags, 'Size': size}
+            self._metadata = metadata
         else:
             # Get all files from this file's directory (retrieving the metadata of a single file via a GET is not possible)
             response = requests.get(

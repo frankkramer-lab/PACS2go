@@ -42,7 +42,7 @@ class UnsuccessfulGetException(Exception):
             return f'Resource could not be retrieved. Try again or contact us.'
 
 
-class UnsuccessfulProjectCreationException(Exception):
+class UnsuccessfulCreationException(Exception):
     def __init__(self, *args):
         if args:
             self.message = args[0]
@@ -51,9 +51,9 @@ class UnsuccessfulProjectCreationException(Exception):
 
     def __str__(self):
         if self.message:
-            return f'The creation of a new project called {self.message} was unsuccessful. Try again or contact us.'
+            return f'The creation of {self.message} was unsuccessful. Try again or contact us.'
         else:
-            return f'The creation of a new project was unsuccessful. Try again or contact us.'
+            return f'The creation of was unsuccessful. Try again or contact us.'
 
 
 class UnsuccessfulAttributeUpdateException(Exception):

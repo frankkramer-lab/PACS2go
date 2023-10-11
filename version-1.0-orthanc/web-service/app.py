@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, send_file, flash
-from tools.pseudonymize_dicom import pseudonymize
-from tools.convert2dicom import convert
-from tempfile import TemporaryDirectory
 import os
 import zipfile
+from tempfile import TemporaryDirectory
 
+from flask import Flask, flash, render_template, request, send_file
+from tools.convert2dicom import convert
+from tools.pseudonymize_dicom import pseudonymize
 
 app = Flask(__name__)
 app.secret_key = 'V$($ZTT9' # necessary for flash(), otherwise RunTimeError

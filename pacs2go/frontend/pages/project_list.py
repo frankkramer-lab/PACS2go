@@ -1,24 +1,14 @@
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulProjectCreationException
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
-
 import dash_bootstrap_components as dbc
-from dash import callback
-from dash import ctx
-from dash import dcc
-from dash import html
-from dash import Input
-from dash import no_update
-from dash import Output
-from dash import register_page
-from dash import State
+from dash import (Input, Output, State, callback, ctx, dcc, html, no_update,
+                  register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
+
+from pacs2go.data_interface.exceptions.exceptions import (
+    FailedConnectionException, UnsuccessfulAttributeUpdateException,
+    UnsuccessfulCreationException, UnsuccessfulGetException)
+from pacs2go.frontend.helpers import (colors, get_connection,
+                                      login_required_interface)
 
 register_page(__name__, title='Projects - PACS2go', path='/projects')
 
@@ -34,13 +24,13 @@ def get_projects_table(filter: str = ''):
             if filter.lower() in p.keywords.lower() or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
-                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords)]))
+                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
     table_header = [
         html.Thead(
-            html.Tr([html.Th("Project Name"), html.Th("Your user role"), html.Th("Number of Directories"), html.Th("Keywords")]))
+            html.Tr([html.Th("Project Name"), html.Th("Your user role"), html.Th("Number of Directories"), html.Th("Keywords"),  html.Th("Created on"),  html.Th("Last Updated on")]))
     ]
 
     table_body = [html.Tbody(rows)]
@@ -70,14 +60,19 @@ def modal_create():
                               placeholder="Project Name...", required=True),
                     dbc.Label(
                         "Please enter a description for your project.", class_name="mt-2"),
-                    # Input Text Field for project name
+                    # Input Text Field for project description
                     dbc.Input(id="project_description",
                               placeholder="This project is used to..."),
                     dbc.Label(
                         "Please enter searchable keywords. Each word, separated by a space, can be individually used as a search string.", class_name="mt-2"),
-                    # Input Text Field for project name
+                    # Input Text Field for project keywords
                     dbc.Input(id="project_keywords",
                               placeholder="Dermatology Skin Cancer...."),
+                    dbc.Label(
+                        "Please enter desired parameters.", class_name="mt-2"),
+                    # Input Text Field for project parameters
+                    dbc.Textarea(id="project_parameters",
+                              placeholder="..."),
                 ]),
                 dbc.ModalFooter([
                     # Button which triggers the creation of a project (see modal_and_project_creation)
@@ -108,8 +103,9 @@ def modal_create():
     State('project_name', 'value'),
     State('project_description', 'value'),
     State('project_keywords', 'value'),
+    State('project_parameters', 'value'),
     prevent_initial_call=True)
-def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords):
+def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords, parameters):
     # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
         return not is_open, no_update
@@ -124,16 +120,19 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
         project_name = str(project_name).replace(" ", "_")
         try:
             connection = get_connection()
+            keywords if keywords else "No keywords."
+            description if description else "No description."
+            parameters if parameters else "No parameters."
             # Try to create project
             project = connection.create_project(
-                name=project_name, description=description, keywords=keywords)
+                name=project_name, description=description, keywords=keywords, parameters=parameters)
             return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new project {project.name}.",
                                                           href=f"/project/{project.name}",
                                                           className="fw-bold text-decoration-none",
                                                           style={'color': colors['links']}))], color="success")
 
-        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulProjectCreationException) as err:
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulCreationException) as err:
             return is_open, dbc.Alert(str(err), color="danger")
 
     else:
