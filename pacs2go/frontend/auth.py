@@ -1,8 +1,9 @@
-from pacs2go.frontend.helpers import server_url
-
 import requests
 from flask import session
 from flask_login import UserMixin
+
+from pacs2go.frontend.helpers import server_url
+
 
 class User(UserMixin):
     def __init__(self, username, session_id):

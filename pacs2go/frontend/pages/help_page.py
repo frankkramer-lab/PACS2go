@@ -1,13 +1,8 @@
-from pacs2go.frontend.helpers import colors
-
 import dash
 import dash_bootstrap_components as dbc
-from dash import callback
-from dash import dcc
-from dash import html
-from dash import Input
-from dash import Output
+from dash import Input, Output, callback, dcc, html
 
+from pacs2go.frontend.helpers import colors
 
 dash.register_page(__name__)
 

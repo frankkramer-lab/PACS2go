@@ -1,16 +1,17 @@
-import pydicom
-from pydicom.dataset import Dataset
-from PIL import Image
-import numpy
 import os
-from datetime import date
-import nibabel as nib
-
 # to import project functionalities
 import sys
-sys.path.append('./tools')
-from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
+from datetime import date
 
+import nibabel as nib
+import numpy
+import pydicom
+from PIL import Image
+from pydicom.dataset import Dataset
+
+sys.path.append('./tools')
+from helpers import (check_and_set_destination, create_new_uids,
+                     save_dicom_file, upload_to_orthanc)
 
 
 # Conversion function for both directories and single files

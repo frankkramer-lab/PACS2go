@@ -1,15 +1,17 @@
-from tempfile import TemporaryDirectory
-from importlib_metadata import zipp
-import pydicom
-import os
-import uuid
 import datetime
-from zipfile import ZipFile
-
+import os
 # to import project functionalities
 import sys
+import uuid
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
+
+import pydicom
+from importlib_metadata import zipp
+
 sys.path.append('./tools')
-from helpers import upload_to_orthanc, save_dicom_file, create_new_uids, check_and_set_destination
+from helpers import (check_and_set_destination, create_new_uids,
+                     save_dicom_file, upload_to_orthanc)
 
 
 # pseudonymization function for both directories and single files

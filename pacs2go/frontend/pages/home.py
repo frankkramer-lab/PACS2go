@@ -1,14 +1,11 @@
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.frontend.helpers import colors
-from pacs2go.frontend.helpers import get_connection
-from pacs2go.frontend.helpers import login_required_interface
-
 import dash_bootstrap_components as dbc
-from dash import dcc
-from dash import html
-from dash import register_page
+from dash import dcc, html, register_page
 from flask_login import current_user
+
+from pacs2go.data_interface.exceptions.exceptions import (
+    FailedConnectionException, UnsuccessfulGetException)
+from pacs2go.frontend.helpers import (colors, get_connection,
+                                      login_required_interface)
 
 register_page(__name__, title='PACS2go 2.0', path='/')
 

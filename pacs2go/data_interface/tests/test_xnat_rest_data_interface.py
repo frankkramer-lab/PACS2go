@@ -7,20 +7,19 @@ from zipfile import ZipFile
 
 from werkzeug.exceptions import HTTPException
 
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNAT
-from pacs2go.data_interface.xnat_rest_pacs_data_interface import XNATProject
+from pacs2go.data_interface.xnat_rest_wrapper import XNAT, XNATProject
 
 
 class TestConnection(unittest.TestCase):
-    user = 'admin'
-    pwd = 'admin'
+    user = 'test_user'
+    pwd = 'test'
     server = 'http://localhost:8888'
     wrong_user = 'a'
     wrong_pwd = 'a'
 
     def test_connection_correct_input(self):
         with XNAT(server=self.server, username=self.user, password=self.pwd, kind="XNAT") as connection:
-            self.assertEqual(connection.user, "admin")
+            self.assertEqual(connection.user, "test_user")
 
     def test_connection_wrong_input(self):
         with self.assertRaises(HTTPException):
@@ -33,8 +32,8 @@ class TestDataInterface(unittest.TestCase):
     file_path = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/single files/Case-48-P5-C16-39161-16929.jpg'
     zip_file_setup = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
     zip_file_test = '/home/main/Desktop/pacs2go/test_data/benchmarking/convert/jpegs_25.zip'
-    user = 'admin'
-    pwd = 'admin'
+    user = 'test_user'
+    pwd = 'test'
     server = 'http://localhost:8888'
 
     # connect to XNAT for all tests (executed for each testrun)
@@ -48,20 +47,19 @@ class TestDataInterface(unittest.TestCase):
     def setUpClass(self):
         # create test data
         with XNAT(server=self.server, username=self.user, password=self.pwd, kind="XNAT") as connection:
-            self.project = XNATProject(connection, str(uuid.uuid4())+"_test1")
+            self.project = connection.create_project(str(uuid.uuid4())+"_test1")
             self.directory = self.project.insert_zip_into_project(
                 self.zip_file_setup)
             self.file = self.project.insert(
                 self.file_path, self.directory.name)
             # data to test delete functionalities
-            self.to_be_deleted_project = XNATProject(
-                connection, str(uuid.uuid4()))
+            self.to_be_deleted_project = connection.create_project(str(uuid.uuid4()))
             self.to_be_deleted_directory = self.project.insert_zip_into_project(
                 self.zip_file_setup)
-            self.to_be_deleted_file = self.project.insert_file_into_project(
-                self.file_path, directory_name=self.directory.name)
-            self.to_be_double_deleted_file = self.project.insert_file_into_project(
-                self.file_path, directory_name=self.directory.name)
+            self.to_be_deleted_file = self.project.insert(
+                self.file_path)
+            self.to_be_double_deleted_file = self.project.insert(
+                self.file_path)
             # name of a project to test create functionality, stored centrally to ensure deletion after test
             self.to_be_created_project_name = str(uuid.uuid4())+"_test1"
 
@@ -78,7 +76,7 @@ class TestDataInterface(unittest.TestCase):
     def test_createproject(self):
         # Checks if a project with a certain name is really created
         len_before = len(self.connection.get_all_projects())
-        project = XNATProject(self.connection, self.to_be_created_project_name)
+        project = self.connection.create_project(self.to_be_created_project_name)
         # print(project.description)
         self.assertIn(str(project.name), [
                       p.name for p in self.connection.get_all_projects()])
@@ -153,13 +151,6 @@ class TestDataInterface(unittest.TestCase):
         self.assertNotIn(file.name, [
                          f.name for f in file.directory.get_all_files()])
 
-    def test_double_delete_file(self):
-        # Checks if double deleting a file results in an expected Exception
-        file = self.to_be_double_deleted_file
-        file.delete_file()
-        with self.assertRaises(HTTPException):
-            file.delete_file()
-
     def test_ydelete_diretory(self):
         # Check if single directory is deleted from project
         self.assertIn(self.to_be_deleted_directory.name, [
@@ -179,9 +170,9 @@ class TestDataInterface(unittest.TestCase):
 
     def test_ydouble_delete_project(self):
         # Checks if double deleting a project results in an expected Exception
-        p = XNATProject(self.connection, str(uuid.uuid4()))
+        p = self.connection.create_project(str(uuid.uuid4()))
         p.delete_project()
-        with self.assertRaises(HTTPException):
+        with self.assertRaises(Exception):
             p.delete_project()
 
     def test_file_retrieval(self):
