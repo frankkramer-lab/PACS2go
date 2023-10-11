@@ -76,6 +76,7 @@ def get_directories_table(project: Project, filter: str = ''):
 
 def get_citations(project: Project):
     rows = []
+
     if project.your_user_role == "Owners" or project.your_user_role == "Members":
         for citation in project.citations:
             rows.append(html.Tr([
@@ -480,7 +481,7 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
     State('new_cit_link', 'value'),
     State("project", "value"),
     prevent_initial_call=True)
-def modal_and_directory_creation(open, close, create_and_close, is_open, citation, citation_link, project_name):
+def modal_and_add_citation(open, close, create_and_close, is_open, citation, citation_link, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "add_citation_btn" or ctx.triggered_id == "close_modal_add_cit":
         return not is_open, no_update, no_update
@@ -490,11 +491,12 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, citatio
         return is_open, dbc.Alert("Please specify the source.", color="danger"), no_update
 
     # User does everything "right" for project creation
-    elif ctx.triggered_id == "add_cit_and_close" and citation is not None:
+    elif ctx.triggered_id == "add_cit_and_close" and citation:
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
             project.add_citation(citation, citation_link)
+
             return is_open, dbc.Alert([html.Span("A new source has been added! ")], color="success"), get_citations(project)
 
         except Exception as err:
@@ -511,11 +513,13 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, citatio
     prevent_initial_call=True
 )
 def delete_citation(btn, project_name):
-    if ctx.triggered_id['type'] == 'delete_citation' and any(btn):
+    if ctx.triggered_id['type'] == 'delete_citation' and any(item is not None for item in btn):
         connection = get_connection()
         project = connection.get_project(project_name)
         project.delete_citation(ctx.triggered_id['index'])
         return get_citations(project)
+    else:
+        raise PreventUpdate
 
 
 @callback(
@@ -543,7 +547,7 @@ def filter_directory_table(btn, filter, project_name):
     Output("download_project", "data"),
     Input("btn_download_project", "n_clicks"),
     State("project_store", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=True
 )
 def download_project(n_clicks, project_name):
     if ctx.triggered_id == 'btn_download_project':
