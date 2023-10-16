@@ -1,34 +1,26 @@
-from datetime import datetime
+import logging
+import os
 import shutil
 import tempfile
-from pacs2go.data_interface.exceptions.exceptions import DownloadException
-from pacs2go.data_interface.exceptions.exceptions import FailedConnectionException
-from pacs2go.data_interface.exceptions.exceptions import FailedDisconnectException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulAttributeUpdateException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulDeletionException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulGetException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulCreationException
-from pacs2go.data_interface.exceptions.exceptions import UnsuccessfulUploadException
-from pacs2go.data_interface.exceptions.exceptions import WrongUploadFormatException
-from pacs2go.data_interface.data_structure_db import PACS_DB
-from pacs2go.data_interface.data_structure_db import ProjectData
-from pacs2go.data_interface.data_structure_db import DirectoryData
-from pacs2go.data_interface.data_structure_db import FileData
-from pacs2go.data_interface.data_structure_db import CitationData
-from pacs2go.data_interface.xnat_rest_wrapper import XNAT
-from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
-from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
-from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
-from pathlib import Path
-from pytz import timezone
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Union
-
-import os
 import zipfile
+from datetime import datetime
+from pathlib import Path
+from typing import List, Optional, Sequence, Union
 
+from pytz import timezone
+
+from pacs2go.data_interface.data_structure_db import (PACS_DB, CitationData,
+                                                      DirectoryData, FileData,
+                                                      ProjectData)
+from pacs2go.data_interface.exceptions.exceptions import (
+    DownloadException, FailedConnectionException, FailedDisconnectException,
+    UnsuccessfulAttributeUpdateException, UnsuccessfulCreationException,
+    UnsuccessfulDeletionException, UnsuccessfulGetException,
+    UnsuccessfulUploadException, WrongUploadFormatException)
+from pacs2go.data_interface.xnat_rest_wrapper import (XNAT, XNATDirectory,
+                                                      XNATFile, XNATProject)
+
+logging.basicConfig(filename='pacs2go/data_interface/logs/data_interface_exceptions.log', level=logging.DEBUG, filemode='a', format='%(asctime)s %(levelname)-8s %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
