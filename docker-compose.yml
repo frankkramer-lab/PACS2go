@@ -12,8 +12,8 @@ services:
       XNAT_USER: ${XNAT_USER}
       XNAT_PASS: ${XNAT_PASS}
       PYTHONUNBUFFERED: 1
-    command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload
-    # command: python pacs2go/frontend/app.py
+    # command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload
+    command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
       - data-structure-db
@@ -33,6 +33,19 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - 5433:5432
+
+  pgadmin-ds-db:
+    container_name: pgadmin4-for-data-structure-db
+    image: dpage/pgadmin4:7.7
+    depends_on:
+      - data-structure-db
+    ports:
+      - 5050:80
+    restart: always
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     
 
   xnat-web:
