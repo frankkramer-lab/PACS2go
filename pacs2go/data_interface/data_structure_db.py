@@ -14,6 +14,11 @@ load_dotenv()
 
 
 class PACS_DB():
+    # Define table names as constants
+    PROJECT_TABLE = "Project"
+    DIRECTORY_TABLE = "Directory"
+    CITATION_TABLE = "Citation"
+    FILE_TABLE = "File"
     def __init__(self, host: str = "data-structure-db", port: int = 5432) -> None:
         try:
             # Connect to the Postgres service
@@ -56,8 +61,8 @@ class PACS_DB():
 
     def create_table_project(self):
         try:
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS Project (
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.PROJECT_TABLE} (
                     name VARCHAR(256) PRIMARY KEY,
                     keywords VARCHAR(256),
                     description VARCHAR(256),
@@ -74,12 +79,12 @@ class PACS_DB():
 
     def create_table_directory(self):
         try:
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS Directory (
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.DIRECTORY_TABLE} (
                     unique_name VARCHAR(256) PRIMARY KEY,
                     dir_name VARCHAR(256),
-                    parent_project VARCHAR(256) REFERENCES Project(name) ON DELETE CASCADE,
-                    parent_directory VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE,
+                    parent_project VARCHAR(256) REFERENCES {self.PROJECT_TABLE}(name) ON DELETE CASCADE,
+                    parent_directory VARCHAR(256) REFERENCES {self.DIRECTORY_TABLE}(unique_name) ON DELETE CASCADE,
                     timestamp_creation TIMESTAMP,
                     parameters VARCHAR(1024),
                     timestamp_last_updated TIMESTAMP
@@ -93,12 +98,12 @@ class PACS_DB():
 
     def create_table_citation(self):
         try:
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS Citation (
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.CITATION_TABLE} (
                     cit_id SERIAL PRIMARY KEY,
                     citation VARCHAR(512),
                     link VARCHAR(512),
-                    project_name VARCHAR(256) REFERENCES Project(name) ON DELETE SET NULL
+                    project_name VARCHAR(256) REFERENCES {self.PROJECT_TABLE}(name) ON DELETE SET NULL
                 )
             """)
             self.conn.commit()
@@ -109,10 +114,10 @@ class PACS_DB():
 
     def create_table_file(self):
         try:
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS File (
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.FILE_TABLE} (
                     file_name VARCHAR(256),
-                    parent_directory VARCHAR(256) REFERENCES Directory(unique_name) ON DELETE CASCADE,
+                    parent_directory VARCHAR(256) REFERENCES {self.DIRECTORY_TABLE}(unique_name) ON DELETE CASCADE,
                     format VARCHAR(256),
                     tags VARCHAR(256),
                     modality VARCHAR(256),
@@ -126,13 +131,13 @@ class PACS_DB():
             self.conn.rollback()
             print(err)
             raise Exception("File table could not be created. ")
-
+            
     # -------- Insert Into Tables ------- #
 
     def insert_into_project(self, data: 'ProjectData') -> None:
         try:
-            self.cursor.execute("""
-                INSERT INTO Project (name, keywords, description, parameters, timestamp_creation, timestamp_last_updated)
+            self.cursor.execute(f"""
+                INSERT INTO {self.PROJECT_TABLE} (name, keywords, description, parameters, timestamp_creation, timestamp_last_updated)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (data.name, data.keywords, data.description, data.parameters, data.timestamp_creation, data.timestamp_last_updated))
             self.conn.commit()
@@ -143,8 +148,8 @@ class PACS_DB():
 
     def insert_into_directory(self, data: 'DirectoryData') -> None:
         try:
-            self.cursor.execute("""
-                INSERT INTO Directory (unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated)
+            self.cursor.execute(f"""
+                INSERT INTO {self.DIRECTORY_TABLE} (unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (data.unique_name, data.dir_name, data.parent_project, data.parent_directory, data.timestamp_creation, data.parameters, data.timestamp_last_updated))
             self.conn.commit()
@@ -168,8 +173,8 @@ class PACS_DB():
 
     def insert_into_file(self, data: 'FileData') -> 'FileData':
         try:
-            self.cursor.execute("""
-                INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
+            self.cursor.execute(f"""
+                INSERT INTO {self.FILE_TABLE} (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (data.file_name, data.parent_directory, data.format, data.tags, data.modality, data.timestamp_creation, data.timestamp_last_updated))
             self.conn.commit()
@@ -200,8 +205,8 @@ class PACS_DB():
             # Construct a list of tuples with (file_name, parent_directory) for each file
             file_values = [(file.file_name, file.parent_directory, file.format, file.tags,
                             file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
-            query = """
-                INSERT INTO File (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
+            query = f"""
+                INSERT INTO {self.FILE_TABLE} (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
                 VALUES %s
             """
             execute_values(self.cursor, query, file_values)
@@ -215,9 +220,9 @@ class PACS_DB():
 
     def get_all_projects(self) -> List['ProjectData']:
         try:
-            query = """
+            query = f"""
                 SELECT name, keywords, description, parameters, timestamp_creation, timestamp_last_updated
-                FROM Project
+                FROM {self.PROJECT_TABLE}
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
@@ -234,9 +239,9 @@ class PACS_DB():
 
     def get_all_directories(self) -> List['DirectoryData']:
         try:
-            query = """
+            query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
-                FROM Directory
+                FROM {self.DIRECTORY_TABLE}
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
@@ -253,8 +258,8 @@ class PACS_DB():
 
     def get_all_files(self) -> List[str]:
         try:
-            query = """
-                SELECT file_name FROM File
+            query = f"""
+                SELECT file_name FROM {self.FILE_TABLE}
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
@@ -270,9 +275,9 @@ class PACS_DB():
 
     def get_project_by_name(self, project_name: str) -> 'ProjectData':
         try:
-            query = """
+            query = f"""
                 SELECT name, keywords, description, parameters, timestamp_creation, timestamp_last_updated
-                FROM Project
+                FROM {self.PROJECT_TABLE}
                 WHERE name = %s
             """
             self.cursor.execute(query, (project_name,))
@@ -288,9 +293,9 @@ class PACS_DB():
 
     def get_directories_by_project(self, project_name: str) -> List['DirectoryData']:
         try:
-            query = """
+            query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
-                FROM Directory
+                FROM {self.DIRECTORY_TABLE}
                 WHERE parent_project = %s
             """
             self.cursor.execute(query, (project_name,))
@@ -308,9 +313,9 @@ class PACS_DB():
 
     def get_directory_by_name(self, unique_name: str) -> 'DirectoryData':
         try:
-            query = """
+            query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
-                FROM Directory
+                FROM {self.DIRECTORY_TABLE}
                 WHERE unique_name = %s
             """
             self.cursor.execute(query, (unique_name,))
@@ -328,9 +333,9 @@ class PACS_DB():
 
     def get_file_by_name_and_directory(self, file_name: str, parent_directory: str) -> 'FileData':
         try:
-            query = """
+            query = f"""
                 SELECT file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated
-                FROM File
+                FROM {self.FILE_TABLE}
                 WHERE file_name = %s AND parent_directory = %s
             """
             self.cursor.execute(query, (file_name, parent_directory))
@@ -348,9 +353,9 @@ class PACS_DB():
 
     def get_subdirectories_by_directory(self, parent_directory: str) -> List['DirectoryData']:
         try:
-            query = """
+            query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
-                FROM Directory
+                FROM {self.DIRECTORY_TABLE}
                 WHERE parent_directory = %s
             """
             self.cursor.execute(query, (parent_directory,))
@@ -422,8 +427,8 @@ class PACS_DB():
 
     def delete_project_by_name(self, project_name: str) -> None:
         try:
-            query = """
-                DELETE FROM Project WHERE name = %s
+            query = f"""
+                DELETE FROM {self.PROJECT_TABLE} WHERE name = %s
             """
             self.cursor.execute(query, (project_name,))
             self.conn.commit()
@@ -434,8 +439,8 @@ class PACS_DB():
 
     def delete_directory_by_name(self, unique_name: str) -> None:
         try:
-            query = """
-                DELETE FROM Directory WHERE unique_name = %s
+            query = f"""
+                DELETE FROM {self.DIRECTORY_TABLE} WHERE unique_name = %s
             """
             self.cursor.execute(query, (unique_name,))
             self.conn.commit()
@@ -446,8 +451,8 @@ class PACS_DB():
 
     def delete_file_by_name(self, file_name: str) -> None:
         try:
-            query = """
-                DELETE FROM File WHERE file_name = %s
+            query = f"""
+                DELETE FROM {self.FILE_TABLE} WHERE file_name = %s
             """
             self.cursor.execute(query, (file_name,))
             self.conn.commit()
@@ -485,7 +490,7 @@ class PACS_DB():
 
     def filename_exists(self, filename):
         # Check if the given filename already exists in the database
-        self.cursor.execute("SELECT COUNT(*) FROM File WHERE file_name = %s", (filename,))
+        self.cursor.execute(f"SELECT COUNT(*) FROM {self.FILE_TABLE} WHERE file_name = %s", (filename,))
         count = self.cursor.fetchone()[0]
         return count > 0
     
