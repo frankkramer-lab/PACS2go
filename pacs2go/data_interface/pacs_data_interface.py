@@ -19,9 +19,10 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulUploadException, WrongUploadFormatException)
 from pacs2go.data_interface.xnat_rest_wrapper import (XNAT, XNATDirectory,
                                                       XNATFile, XNATProject)
+from pacs2go.data_interface.logs.config_logging import data_interface_logger
 
-logging.basicConfig(filename='pacs2go/data_interface/logs/data_interface_exceptions.log', level=logging.DEBUG, filemode='a', format='%(asctime)s %(levelname)-8s %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
-
+# Init logger
+logger = data_interface_logger()
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
@@ -43,34 +44,53 @@ class Connection():
                 self._xnat_connection = XNAT(
                     server=server, username=username, password=password, session_id=session_id)
             else:
-                raise ValueError(kind)
-        except:
+                # If kind is not "XNAT", raise an exception.
+                msg = f"Unsupported connection type: {kind}"
+                logger.exception(msg)
+                raise FailedConnectionException
+        except Exception as e:
+            # If any exception occurs during connection initiation, log the exception and raise a FailedConnectionException.
+            msg = f"Failed to establish the connection: {str(e)}"
+            logger.exception(msg)
             raise FailedConnectionException
-
+        
     @property
     def _kind(self) -> str:
         if self.kind in ['XNAT']:
             return self.kind
         else:
-            # FailedConnectionException because only these connection types are supported atm
+            # If kind is not one of the supported connection types, raise a FailedConnectionException.
+            msg = f"Unsupported connection type: {self.kind}"
+            logger.exception(msg)
             raise FailedConnectionException
 
     @property
     def user(self) -> str:
         try:
             return self._xnat_connection.user
-        except:
+        except Exception as e:
             # FailedConnectionException because if this information can not be retrieved the connection is corrupted
+            msg = f"Failed to retrieve user information: {str(e)}"
+            logger.exception(msg)
             raise FailedConnectionException
 
     def __enter__(self) -> 'Connection':
-        self._xnat_connection = self._xnat_connection.__enter__()
-        return self
+        try:
+            self._xnat_connection = self._xnat_connection.__enter__()
+            return self
+        except Exception as e:
+            # Log the exception and raise a FailedConnectionException if unable to enter the context.
+            msg = f"Failed to enter the context: {str(e)}"
+            logger.exception(msg)
+            raise FailedConnectionException
 
     def __exit__(self, type, value, traceback) -> None:
         try:
             self._xnat_connection.__exit__(type, value, traceback)
-        except:
+        except Exception as e:
+            # Log the exception and raise a FailedDisconnectException if unable to exit the context.
+            msg = f"Failed to exit the context: {str(e)}"
+            logger.exception(msg)
             raise FailedDisconnectException
 
     def create_project(self, name: str, description: str = '', keywords: str = '', parameters: str = '') -> 'Project':
@@ -88,12 +108,17 @@ class Connection():
                                            parameters=parameters, timestamp_creation=timestamp_now, timestamp_last_updated=timestamp_now))
                 return Project(self, name, _project_filestorage_object=xnat_project)
             except Exception as err:
-                raise UnsuccessfulCreationException(f"{err} {str(name)}")
+                # Log the exception and raise an UnsuccessfulCreationException if project creation fails.
+                msg = f"Failed to create the project: {str(err)} {str(name)}"
+                logger.exception(msg)
+                raise UnsuccessfulCreationException(f"{str(name)}")
 
     def get_project(self, name: str) -> Optional['Project']:
         try:
             return Project(self, name)
         except:
+            msg = f"Failed to get Project '{name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(f"Project '{name}'")
 
     def get_all_projects(self) -> List['Project']:
@@ -103,20 +128,26 @@ class Connection():
             projects = [self.get_project(project.name) for project in pjs]
             return projects
         except Exception as err:
-            raise UnsuccessfulGetException(f"{err} Projects")
+            msg = f"Failed to get all Projects: {str(err)}"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(f"Projects")
 
     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
         try:
             return Directory(self.get_project(project_name), directory_name)
         except Exception as err:
+            msg = f"Failed to get Directory '{directory_name}' in Project '{project_name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(
-                f"Directory '{directory_name}' {err}")
+                f"Directory '{directory_name}'")
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
         try:
             return File(directory=self.get_directory(project_name=project_name, directory_name=directory_name), name=file_name)
         except Exception as err:
-            raise UnsuccessfulGetException(f"File '{file_name}' {err}")
+            msg = f"Failed to get File '{file_name}' in Directory '{directory_name}' of Project '{project_name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException(f"File '{file_name}'")
 
 
 class Project():
@@ -128,7 +159,9 @@ class Project():
             with PACS_DB() as db:
                 self._db_project = db.get_project_by_name(name)
         except:
-            raise UnsuccessfulGetException(f"Projectx '{name}'")
+            msg = f"Failed to initialize Project '{name}' from the database."
+            logger.exception(msg)
+            raise UnsuccessfulGetException(f"Project '{name}'")
 
         if _project_filestorage_object:
             self._xnat_project = _project_filestorage_object
@@ -137,9 +170,13 @@ class Project():
                 self._xnat_project = XNATProject(
                     connection._xnat_connection, name)
             except Exception as err:
+                msg = f"Failed to initialize Project '{name}' from XNAT."
+                logger.exception(msg)
                 raise UnsuccessfulGetException(f"Projectx '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
+            msg = f"Unsupported connection type '{self.connection._kind}' for Project '{name}'."
+            logger.exception(msg)
             raise FailedConnectionException
 
     @property
@@ -147,6 +184,8 @@ class Project():
         try:
             return self._db_project.description
         except:
+            msg = f"Failed to get Project description from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("Project description")
 
     def set_description(self, description_string: str) -> None:
@@ -156,6 +195,8 @@ class Project():
                     table_name='Project', attribute_name='description', new_value=description_string, condition_column='name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to set Project description for Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"a new description ('{description_string}')")
 
@@ -164,6 +205,8 @@ class Project():
         try:
             return self._db_project.keywords
         except:
+            msg = f"Failed to get Project-related keywords from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("Project-related keywords")
 
     def set_keywords(self, keywords_string: str) -> None:
@@ -173,6 +216,8 @@ class Project():
                     table_name='Project', attribute_name='keywords', new_value=keywords_string, condition_column='name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to set the project keywords for Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the project keywords to '{keywords_string}'")
 
@@ -181,6 +226,8 @@ class Project():
         try:
             return self._db_project.parameters
         except:
+            msg = f"Failed to get Project-related parameters from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("Project-related parameters")
 
     def set_parameters(self, parameters_string: str) -> None:
@@ -190,6 +237,8 @@ class Project():
                     table_name='Project', attribute_name='parameters', new_value=parameters_string, condition_column='name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to set the project parameters for Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the project parameters to '{parameters_string}'")
 
@@ -200,6 +249,8 @@ class Project():
             timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_last_updated), "%Y-%m-%d %H:%M:%S")
             return timestamp_datetime
         except Exception as err:
+            msg = f"Failed to get the timestamp of the last project update from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(
                 "The timestamp of the last project update" + str(err))
 
@@ -210,6 +261,8 @@ class Project():
                 db.update_attribute(
                     table_name='Project', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='name', condition_value=self.name)
         except:
+            msg = f"Failed to set the project's 'last_updated' to '{timestamp}' for Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the project's 'last_updated' to '{timestamp}'")
 
@@ -220,6 +273,8 @@ class Project():
             timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_creation), "%Y-%m-%d %H:%M:%S")
             return timestamp_datetime
         except:
+            msg = f"Failed to get the timestamp of project creation from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("The timestamp of project creation")
 
     @property
@@ -227,6 +282,8 @@ class Project():
         try:
             return self._xnat_project.owners
         except:
+            msg = f"Failed to get the list of Project owners from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(
                 "Project users that are assigned an 'owner' role")
 
@@ -235,6 +292,8 @@ class Project():
         try:
             return self._xnat_project.your_user_role
         except:
+            msg = f"Failed to get your user role from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("Your user role")
         
     @property
@@ -245,6 +304,8 @@ class Project():
                 citations = db.get_citations_for_project(self.name)
                 return citations
         except:
+            msg = f"Failed to get the list of Project citations from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(
                 "The project citations")
 
@@ -256,6 +317,8 @@ class Project():
                     cit_id=0, citation=citations_string, link=link, project_name=self.name))
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to add a new citation to Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException("New citation")
         
     def delete_citation(self, citation_id: int) -> None:
@@ -264,6 +327,8 @@ class Project():
                 db.delete_citation(citation_id)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to delete the citation with ID {citation_id} from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulDeletionException("Citation")
 
     def exists(self) -> bool:
@@ -281,6 +346,8 @@ class Project():
                 destination, self.name), 'zip', destination, self.name)
             return destination_zip
         except:
+            msg = f"Failed to download Project '{self.name}' to the destination folder '{destination}'."
+            logger.exception(msg)
             raise DownloadException
 
     def delete_project(self) -> None:
@@ -289,6 +356,8 @@ class Project():
                 db.delete_project_by_name(self.name)
             self._xnat_project.delete_project()
         except:
+            msg = f"Failed to delete Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulDeletionException(f"Project '{self.name}'")
 
     def create_directory(self, name: str, parameters: str = None) -> 'Directory':
@@ -307,12 +376,16 @@ class Project():
                 self.set_last_updated(datetime.now(timezone))
                 return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
             except Exception as err:
+                msg = f"Failed to create a new directory named '{name}' for Project '{self.name}'."
+                logger.exception(msg)
                 raise UnsuccessfulCreationException(str(name))
 
     def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
         try:
             return Directory(self, name=name, _directory_filestorage_object=_directory_filestorage_object)
         except:
+            msg = f"Failed to get Directory '{name}' from Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
     def get_all_directories(self) -> Sequence['Directory']:
@@ -327,6 +400,8 @@ class Project():
             return filtered_directories
 
         except:
+            msg = f"Failed to get a list of directories for Project '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("Directories")
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '') -> Union['Directory', 'File']:
@@ -415,9 +490,12 @@ class Project():
             else:
                 raise ValueError
         except ValueError:
+            msg = f"File format not supported for file path: '{file_path}'."
+            logger.exception(msg)
             raise WrongUploadFormatException(str(file_path.split("/")[-1]))
         except Exception as err:
-            print("This is the error: " + str(err))
+            msg = f"Failed to insert a file into Project '{self.name}' from file path: '{file_path}'."
+            logger.exception(msg)
             raise UnsuccessfulUploadException(str(file_path.split("/")[-1]))
 
 
@@ -432,6 +510,8 @@ class Directory():
                 self._db_directory = db.get_directory_by_name(name)
 
         except:
+            msg = f"Failed to initialize Directory '{name}'"
+            logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
         if _directory_filestorage_object:
@@ -441,26 +521,37 @@ class Directory():
                 self._xnat_directory = XNATDirectory(
                     project._xnat_project, name)
             except:
+                msg = f"Failed to initialize XNATDirectory for '{name}'"
+                logger.exception(msg)
                 raise UnsuccessfulGetException(f"Directory '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
+            msg = f"Failed to initialize Directory '{name}' due to unsupported connection type"
+            logger.exception(msg)
             raise FailedConnectionException
 
     @property
     def number_of_files(self) -> int:
-        total_files = len(self.get_all_files())
+        try:
+            total_files = len(self.get_all_files())
 
-        # Recursively calculate the number of files in subdirectories
-        for subdirectory in self.get_subdirectories():
-            total_files += subdirectory.number_of_files
+            # Recursively calculate the number of files in subdirectories
+            for subdirectory in self.get_subdirectories():
+                total_files += subdirectory.number_of_files
 
-        return total_files
+            return total_files
+        except Exception as e:
+            msg = f"Failed to get the number of files for Directory '{self.name}'"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(msg)
 
     @property
     def parent_directory(self) -> 'Directory':
         try:
             return self.project.get_directory(self._db_directory.parent_directory)
         except:
+            msg = f"Failed to get the parent directory for '{self.name}'"
+            logger.exception(msg)
             raise UnsuccessfulGetException("Parent directory name")
 
     @property
@@ -468,6 +559,8 @@ class Directory():
         try:
             return self._db_directory.parameters
         except:
+            msg = f"Failed to get the parameters for Directory '{self.name}'"
+            logger.exception(msg)
             raise UnsuccessfulGetException("Directory-related parameters")
 
     def set_parameters(self, parameters_string: str) -> None:
@@ -477,6 +570,8 @@ class Directory():
                     table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to set parameters for Directory '{self.name}'"
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the directory parameters to '{parameters_string}'")
 
@@ -485,6 +580,8 @@ class Directory():
         try:
             return self._db_directory.timestamp_last_updated
         except:
+            msg = f"Failed to get the last updated timestamp for Directory '{self.name}'"
+            logger.exception(msg)
             raise UnsuccessfulGetException(
                 "The timestamp of the last directory update")
 
@@ -495,6 +592,8 @@ class Directory():
                 db.update_attribute(
                     table_name='Directory', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='unique_name', condition_value=self.name)
         except:
+            msg = f"Failed to set the last updated timestamp for Directory '{self.name}'"
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the directory's 'last_updated' to '{timestamp}'")
 
@@ -503,6 +602,8 @@ class Directory():
         try:
             return self._db_directory.timestamp_creation
         except:
+            msg = f"Failed to get the creation timestamp for Directory '{self.name}'"
+            logger.exception(msg)
             raise UnsuccessfulGetException(
                 "The timestamp of directory creation")
 
@@ -524,6 +625,8 @@ class Directory():
                 self.parent_directory.set_last_updated(datetime.now(timezone))
 
         except:
+            msg = f"Failed to delete directory '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulDeletionException(f"directory '{self.name}'")
 
     def create_subdirectory(self, name: str, parameters: str = '') -> 'Directory':
@@ -542,23 +645,31 @@ class Directory():
                 self.set_last_updated(datetime.now(timezone))
                 return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
             except Exception:
+                msg = f"Failed to create subdirectory '{name}' in directory '{self.name}'."
+                logger.exception(msg)
                 raise UnsuccessfulCreationException(str(name))
 
     def get_subdirectories(self) -> List['Directory']:
-        with PACS_DB() as db:
-            subdirectories_from_db = db.get_subdirectories_by_directory(
-                self.name)
+        try:
+            with PACS_DB() as db:
+                subdirectories_from_db = db.get_subdirectories_by_directory(self.name)
 
-        # Only return the directories that are subdirectories of this directory
-        filtered_directories = [
-            Directory(self.project, d.unique_name) for d in subdirectories_from_db]
+            # Only return the directories that are subdirectories of this directory
+            filtered_directories = [
+                Directory(self.project, d.unique_name) for d in subdirectories_from_db]
 
-        return filtered_directories
+            return filtered_directories
+        except:
+            msg = f"Failed to get subdirectories for directory '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException(msg)
 
     def get_file(self, file_name: str, _file_filestorage_object=None) -> 'File':
         try:
             return File(self, name=file_name, _file_filestorage_object=_file_filestorage_object)
         except:
+            msg = f"Failed to get file '{file_name}' in directory '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(f"File '{file_name}'")
 
     def get_all_files(self) -> List['File']:
@@ -567,7 +678,9 @@ class Directory():
             files = [self.get_file(
                 file_name=f.name, _file_filestorage_object=f) for f in fs]
             return files
-        except Exception as err:
+        except:
+            msg = f"Failed to get all files for directory '{self.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("Files")
 
     def download(self, destination, zip: bool = True) -> str:
@@ -577,19 +690,30 @@ class Directory():
                 destination, self.display_name), 'zip', destination, self.display_name)
             return destination_zip
         else:
+            msg = f"Failed to download directory '{self.name}'."
+            logger.exception(msg)
             return destination
 
     def _create_folders_and_copy_files_for_download(self, target_folder):
         current_folder = os.path.join(target_folder, self.display_name)
         os.makedirs(current_folder, exist_ok=True)
 
-        for file in self.get_all_files():
-            # Copy files to the current folder
-            file._xnat_file.download(current_folder)
+        try:
+            for file in self.get_all_files():
+                # Copy files to the current folder
+                file._xnat_file.download(current_folder)
+        except Exception as e:
+            msg = f"Failed to copy files for download in directory '{self.name}'."
+            logger.exception(msg)
+            raise DownloadException
 
         for subdirectory in self.get_subdirectories():
-            subdirectory._create_folders_and_copy_files_for_download(
-                current_folder)
+            try:
+                subdirectory._create_folders_and_copy_files_for_download(current_folder)
+            except Exception as e:
+                msg = f"Failed to copy files for download in subdirectory '{subdirectory.name}' of directory '{self.name}'."
+                logger.exception(msg)
+                raise DownloadException
 
 
 class File():
@@ -602,6 +726,8 @@ class File():
                 self._db_file = db.get_file_by_name_and_directory(
                     self.name, self.directory.name)
         except:
+            msg = f"Failed to get DB-File '{name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException(f"DB-File '{name}'")
 
         if _file_filestorage_object:
@@ -609,6 +735,8 @@ class File():
         elif self.directory.project.connection._kind == "XNAT":
             try:
                 self._xnat_file = XNATFile(directory._xnat_directory, name)
+                msg = f"Failed to get File '{name}' in directory '{self.directory.name}'."
+                logger.exception(msg)
             except:
                 raise UnsuccessfulGetException(f"File '{name}'")
         else:
@@ -620,6 +748,8 @@ class File():
         try:
             return self._db_file.format
         except:
+            msg = f"Failed to get format for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File format")
 
     @property
@@ -627,6 +757,8 @@ class File():
         try:
             return self._db_file.tags
         except:
+            msg = f"Failed to get tags for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File tags")
 
     def set_tags(self, tags: str) -> None:
@@ -637,6 +769,8 @@ class File():
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to update tags for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the file's 'modality' to '{tags}'")
 
@@ -645,6 +779,8 @@ class File():
         try:
             return self._db_file.modality
         except:
+            msg = f"Failed to get modality for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File modality")
         
     def set_modality(self, modality: str) -> None:
@@ -655,6 +791,8 @@ class File():
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
             self.set_last_updated(datetime.now(timezone))
         except:
+            msg = f"Failed to update modality for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the file's 'modality' to '{modality}'")
 
@@ -663,6 +801,8 @@ class File():
         try:
             return self._db_file.timestamp_creation
         except:
+            msg = f"Failed to get creation timestamp for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File creation timestamp")
     
     @property
@@ -670,6 +810,8 @@ class File():
         try:
             return self._db_file.timestamp_last_updated
         except:
+            msg = f"Failed to get last update timestamp for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File last update timestamp")
 
     def set_last_updated(self, timestamp: datetime) -> None:
@@ -680,6 +822,8 @@ class File():
                     table_name='File', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='file_name', 
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
         except:
+            msg = f"Failed to update last_updated timestamp for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the file's 'last_updated' to '{timestamp}'")
 
@@ -688,6 +832,8 @@ class File():
         try:
             return self._xnat_file.content_type
         except:
+            msg = f"Failed to get content type for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File content type")
 
     @property
@@ -695,6 +841,8 @@ class File():
         try:
             return self._xnat_file.size
         except:
+            msg = f"Failed to get size for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("File size")
 
     @property
@@ -702,6 +850,8 @@ class File():
         try:
             return self._xnat_file.data
         except:
+            msg = f"Failed to get file data for File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulGetException("The actual file data itself")
 
     def exists(self) -> bool:
@@ -711,6 +861,8 @@ class File():
         try:
             return self._xnat_file.download(destination)
         except:
+            msg = f"Failed to download File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise DownloadException
 
     def delete_file(self) -> None:
@@ -723,4 +875,6 @@ class File():
             self.directory.set_last_updated(datetime.now(timezone))
 
         except:
+            msg = f"Failed to delete File '{self.name}' in directory '{self.directory.name}'."
+            logger.exception(msg)
             raise UnsuccessfulDeletionException(f"file '{self.name}'")
