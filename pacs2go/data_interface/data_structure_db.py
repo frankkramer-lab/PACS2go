@@ -10,11 +10,11 @@ from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, FailedDisconnectException)
 from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
                                                       DATABASE_PORT)
+from pacs2go.data_interface.logs.config_logging import db_logging
 
 
 load_dotenv()
-logging.basicConfig(filename='pacs2go/data_interface/logs/db_exceptions.log', level=logging.DEBUG, filemode='a', format='%(asctime)s %(levelname)-8s %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
-
+logger = db_logging()
 
 class PACS_DB():
     # Define table names as constants
@@ -34,9 +34,10 @@ class PACS_DB():
             )
             # Get cursor object to operate db
             self.cursor = self.conn.cursor()
+            # logger.info("DB connection established")
         except:
             msg = "No DB connection possible."
-            logging.exception(msg)
+            logger.exception(msg)
             raise FailedConnectionException(msg)
 
         # On inital setup create tables (all statements possess IF NOT EXISTS keyword)
@@ -54,7 +55,7 @@ class PACS_DB():
             self.conn.close()
         except:
             msg = "DB server disconnect was not successful."
-            logging.exception(msg)
+            logger.exception(msg)
             raise FailedDisconnectException(msg)
 
     # -------- Create Tables ------- #
@@ -81,7 +82,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "Project table could not be created. "
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def create_table_directory(self):
@@ -101,7 +102,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "Directory table could not be created."
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def create_table_citation(self):
@@ -118,7 +119,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "Citation table could not be created."
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
         
     def create_table_file(self):
@@ -139,7 +140,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "File table could not be created."
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
             
     # -------- Insert Into Tables ------- #
@@ -154,7 +155,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = f"Error inserting {data.name} into Project table"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def insert_into_directory(self, data: 'DirectoryData') -> None:
@@ -167,7 +168,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = f"Error inserting {data.dir_name} into Directory table"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def insert_into_citation(self, data: 'CitationData') -> None:
@@ -180,7 +181,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "Error inserting into Citation table"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def insert_into_file(self, data: 'FileData') -> 'FileData':
@@ -194,7 +195,7 @@ class PACS_DB():
         except psycopg2.IntegrityError as e:
             # Check if the error message contains "duplicate key value violates unique constraint"
             if "duplicate key value violates unique constraint" in str(e):
-                logging.exception("Duplicate primary key violation")
+                logger.exception("Duplicate primary key violation")
                 self.conn.rollback()
                 # Create a new instance of FileData with the updated file_name
                 data = self.get_next_available_file_data(data)
@@ -206,12 +207,12 @@ class PACS_DB():
                 # Handle other IntegrityError cases
                 self.conn.rollback()
                 msg = "Error inserting into File table"
-                logging.exception(msg)
+                logger.exception(msg)
                 raise Exception(msg)
         except Exception as err:
             self.conn.rollback()
             msg = "Error inserting into File table"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def insert_multiple_files(self, files: List['FileData']) -> None:
@@ -228,7 +229,7 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "Error inserting multiple files"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     # -------- Select From Tables ------- #
@@ -250,7 +251,7 @@ class PACS_DB():
             return project_list
         except Exception as err:
             msg = "Error retrieving all projects"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_all_directories(self) -> List['DirectoryData']:
@@ -270,7 +271,7 @@ class PACS_DB():
             return directory_list
         except Exception as err:
             msg = "Error retrieving all directories"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_all_files(self) -> List[str]:
@@ -289,7 +290,7 @@ class PACS_DB():
             return file_list
         except Exception as err:
             msg = "Error retrieving all files"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_project_by_name(self, project_name: str) -> 'ProjectData':
@@ -308,7 +309,7 @@ class PACS_DB():
                 return None
         except Exception as err:
             msg = "Error retrieving project by name"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_directories_by_project(self, project_name: str) -> List['DirectoryData']:
@@ -329,7 +330,7 @@ class PACS_DB():
             return directory_list
         except Exception as err:
             msg = "Error retrieving directories by project"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_directory_by_name(self, unique_name: str) -> 'DirectoryData':
@@ -350,7 +351,7 @@ class PACS_DB():
                 return None
         except Exception as err:
             msg = "Error retrieving directory from the database"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_file_by_name_and_directory(self, file_name: str, parent_directory: str) -> 'FileData':
@@ -371,7 +372,7 @@ class PACS_DB():
                 return None
         except Exception as err:
             msg = "Error retrieving file from the database"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_subdirectories_by_directory(self, parent_directory: str) -> List['DirectoryData']:
@@ -392,7 +393,7 @@ class PACS_DB():
             return directory_list
         except Exception as err:
             msg = "Error retrieving subdirectories by directory"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def get_citations_for_project(self, project_name: str) -> List['CitationData']:
@@ -413,7 +414,7 @@ class PACS_DB():
             return citation_list
         except Exception as err:
             msg = "Error retrieving citations for directory"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     # --------- Update Tables -------- #
@@ -444,7 +445,7 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             msg = f"Error updating {attribute_name} in {table_name}"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     # -------- Delete From Tables ------- #
@@ -458,7 +459,7 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting project by name"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def delete_directory_by_name(self, unique_name: str) -> None:
@@ -470,7 +471,7 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting directory by unique name"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def delete_file_by_name(self, file_name: str) -> None:
@@ -482,7 +483,7 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting file by name"
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     def delete_citation(self, cit_id: int) -> None:
@@ -494,7 +495,7 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting citation by id."
-            logging.exception(msg)
+            logger.exception(msg)
             raise Exception(msg)
 
     # -------- Helpers ------- #
