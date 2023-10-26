@@ -28,3 +28,17 @@ def data_interface_logger():
     logger.addHandler(file_handler)
     
     return logger
+
+def xnat_wrapper_logger():
+    log_file = 'pacs2go/data_interface/logs/log_files/xnat_wrapper.log'  # Fixed log file name
+    logger = logging.getLogger("XNAT_Wrapper_logger")
+    logger.setLevel(logging.DEBUG)
+    
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    
+    file_handler = logging.FileHandler(log_file, mode='a')
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    
+    return logger
