@@ -53,7 +53,7 @@ class Connection():
             msg = f"Failed to establish the connection: {str(e)}"
             logger.exception(msg)
             raise FailedConnectionException
-        
+
     @property
     def _kind(self) -> str:
         if self.kind in ['XNAT']:
@@ -103,9 +103,11 @@ class Connection():
                     xnat_project = xnat.create_project(
                         name, description, keywords)
                 with PACS_DB() as db:
-                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp_now = datetime.now(
+                        timezone).strftime("%Y-%m-%d %H:%M:%S")
                     db.insert_into_project(ProjectData(name=name, keywords=keywords, description=description,
                                            parameters=parameters, timestamp_creation=timestamp_now, timestamp_last_updated=timestamp_now))
+                logger.info(f"User {self.user} created a project: {name}")
                 return Project(self, name, _project_filestorage_object=xnat_project)
             except Exception as err:
                 # Log the exception and raise an UnsuccessfulCreationException if project creation fails.
@@ -115,7 +117,9 @@ class Connection():
 
     def get_project(self, name: str) -> Optional['Project']:
         try:
-            return Project(self, name)
+            project = Project(self, name)
+            logger.info(f"User {self.user} retrieved information about project {project.name}.")
+            return project
         except:
             msg = f"Failed to get Project '{name}'."
             logger.exception(msg)
@@ -126,16 +130,19 @@ class Connection():
             with PACS_DB() as db:
                 pjs = db.get_all_projects()
             projects = [self.get_project(project.name) for project in pjs]
+            logger.info(f"User {self.user} retrieved information about project list.")
             return projects
-        except Exception as err:
-            msg = f"Failed to get all Projects: {str(err)}"
+        except Exception:
+            msg = "Failed to get all Projects"
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Projects")
 
     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
         try:
-            return Directory(self.get_project(project_name), directory_name)
-        except Exception as err:
+            d = Directory(self.get_project(project_name), directory_name)
+            logger.info(f"User {self.user} retrieved information about directory {d.name}.")
+            return d
+        except Exception:
             msg = f"Failed to get Directory '{directory_name}' in Project '{project_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException(
@@ -143,8 +150,10 @@ class Connection():
 
     def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
         try:
-            return File(directory=self.get_directory(project_name=project_name, directory_name=directory_name), name=file_name)
-        except Exception as err:
+            f = File(directory=self.get_directory(
+                project_name=project_name, directory_name=directory_name), name=file_name)
+            return f
+        except Exception:
             msg = f"Failed to get File '{file_name}' in Directory '{directory_name}' of Project '{project_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException(f"File '{file_name}'")
@@ -194,6 +203,8 @@ class Project():
                 db.update_attribute(
                     table_name='Project', attribute_name='description', new_value=description_string, condition_column='name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.connection.user} updated the description of Project '{self.name}' to '{description_string}'")
         except:
             msg = f"Failed to set Project description for Project '{self.name}'."
             logger.exception(msg)
@@ -215,6 +226,8 @@ class Project():
                 db.update_attribute(
                     table_name='Project', attribute_name='keywords', new_value=keywords_string, condition_column='name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.connection.user} updated the keywords of Project '{self.name}' to '{keywords_string}'")
         except:
             msg = f"Failed to set the project keywords for Project '{self.name}'."
             logger.exception(msg)
@@ -236,6 +249,8 @@ class Project():
                 db.update_attribute(
                     table_name='Project', attribute_name='parameters', new_value=parameters_string, condition_column='name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.connection.user} updated the parameters of Project '{self.name}' to '{parameters_string}'")
         except:
             msg = f"Failed to set the project parameters for Project '{self.name}'."
             logger.exception(msg)
@@ -246,7 +261,8 @@ class Project():
     def last_updated(self) -> datetime:
         try:
             # Convert the timestamp string to a datetime object
-            timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_last_updated), "%Y-%m-%d %H:%M:%S")
+            timestamp_datetime = datetime.strptime(
+                str(self._db_project.timestamp_last_updated), "%Y-%m-%d %H:%M:%S")
             return timestamp_datetime
         except Exception as err:
             msg = f"Failed to get the timestamp of the last project update from Project '{self.name}'."
@@ -270,7 +286,8 @@ class Project():
     def timestamp_creation(self) -> datetime:
         try:
             # Convert the timestamp string to a datetime object
-            timestamp_datetime = datetime.strptime(str(self._db_project.timestamp_creation), "%Y-%m-%d %H:%M:%S")
+            timestamp_datetime = datetime.strptime(
+                str(self._db_project.timestamp_creation), "%Y-%m-%d %H:%M:%S")
             return timestamp_datetime
         except:
             msg = f"Failed to get the timestamp of project creation from Project '{self.name}'."
@@ -295,7 +312,7 @@ class Project():
             msg = f"Failed to get your user role from Project '{self.name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("Your user role")
-        
+
     @property
     def citations(self) -> List['CitationData']:
         try:
@@ -316,16 +333,20 @@ class Project():
                 db.insert_into_citation(CitationData(
                     cit_id=0, citation=citations_string, link=link, project_name=self.name))
             self.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.connection.user} added a citation to Project '{self.name}': '{citations_string}'")
         except:
             msg = f"Failed to add a new citation to Project '{self.name}'."
             logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException("New citation")
-        
+
     def delete_citation(self, citation_id: int) -> None:
         try:
             with PACS_DB() as db:
                 db.delete_citation(citation_id)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.connection.user} deleted a citation from Project '{self.name}': '{citation_id}'")
         except:
             msg = f"Failed to delete the citation with ID {citation_id} from Project '{self.name}'."
             logger.exception(msg)
@@ -344,6 +365,8 @@ class Project():
             # Zip it
             destination_zip = shutil.make_archive(os.path.join(
                 destination, self.name), 'zip', destination, self.name)
+            logger.info(
+                f"User {self.connection.user} just downloaded the data from Project '{self.name}'.")
             return destination_zip
         except:
             msg = f"Failed to download Project '{self.name}' to the destination folder '{destination}'."
@@ -355,6 +378,8 @@ class Project():
             with PACS_DB() as db:
                 db.delete_project_by_name(self.name)
             self._xnat_project.delete_project()
+            logger.info(
+                f"User {self.connection.user} deleted Project '{self.name}'.")
         except:
             msg = f"Failed to delete Project '{self.name}'."
             logger.exception(msg)
@@ -368,12 +393,15 @@ class Project():
             try:
                 with PACS_DB() as db:
                     unique_name = self.name + '::' + name
-                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp_now = datetime.now(
+                        timezone).strftime("%Y-%m-%d %H:%M:%S")
                     db.insert_into_directory(DirectoryData(
                         unique_name=unique_name, dir_name=name, parent_project=self.name, parent_directory=None, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now))
 
                 dir = self._xnat_project.create_directory(unique_name)
                 self.set_last_updated(datetime.now(timezone))
+                logger.info(
+                    f"User {self.connection.user} created a new directory named '{name}' for Project '{self.name}'.")
                 return Directory(project=self, name=unique_name, _directory_filestorage_object=dir)
             except Exception as err:
                 msg = f"Failed to create a new directory named '{name}' for Project '{self.name}'."
@@ -382,6 +410,8 @@ class Project():
 
     def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
         try:
+            logger.info(
+                f"User {self.connection.user} retrieved information about directory '{name}' for Project '{self.name}'.")
             return Directory(self, name=name, _directory_filestorage_object=_directory_filestorage_object)
         except:
             msg = f"Failed to get Directory '{name}' from Project '{self.name}'."
@@ -397,6 +427,8 @@ class Project():
             filtered_directories = [self.get_directory(
                 dir_data.unique_name) for dir_data in directories_from_db]
 
+            logger.info(
+                f"User {self.connection.user} retrieved information about all directories for Project '{self.name}'.")
             return filtered_directories
 
         except:
@@ -408,7 +440,8 @@ class Project():
         try:
             if directory_name == '':
                 # No desired name was given, set the name as the current timestamp
-                directory_name = datetime.now(timezone).strftime("%Y_%m_%d_%H_%M_%S")
+                directory_name = datetime.now(
+                    timezone).strftime("%Y_%m_%d_%H_%M_%S")
 
             if directory_name.count('::') == 1 or directory_name.count('::') == 0:
                 # Name is not an inherited name and is directly under a project, create/get directory
@@ -432,12 +465,13 @@ class Project():
                     file_id = file_path.split("/")[-1]
                     updated_file_data = db.insert_into_file(
                         FileData(file_name=file_id, parent_directory=directory.name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
-                
+
                 file = self._xnat_project.insert_file_into_project(
                     file_path=file_path, file_id=updated_file_data.file_name, directory_name=directory.name, tags_string=tags_string)
-                
+
                 self.set_last_updated(datetime.now(timezone))
-    
+                logger.info(
+                    f"User {self.connection.user} inserted a file '{file.name}' into Directory '{directory.name}' in Project '{self.name}'.")
                 return File(directory=directory, name=file.name, _file_filestorage_object=file)
 
             # File path equals a zip file
@@ -462,7 +496,6 @@ class Project():
                             current_dir = directory.create_subdirectory(
                                 os.path.basename(root))
 
-
                         if len(files) > 0:
                             # Handle files of current directory
                             for file_name in files:
@@ -476,15 +509,18 @@ class Project():
                                     timestamp_creation=timestamp,
                                     timestamp_last_updated=timestamp
                                 )
-                    
+
                                 # Insert file to current directory
                                 with PACS_DB() as db:
-                                    updated_file_data = db.insert_into_file(file_data)
+                                    updated_file_data = db.insert_into_file(
+                                        file_data)
                                 self._xnat_project.insert_file_into_project(
                                     file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.name, tags_string=tags_string)
 
                         directory = current_dir
                     self.set_last_updated(datetime.now(timezone))
+                    logger.info(
+                        f"User {self.connection.user} inserted a zip file into Directory '{directory.name}' in Project '{self.name}'.")
                 return root_dir
 
             else:
@@ -569,6 +605,8 @@ class Directory():
                 db.update_attribute(
                     table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.name)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.project.connection.user} set parameters for Directory '{self.name}' to '{parameters_string}'.")
         except:
             msg = f"Failed to set parameters for Directory '{self.name}'"
             logger.exception(msg)
@@ -623,6 +661,8 @@ class Directory():
                 self.project.set_last_updated(datetime.now(timezone))
             else:
                 self.parent_directory.set_last_updated(datetime.now(timezone))
+            logger.info(
+                f"User {self.project.connection.user} deleted directory '{self.name}'.")
 
         except:
             msg = f"Failed to delete directory '{self.name}'."
@@ -637,13 +677,18 @@ class Directory():
             try:
                 with PACS_DB() as db:
                     unique_name = self.name + '::' + name
-                    timestamp_now = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp_now = datetime.now(
+                        timezone).strftime("%Y-%m-%d %H:%M:%S")
                     db.insert_into_directory(DirectoryData(
                         unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now, ))
 
                 dir = self.project._xnat_project.create_directory(unique_name)
                 self.set_last_updated(datetime.now(timezone))
+
+                logger.info(
+                    f"User {self.project.connection.user} created subdirectory '{name}' in directory '{self.name}'.")
                 return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
+
             except Exception:
                 msg = f"Failed to create subdirectory '{name}' in directory '{self.name}'."
                 logger.exception(msg)
@@ -652,12 +697,14 @@ class Directory():
     def get_subdirectories(self) -> List['Directory']:
         try:
             with PACS_DB() as db:
-                subdirectories_from_db = db.get_subdirectories_by_directory(self.name)
+                subdirectories_from_db = db.get_subdirectories_by_directory(
+                    self.name)
 
             # Only return the directories that are subdirectories of this directory
             filtered_directories = [
                 Directory(self.project, d.unique_name) for d in subdirectories_from_db]
-
+            
+            logger.info(f"User {self.project.connection.user} retrieved information about subdirectories for directory '{self.name}'.")
             return filtered_directories
         except:
             msg = f"Failed to get subdirectories for directory '{self.name}'."
@@ -666,7 +713,8 @@ class Directory():
 
     def get_file(self, file_name: str, _file_filestorage_object=None) -> 'File':
         try:
-            return File(self, name=file_name, _file_filestorage_object=_file_filestorage_object)
+            file = File(self, name=file_name, _file_filestorage_object=_file_filestorage_object)
+            return file
         except:
             msg = f"Failed to get file '{file_name}' in directory '{self.name}'."
             logger.exception(msg)
@@ -677,6 +725,7 @@ class Directory():
             fs = self._xnat_directory.get_all_files()
             files = [self.get_file(
                 file_name=f.name, _file_filestorage_object=f) for f in fs]
+            logger.info(f"User {self.project.connection.user} retrieved information about all files for directory '{self.name}'.")
             return files
         except:
             msg = f"Failed to get all files for directory '{self.name}'."
@@ -688,6 +737,7 @@ class Directory():
         if zip:
             destination_zip = shutil.make_archive(os.path.join(
                 destination, self.display_name), 'zip', destination, self.display_name)
+            logger.info(f"User {self.project.connection.user} downloaded all files for directory '{self.name}'.")
             return destination_zip
         else:
             msg = f"Failed to download directory '{self.name}'."
@@ -709,7 +759,8 @@ class Directory():
 
         for subdirectory in self.get_subdirectories():
             try:
-                subdirectory._create_folders_and_copy_files_for_download(current_folder)
+                subdirectory._create_folders_and_copy_files_for_download(
+                    current_folder)
             except Exception as e:
                 msg = f"Failed to copy files for download in subdirectory '{subdirectory.name}' of directory '{self.name}'."
                 logger.exception(msg)
@@ -765,9 +816,10 @@ class File():
         try:
             with PACS_DB() as db:
                 db.update_attribute(
-                    table_name='File', attribute_name='tags', new_value=tags, condition_column='file_name', 
+                    table_name='File', attribute_name='tags', new_value=tags, condition_column='file_name',
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(f"User {self.directory.project.connection.user} set tags for File '{self.name}' in directory '{self.directory.name}' to '{tags}'.")
         except:
             msg = f"Failed to update tags for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
@@ -782,14 +834,15 @@ class File():
             msg = f"Failed to get modality for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("File modality")
-        
+
     def set_modality(self, modality: str) -> None:
         try:
             with PACS_DB() as db:
                 db.update_attribute(
-                    table_name='File', attribute_name='modality', new_value=modality, condition_column='file_name', 
+                    table_name='File', attribute_name='modality', new_value=modality, condition_column='file_name',
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
             self.set_last_updated(datetime.now(timezone))
+            logger.info(f"User {self.directory.project.connection.user} set modality for File '{self.name}' in directory '{self.directory.name}' to '{modality}'.")
         except:
             msg = f"Failed to update modality for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
@@ -804,7 +857,7 @@ class File():
             msg = f"Failed to get creation timestamp for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("File creation timestamp")
-    
+
     @property
     def last_updated(self) -> str:
         try:
@@ -819,7 +872,7 @@ class File():
             with PACS_DB() as db:
                 timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 db.update_attribute(
-                    table_name='File', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='file_name', 
+                    table_name='File', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='file_name',
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
         except:
             msg = f"Failed to update last_updated timestamp for File '{self.name}' in directory '{self.directory.name}'."
@@ -859,6 +912,7 @@ class File():
 
     def download(self, destination: str = '') -> str:
         try:
+            logger.info(f"User {self.directory.project.connection.user} downloaded File '{self.name}' from {self.directory.name}.")
             return self._xnat_file.download(destination)
         except:
             msg = f"Failed to download File '{self.name}' in directory '{self.directory.name}'."
@@ -871,8 +925,9 @@ class File():
 
             with PACS_DB() as db:
                 db.delete_file_by_name(self.name)
-            
+
             self.directory.set_last_updated(datetime.now(timezone))
+            logger.info(f"User {self.directory.project.connection.user} deleted File '{self.name}' from {self.directory.name}.")
 
         except:
             msg = f"Failed to delete File '{self.name}' in directory '{self.directory.name}'."

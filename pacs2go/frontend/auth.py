@@ -3,6 +3,9 @@ from flask import session
 from flask_login import UserMixin
 
 from pacs2go.frontend.helpers import server_url
+from pacs2go.data_interface.logs.config_logging import data_interface_logger
+
+logger = data_interface_logger()
 
 
 class User(UserMixin):
@@ -33,6 +36,7 @@ class XNATAuthBackend:
         if response.status_code == 200:
             # Login was successful
             session_id = response.text
+            logger.info(f"User {username} authenticated successfully.")
             return User(username, session_id)
         else:
             # Login failed
