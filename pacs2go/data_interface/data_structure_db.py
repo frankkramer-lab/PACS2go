@@ -9,11 +9,10 @@ from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, FailedDisconnectException)
 from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
                                                       DATABASE_PORT)
-from pacs2go.data_interface.logs.config_logging import db_logging
+from pacs2go.data_interface.logs.config_logging import logger
 
 
 load_dotenv()
-logger = db_logging()
 
 class PACS_DB():
     # Define table names as constants

@@ -9,10 +9,7 @@ from typing import List, Sequence, Union
 import requests
 from natsort import natsorted
 from werkzeug.exceptions import Forbidden, HTTPException, NotFound
-from pacs2go.data_interface.logs.config_logging import xnat_wrapper_logger
-
-# Init logger
-logger = xnat_wrapper_logger()
+from pacs2go.data_interface.logs.config_logging import logger
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (

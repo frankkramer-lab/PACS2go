@@ -3,9 +3,8 @@ from dash import dcc, html
 from flask_login import current_user, logout_user
 
 from pacs2go.frontend.helpers import colors
-from pacs2go.data_interface.logs.config_logging import data_interface_logger
+from pacs2go.data_interface.logs.config_logging import logger
 
-logger = data_interface_logger()
 
 dash.register_page(__name__)
 

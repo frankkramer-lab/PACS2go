@@ -1,44 +1,111 @@
+import datetime
 import logging
+import threading
+import psycopg2
+import schedule
+import time
+from dotenv import load_dotenv
+from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
+                                                      DATABASE_PORT)
+import os
+
+load_dotenv()
+
+class PostgreSQLHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+
+        self.conn = psycopg2.connect(
+            host=DATABASE_HOST,
+            port=DATABASE_PORT,
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            database=os.getenv("POSTGRES_DB")
+        )
+
+        self.table_name = "pacs_logs"
+        self.create_log_table()
+        self.log_queue = []
+
+        # Write logs to db every day at 4am
+        schedule.every().day.at("04:00").do(self.save_db)
+        # Start the scheduler in a separate thread
+        self.schedule_thread = threading.Thread(target=self.run_schedule)
+        self.schedule_thread.daemon = True
+        self.schedule_thread.start()
+
+    def emit(self, record):
+        self.log_queue.append(record)
+
+    def create_log_table(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.table_name} (
+                    id SERIAL PRIMARY KEY,
+                    timestamp TIMESTAMPTZ,
+                    log_message TEXT,
+                    log_level TEXT
+                )
+            """)
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            msg = "Log table could not be created."
+            raise Exception(msg)
+
+    def write_queued_logs(self):
+        if self.log_queue:
+            try:
+                cursor = self.conn.cursor()
+                for record in self.log_queue:
+                    record_timestamp = datetime.datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S')
+                    cursor.execute(
+                        f"INSERT INTO {self.table_name} (timestamp, log_message, log_level) VALUES (%s, %s, %s)",
+                        (record_timestamp, record.msg, record.levelname)
+                    )
+                self.conn.commit()
+            except Exception as e:
+                self.conn.rollback()
+                print(f"Error in PostgreSQLHandler: {str(e)}")
+
+    
+        # https://stackoverflow.com/questions/52040070/run-schedule-function-in-new-thread
+    def save_db(self):
+        self.write_queued_logs()
+        self.log_queue = [] 
+
+    def run_schedule(self):
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
 
 
-def db_logging():
-    log_file = 'pacs2go/data_interface/logs/log_files/db.log'  # Fixed log file name
-    logger = logging.getLogger("DB_logger")
-    # Set level (this is the level of what will acutally be logged; rank: debug,info,warning,error,critical)
-    logger.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-
-    file_handler = logging.FileHandler(log_file, mode='a')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    return logger
-
-def data_interface_logger():
-    log_file = 'pacs2go/data_interface/logs/log_files/data_interface.log'  # Fixed log file name
+def get_data_interface_logger():
+    # Fixed log file name
+    log_file = 'pacs2go/data_interface/logs/log_files/data_interface.log'
     logger = logging.getLogger("PACS_DI_logger")
+    #stops logging messages being passed to ancestor loggers
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
-    
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    
+
+    formatter = logging.Formatter(
+        '%(asctime)s | %(levelname)-8s | %(filename)s:%(lineno)2d | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+    # File Handler to log to .log file
     file_handler = logging.FileHandler(log_file, mode='a')
     file_handler.setFormatter(formatter)
+
+    # SQL Handler to log data interface user actions to db
+    db_handler = PostgreSQLHandler()
+    db_handler.setFormatter(formatter)
     
+    logger.addHandler(db_handler)
     logger.addHandler(file_handler)
-    
+
     return logger
 
-def xnat_wrapper_logger():
-    log_file = 'pacs2go/data_interface/logs/log_files/xnat_wrapper.log'  # Fixed log file name
-    logger = logging.getLogger("XNAT_Wrapper_logger")
-    logger.setLevel(logging.DEBUG)
-    
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    
-    file_handler = logging.FileHandler(log_file, mode='a')
-    file_handler.setFormatter(formatter)
-    
-    logger.addHandler(file_handler)
-    
-    return logger
+
+# Why is this done here? The answer: https://alexandra-zaharia.github.io/posts/fix-python-logger-printing-same-entry-multiple-times/
+logger = get_data_interface_logger()
+

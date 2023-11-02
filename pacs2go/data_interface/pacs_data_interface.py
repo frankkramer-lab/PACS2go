@@ -19,10 +19,9 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulUploadException, WrongUploadFormatException)
 from pacs2go.data_interface.xnat_rest_wrapper import (XNAT, XNATDirectory,
                                                       XNATFile, XNATProject)
-from pacs2go.data_interface.logs.config_logging import data_interface_logger
+from pacs2go.data_interface.logs.config_logging import logger
 
-# Init logger
-logger = data_interface_logger()
+
 # File format metadata
 file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
