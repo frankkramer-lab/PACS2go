@@ -11,11 +11,9 @@ from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.pacs_data_interface.directory import Directory
 from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
 
-# File format metadata
-file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
 
 timezone = timezone("Europe/Berlin")
+
 
 class File():
     def __init__(self, directory: Directory, name: str, _file_filestorage_object=None) -> None:

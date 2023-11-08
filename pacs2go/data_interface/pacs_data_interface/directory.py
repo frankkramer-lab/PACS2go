@@ -15,9 +15,6 @@ from pacs2go.data_interface.pacs_data_interface.file import File
 from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
 
-# File format metadata
-file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
 
 timezone = timezone("Europe/Berlin")
 
