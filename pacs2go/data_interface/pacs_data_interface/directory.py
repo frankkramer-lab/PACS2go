@@ -30,9 +30,9 @@ class Directory:
                 if self._db_directory is None:
                     # Create directory in DB and in file store
                     if not parent_dir:
-                        self._file_store_directory, self._db_directory = self.project.create_directory(unique_name=self.project + "::" + self.display_name)
+                        self._file_store_directory, self._db_directory = self.project.create_directory(unique_name=self.project.name + "::" + self.display_name)
                     else:
-                        self._file_store_directory, self._db_directory = parent_dir.create_subdirectory(unique_name=parent_dir + "::" + self.display_name)
+                        self._file_store_directory, self._db_directory = parent_dir.create_subdirectory(unique_name=parent_dir.unique_name + "::" + self.display_name)
                 self.unique_name = self._db_directory.unique_name
 
         except:

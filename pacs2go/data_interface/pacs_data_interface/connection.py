@@ -93,7 +93,7 @@ class Connection:
                                         parameters=parameters, timestamp_creation=timestamp_now, timestamp_last_updated=timestamp_now))
                 
             logger.info(f"User {self.user} created a project: {name}")
-            return Project(self, name, _project_filestorage_object=file_store_project)
+            return Project(self, name, _project_file_store_object=file_store_project)
         
         except Exception as err:
             # Log the exception and raise an UnsuccessfulCreationException if project creation fails.
@@ -126,7 +126,7 @@ class Connection:
     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
         try:
             d = Directory(self.get_project(project_name), directory_name)
-            logger.debug(f"User {self.user} retrieved information about directory {d.name}.")
+            logger.debug(f"User {self.user} retrieved information about directory {d.unique_name}.")
             return d
         except Exception:
             msg = f"Failed to get Directory '{directory_name}' in Project '{project_name}'."
