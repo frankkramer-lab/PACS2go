@@ -480,28 +480,13 @@ class XNATDirectory():
         response = requests.get(
             self.project.connection.server + f"/data/projects/{self.project.name}/resources", cookies=self.project.connection.cookies)
 
-        if response.status_code == 200:
-            all_dirs = response.json()['ResultSet']['Result']
-            try:
-                # Find the correct directory and get its metadata for optimized REST calls
-                self._metadata = next(
-                    item for item in all_dirs if item["label"] == self.name)
-            except:
-                msg = f"A Directory with this name ({self.name}) does not exist. "
-                logger.exception(msg)
-                raise NotFound(msg)
-        else:
+        if not response.status_code == 200:
             msg = "Directories could not be accessed. " + str(response.status_code)
             logger.error(msg)
             raise HTTPException(msg)
 
-    @property
-    def contained_file_tags(self) -> str:
-        return self._metadata['tags']
-
-    @property
-    def number_of_files(self) -> str:
-        return self._metadata['file_count']
+        if not self.exists():
+            raise NotFound
 
     def exists(self) -> bool:
         response = requests.get(

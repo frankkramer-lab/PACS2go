@@ -29,6 +29,9 @@ class PostgreSQLHandler(logging.Handler):
 
         # Write logs to db every day at 4am
         schedule.every().day.at("04:00").do(self.save_db)
+        # Clean up logs every month on the 1st day at 5:00 AM
+        schedule.every(30).days.at("03:00").do(self.cleanup_logs)
+
         # Start the scheduler in a separate thread
         self.schedule_thread = threading.Thread(target=self.run_schedule)
         self.schedule_thread.daemon = True
@@ -68,9 +71,49 @@ class PostgreSQLHandler(logging.Handler):
             except Exception as e:
                 self.conn.rollback()
                 print(f"Error in PostgreSQLHandler: {str(e)}")
-
     
-        # https://stackoverflow.com/questions/52040070/run-schedule-function-in-new-thread
+    def cleanup_logs(self):
+        # Calculate the date one year ago 
+        one_year_ago = datetime.datetime.now() - datetime.timedelta(days=365)
+
+        # Clean up logs in the database (one year old)
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                f"DELETE FROM {self.table_name} WHERE timestamp < %s",
+                (one_year_ago,)
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Error cleaning up logs in PostgreSQLHandler: {str(e)}")
+
+        # Clean up logs in the log file
+        log_file = 'pacs2go/data_interface/logs/log_files/data_interface.log'
+        try:
+            with open(log_file, 'r+') as file:
+                lines = file.readlines()
+                file.seek(0)
+                start_line = None
+                for line_no, line in enumerate(lines):
+                    if not start_line:
+                        # Retrieve timestamp if log-file entry
+                        if "|" in line.lower():
+                            log_time_str = line.split('|')[0].strip()
+                            log_time = datetime.datetime.strptime(log_time_str, '%Y-%m-%d %H:%M:%S')
+                            
+                            # Check if older than one year
+                            if log_time >= one_year_ago:
+                                # First match that is within the past year -> save all other lines after this line
+                                file.write(line)
+                                start_line = line_no
+                    else:
+                        file.write(line)
+                file.truncate()
+        except Exception as e:
+            print(f"Error cleaning up logs in log file: {str(e)}")
+
+    # https://stackoverflow.com/questions/52040070/run-schedule-function-in-new-thread
     def save_db(self):
         self.write_queued_logs()
         self.log_queue = [] 
@@ -87,7 +130,7 @@ def get_data_interface_logger():
     logger = logging.getLogger("PACS_DI_logger")
     #stops logging messages being passed to ancestor loggers
     logger.propagate = False
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     formatter = logging.Formatter(
         '%(asctime)s | %(levelname)-8s | %(filename)s:%(lineno)2d | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
