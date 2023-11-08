@@ -5,7 +5,7 @@ from dash import dcc, html, page_registry
 from flask import session
 from flask_login import current_user
 
-from pacs2go.data_interface.pacs_data_interface import Connection
+from pacs2go.data_interface.pacs_data_interface.connection import Connection
 
 server_url = "http://xnat-web:8080"
 connection_type = "XNAT" # To change Backend, change string here

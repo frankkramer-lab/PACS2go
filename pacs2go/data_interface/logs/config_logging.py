@@ -1,13 +1,15 @@
 import datetime
 import logging
+import os
 import threading
+import time
+
 import psycopg2
 import schedule
-import time
 from dotenv import load_dotenv
+
 from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
                                                       DATABASE_PORT)
-import os
 
 load_dotenv()
 

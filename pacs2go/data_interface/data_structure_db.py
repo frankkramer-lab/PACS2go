@@ -7,10 +7,9 @@ from psycopg2.extras import execute_values
 
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, FailedDisconnectException)
+from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
                                                       DATABASE_PORT)
-from pacs2go.data_interface.logs.config_logging import logger
-
 
 load_dotenv()
 

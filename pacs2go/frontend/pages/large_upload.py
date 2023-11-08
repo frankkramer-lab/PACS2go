@@ -12,7 +12,7 @@ from flask_login import current_user
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulGetException,
     UnsuccessfulUploadException, WrongUploadFormatException)
-from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface)
 

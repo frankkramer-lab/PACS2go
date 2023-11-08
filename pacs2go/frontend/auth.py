@@ -2,8 +2,8 @@ import requests
 from flask import session
 from flask_login import UserMixin
 
-from pacs2go.frontend.helpers import server_url
 from pacs2go.data_interface.logs.config_logging import logger
+from pacs2go.frontend.helpers import server_url
 
 
 class User(UserMixin):

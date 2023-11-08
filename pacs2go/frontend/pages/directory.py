@@ -13,11 +13,14 @@ from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    DownloadException, FailedConnectionException, UnsuccessfulAttributeUpdateException,
-    UnsuccessfulDeletionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Directory, File, Project
-from pacs2go.frontend.helpers import (colors, format_linebreaks, get_connection,
-                                      login_required_interface)
+    DownloadException, FailedConnectionException,
+    UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
+    UnsuccessfulGetException)
+from pacs2go.data_interface.pacs_data_interface.directory import Directory
+from pacs2go.data_interface.pacs_data_interface.file import File
+from pacs2go.data_interface.pacs_data_interface.project import Project
+from pacs2go.frontend.helpers import (colors, format_linebreaks,
+                                      get_connection, login_required_interface)
 
 register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')

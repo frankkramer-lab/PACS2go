@@ -2,17 +2,17 @@ from tempfile import TemporaryDirectory
 from typing import Optional
 
 import dash_bootstrap_components as dbc
-from dash import (ALL, Input, Output, State, callback, ctx, dcc, html, no_update,
-                  register_page)
+from dash import (ALL, Input, Output, State, callback, ctx, dcc, html,
+                  no_update, register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulAttributeUpdateException,
     UnsuccessfulDeletionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import (colors, format_linebreaks, get_connection,
-                                      login_required_interface)
+from pacs2go.data_interface.pacs_data_interface.project import Project
+from pacs2go.frontend.helpers import (colors, format_linebreaks,
+                                      get_connection, login_required_interface)
 
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')

@@ -3,8 +3,9 @@ import unittest
 import uuid
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    FailedConnectionException, UnsuccessfulGetException, WrongUploadFormatException)
-from pacs2go.data_interface.pacs_data_interface import (Connection)
+    FailedConnectionException, UnsuccessfulGetException,
+    WrongUploadFormatException)
+from pacs2go.data_interface.pacs_data_interface import Connection
 
 
 class TestConnection(unittest.TestCase):

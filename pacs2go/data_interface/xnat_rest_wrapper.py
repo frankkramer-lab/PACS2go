@@ -9,6 +9,7 @@ from typing import List, Sequence, Union
 import requests
 from natsort import natsorted
 from werkzeug.exceptions import Forbidden, HTTPException, NotFound
+
 from pacs2go.data_interface.logs.config_logging import logger
 
 # Accepted File formats/suffixes

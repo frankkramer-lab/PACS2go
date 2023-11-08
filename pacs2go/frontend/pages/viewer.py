@@ -9,14 +9,18 @@ import numpy as np
 import pandas as pd
 import pydicom
 from dash import (Input, Output, State, callback, ctx, dash_table, dcc, html,
-                  register_page, no_update)
+                  no_update, register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 from PIL import Image
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    DownloadException, FailedConnectionException, UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Directory, File, Project
+    DownloadException, FailedConnectionException,
+    UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
+    UnsuccessfulGetException)
+from pacs2go.data_interface.pacs_data_interface.directory import Directory
+from pacs2go.data_interface.pacs_data_interface.file import File
+from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface, pil_to_b64)
 
