@@ -44,8 +44,8 @@ def get_subdirectory_names_recursive(directory):
     # Recursively fetch all nested subdirectories using depth-first traversal
     dir_list = []
     for d in directory.get_subdirectories():
-        label = f"{d.name.replace('::', ' / ')}"
-        dir_list.append(html.Option(label=label, value=d.name))
+        label = f"{d.unique_name.replace('::', ' / ')}"
+        dir_list.append(html.Option(label=label, value=d.unique_name))
         dir_list.extend(get_subdirectory_names_recursive(d))
 
     return dir_list
@@ -58,7 +58,7 @@ def get_directory_names(project: Project) -> List[str]:
 
         for d in directories:
             # html option to create a html datalist
-            dir_list.append(html.Option(label=d.name.replace('::', ' / '), value=d.name))
+            dir_list.append(html.Option(label=d.unique_name.replace('::', ' / '), value=d.unique_name))
             if len(d.get_subdirectories()) > 0:
                 dir_list.extend(get_subdirectory_names_recursive(d))
             
@@ -179,9 +179,9 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                     new_location = project.insert(file_path=filename, tags_string=tags, modality=modality)
 
                 if filename.endswith('.zip'):
-                    dir_name = new_location.name
+                    dir_name = new_location.unique_name
                 else:
-                    dir_name = new_location.directory.name
+                    dir_name = new_location.directory.unique_name
 
                 # Remove tempdir after successful upload to XNAT
                 shutil.rmtree(dirpath)

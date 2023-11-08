@@ -54,7 +54,7 @@ def get_directories_table(project: Project, filter: str = ''):
         if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([
-                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}",
+                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.unique_name}",
                         className="text-decoration-none", style={'color': colors['links']})),
                 html.Td(d.number_of_files),
                 html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")),
@@ -458,7 +458,7 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
             directory = project.create_directory(name, parameters)
             return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
-                                                          href=f"/dir/{project.name}/{directory.name}",
+                                                          href=f"/dir/{project.name}/{directory.unique_name}",
                                                           className="fw-bold text-decoration-none",
                                                           style={'color': colors['links']}))], color="success"), get_directories_table(project)
 

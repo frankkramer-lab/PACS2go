@@ -79,7 +79,7 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
         tags = f.tags if f.tags else ''
         if len(filter) == 0 or (len(filter) > 0 and filter.lower() in tags.lower()):
             rows.append(html.Tr([html.Td(index+1),
-                                 html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
+                                 html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.unique_name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
                                          ),
                                 html.Td(f.format),
                                 html.Td(f.modality),
@@ -113,7 +113,7 @@ def get_subdirectories_table(directory: Directory, filter: str = ''):
         # Only show rows if no filter is applied of if the filter has a match in the directory's name
         if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
-            rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+            rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
                 d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
 
     table_header = [
@@ -179,7 +179,7 @@ def modal_delete(directory: Directory):
             dbc.Modal(
                 [
                     dbc.ModalHeader(dbc.ModalTitle(
-                        f"Delete Directory {directory.name}")),
+                        f"Delete Directory {directory.unique_name}")),
                     dbc.ModalBody([
                         html.Div(id="delete-directory-content"),
                         dbc.Label(
@@ -329,7 +329,7 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
             # Delete Directory
             directory.delete_directory()
             # Close Modal View and show message
-            return is_open, dbc.Alert([f"The directory {directory.name} has been successfully deleted! ",
+            return is_open, dbc.Alert([f"The directory {directory.unique_name} has been successfully deleted! ",
                                        dcc.Link(f"Click here to go to back to the '{project_name}' project.",
                                                 href=f"/project/{project_name}",
                                                 className="fw-bold text-decoration-none",
@@ -410,7 +410,7 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
 
             return is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
-                                                          href=f"/dir/{project_name}/{sd.name}",
+                                                          href=f"/dir/{project_name}/{sd.unique_name}",
                                                           className="fw-bold text-decoration-none",
                                                           style={'color': colors['links']}))], color="success"), get_subdirectories_table(directory)
 
@@ -592,7 +592,6 @@ def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, pr
             if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
                 try:
                     connection = get_connection()
-                    print(page)
                     directory = connection.get_directory(project_name, directory_name)
                     file = directory.get_file(file_name)
                     if modality:
@@ -636,7 +635,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
         extra_span = None
 
         if directory_name.count('::') > 1:
-            parent = directory.parent_directory.name
+            parent = directory.parent_directory.unique_name
             link_to_direct_parent = dcc.Link(f"{parent.rsplit('::')[-1]}", href=f"/dir/{project_name}/{parent}",
                                              style={"color": colors['sage'], "marginRight": "1%"})
             extra_span = html.Span(" > ", style={"marginRight": "1%"})
@@ -646,7 +645,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
         return html.Div([
             # dcc Store components for project and directory name strings
-            dcc.Store(id='directory', data=directory.name),
+            dcc.Store(id='directory', data=directory.unique_name),
             dcc.Store(id='project', data=project_name),
 
             # Breadcrumbs
@@ -683,7 +682,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 # Button to access the File Viewer (viewer.py)
                                 dbc.Button([html.I(className="bi bi-play me-2"),
                                             "Viewer"], color="success", size="md",
-                                           href=f"/viewer/{project_name}/{directory.name}/none"),
+                                           href=f"/viewer/{project_name}/{directory.unique_name}/none"),
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
                                             "Download"], id="btn_download_dir", size="md", class_name="mx-2"),

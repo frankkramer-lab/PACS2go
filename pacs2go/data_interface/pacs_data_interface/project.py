@@ -16,7 +16,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulDeletionException, UnsuccessfulGetException,
     UnsuccessfulUploadException, WrongUploadFormatException)
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.pacs_data_interface.connection import Connection
+# from pacs2go.data_interface.pacs_data_interface.connection import Connection # only for typing, but creates circular import
 from pacs2go.data_interface.pacs_data_interface.directory import Directory
 from pacs2go.data_interface.pacs_data_interface.file import File
 from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
@@ -29,7 +29,7 @@ class Project:
 
     this_timezone = timezone("Europe/Berlin")
 
-    def __init__(self, connection: Connection, name: str, _project_file_store_object=None) -> None:
+    def __init__(self, connection, name: str, _project_file_store_object=None) -> None:
         self.connection = connection
         self.name = name
 
@@ -268,7 +268,7 @@ class Project:
                 db_dir = db.get_directory_by_name(unique_name)
             # Upload to file store
             file_store_dir = self._file_store_project.create_directory(unique_name)
-            
+
             self.set_last_updated(datetime.now(self.this_timezone))
 
             logger.info(
@@ -279,11 +279,11 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulCreationException(str(unique_name.split('::')[-1]))
 
-    def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
+    def get_directory(self, name) -> 'Directory':
         try:
             logger.debug(
                 f"User {self.connection.user} retrieved information about directory '{name}' for Project '{self.name}'.")
-            return Directory(self, name=name, _directory_filestorage_object=_directory_filestorage_object)
+            return Directory(self, name=name)
         except:
             msg = f"Failed to get Directory '{name}' from Project '{self.name}'."
             logger.exception(msg)
@@ -342,15 +342,15 @@ class Project:
                     file_id = file_path.split("/")[-1]
                     # Insert file into DB
                     updated_file_data = db.insert_into_file(
-                        FileData(file_name=file_id, parent_directory=directory.name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
+                        FileData(file_name=file_id, parent_directory=directory.unique_name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
 
                 # Upload file to file store
                 file_store_file_object = self._file_store_project.insert_file_into_project(
-                    file_path=file_path, file_id=updated_file_data.file_name, directory_name=directory.name, tags_string=tags_string)
+                    file_path=file_path, file_id=updated_file_data.file_name, directory_name=directory.unique_name, tags_string=tags_string)
 
                 self.set_last_updated(datetime.now(self.this_timezone))
                 logger.info(
-                    f"User {self.connection.user} inserted a file '{file_store_file_object.name}' into Directory '{directory.name}' in Project '{self.name}'.")
+                    f"User {self.connection.user} inserted a file '{file_store_file_object.name}' into Directory '{directory.unique_name}' in Project '{self.name}'.")
                 return File(directory=directory, name=file_store_file_object.name, _file_filestorage_object=file_store_file_object)
 
             # File path equals a zip file
@@ -380,7 +380,7 @@ class Project:
                                 # Create a FileData object
                                 file_data = FileData(
                                     file_name=file_name,
-                                    parent_directory=current_dir.name,
+                                    parent_directory=current_dir.unique_name,
                                     format=self.file_format[Path(file_name).suffix],
                                     tags=tags_string,
                                     modality=modality,
@@ -397,13 +397,13 @@ class Project:
 
                                 # Upload to file store
                                 self._file_store_project.insert_file_into_project(
-                                    file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.name, tags_string=tags_string)
+                                    file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.unique_name, tags_string=tags_string)
 
                         directory = current_dir
 
                     self.set_last_updated(datetime.now(self.this_timezone))
                     logger.info(
-                        f"User {self.connection.user} inserted a zip file into Directory '{directory.name}' in Project '{self.name}'.")
+                        f"User {self.connection.user} inserted a zip file into Directory '{directory.unique_name}' in Project '{self.name}'.")
                 return root_dir
 
             else:

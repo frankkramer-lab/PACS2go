@@ -12,14 +12,14 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulDeletionException, UnsuccessfulGetException)
 from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.pacs_data_interface.file import File
-from pacs2go.data_interface.pacs_data_interface.project import Project
+#from pacs2go.data_interface.pacs_data_interface.project import Project # only for typing, but creates circular import
 from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
 
 
 class Directory:
     this_timezone = timezone("Europe/Berlin")
 
-    def __init__(self, project: Project, name: str, parent_dir:'Directory' = None) -> None:
+    def __init__(self, project, name: str, parent_dir:'Directory' = None) -> None:
         self.display_name = name.rsplit('::',1)[-1] # Get Directory name
         self.project = project
         self._file_store_directory = None
@@ -34,7 +34,7 @@ class Directory:
                     else:
                         self._file_store_directory, self._db_directory = parent_dir.create_subdirectory(unique_name=parent_dir + "::" + self.display_name)
                 self.unique_name = self._db_directory.unique_name
-                
+
         except:
             msg = f"Failed to create Directory '{name}' at initialization."
             logger.exception(msg)
@@ -67,7 +67,7 @@ class Directory:
 
             return total_files
         except Exception:
-            msg = f"Failed to get the number of files for Directory '{self.name}'"
+            msg = f"Failed to get the number of files for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulGetException(msg)
 
@@ -77,7 +77,7 @@ class Directory:
             if self._db_directory.parent_directory:
                 return self.project.get_directory(self._db_directory.parent_directory)
         except:
-            msg = f"Failed to get the parent directory for '{self.name}'"
+            msg = f"Failed to get the parent directory for '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulGetException("Parent directory name")
 
@@ -86,7 +86,7 @@ class Directory:
         try:
             return self._db_directory.parameters
         except:
-            msg = f"Failed to get the parameters for Directory '{self.name}'"
+            msg = f"Failed to get the parameters for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulGetException("Directory-related parameters")
 
@@ -94,12 +94,12 @@ class Directory:
         try:
             with PACS_DB() as db:
                 db.update_attribute(
-                    table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.name)
+                    table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.unique_name)
             self.set_last_updated(datetime.now(self.this_timezone))
             logger.info(
-                f"User {self.project.connection.user} set parameters for Directory '{self.name}' to '{parameters_string}'.")
+                f"User {self.project.connection.user} set parameters for Directory '{self.unique_name}' to '{parameters_string}'.")
         except:
-            msg = f"Failed to set parameters for Directory '{self.name}'"
+            msg = f"Failed to set parameters for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the directory parameters to '{parameters_string}'")
@@ -109,7 +109,7 @@ class Directory:
         try:
             return self._db_directory.timestamp_last_updated
         except:
-            msg = f"Failed to get the last updated timestamp for Directory '{self.name}'"
+            msg = f"Failed to get the last updated timestamp for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulGetException(
                 "The timestamp of the last directory update")
@@ -119,9 +119,9 @@ class Directory:
             with PACS_DB() as db:
                 timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 db.update_attribute(
-                    table_name='Directory', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='unique_name', condition_value=self.name)
+                    table_name='Directory', attribute_name='timestamp_last_updated', new_value=timestamp, condition_column='unique_name', condition_value=self.unique_name)
         except:
-            msg = f"Failed to set the last updated timestamp for Directory '{self.name}'"
+            msg = f"Failed to set the last updated timestamp for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulAttributeUpdateException(
                 f"the directory's 'last_updated' to '{timestamp}'")
@@ -131,7 +131,7 @@ class Directory:
         try:
             return self._db_directory.timestamp_creation
         except:
-            msg = f"Failed to get the creation timestamp for Directory '{self.name}'"
+            msg = f"Failed to get the creation timestamp for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulGetException(
                 "The timestamp of directory creation")
@@ -144,19 +144,19 @@ class Directory:
             for subdir in self.get_subdirectories():
                 subdir.delete_directory()
             with PACS_DB() as db:
-                db.delete_directory_by_name(self.name)
+                db.delete_directory_by_name(self.unique_name)
 
             # Update the parents last updated
             self.project.set_last_updated(datetime.now(self.this_timezone))
             if self.parent_directory:
                 self.parent_directory.set_last_updated(datetime.now(self.this_timezone))
             logger.info(
-                f"User {self.project.connection.user} deleted directory '{self.name}'.")
+                f"User {self.project.connection.user} deleted directory '{self.unique_name}'.")
 
         except:
-            msg = f"Failed to delete directory '{self.name}'."
+            msg = f"Failed to delete directory '{self.unique_name}'."
             logger.exception(msg)
-            raise UnsuccessfulDeletionException(f"directory '{self.name}'")
+            raise UnsuccessfulDeletionException(f"directory '{self.unique_name}'")
 
     def create_subdirectory(self, unique_name: str, parameters: str = ''):
         try:
