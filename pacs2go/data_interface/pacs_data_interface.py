@@ -117,7 +117,7 @@ class Connection():
     def get_project(self, name: str) -> Optional['Project']:
         try:
             project = Project(self, name)
-            logger.info(f"User {self.user} retrieved information about project {project.name}.")
+            logger.debug(f"User {self.user} retrieved information about project {project.name}.")
             return project
         except:
             msg = f"Failed to get Project '{name}'."
@@ -129,7 +129,7 @@ class Connection():
             with PACS_DB() as db:
                 pjs = db.get_all_projects()
             projects = [self.get_project(project.name) for project in pjs]
-            logger.info(f"User {self.user} retrieved information about project list.")
+            logger.debug(f"User {self.user} retrieved information about project list.")
             return projects
         except Exception:
             msg = "Failed to get all Projects"
@@ -139,7 +139,7 @@ class Connection():
     def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
         try:
             d = Directory(self.get_project(project_name), directory_name)
-            logger.info(f"User {self.user} retrieved information about directory {d.name}.")
+            logger.debug(f"User {self.user} retrieved information about directory {d.name}.")
             return d
         except Exception:
             msg = f"Failed to get Directory '{directory_name}' in Project '{project_name}'."
@@ -409,7 +409,7 @@ class Project():
 
     def get_directory(self, name, _directory_filestorage_object=None) -> 'Directory':
         try:
-            logger.info(
+            logger.debug(
                 f"User {self.connection.user} retrieved information about directory '{name}' for Project '{self.name}'.")
             return Directory(self, name=name, _directory_filestorage_object=_directory_filestorage_object)
         except:
@@ -426,7 +426,7 @@ class Project():
             filtered_directories = [self.get_directory(
                 dir_data.unique_name) for dir_data in directories_from_db]
 
-            logger.info(
+            logger.debug(
                 f"User {self.connection.user} retrieved information about all directories for Project '{self.name}'.")
             return filtered_directories
 
@@ -583,7 +583,8 @@ class Directory():
     @property
     def parent_directory(self) -> 'Directory':
         try:
-            return self.project.get_directory(self._db_directory.parent_directory)
+            if self._db_directory.parent_directory:
+                return self.project.get_directory(self._db_directory.parent_directory)
         except:
             msg = f"Failed to get the parent directory for '{self.name}'"
             logger.exception(msg)
@@ -655,10 +656,8 @@ class Directory():
                 db.delete_directory_by_name(self.name)
 
             # Update the parents last updated
-            if self._db_directory.parent_directory == None:
-                # Top level directory -> change last updated of project
-                self.project.set_last_updated(datetime.now(timezone))
-            else:
+            self.project.set_last_updated(datetime.now(timezone))
+            if self.parent_directory:
                 self.parent_directory.set_last_updated(datetime.now(timezone))
             logger.info(
                 f"User {self.project.connection.user} deleted directory '{self.name}'.")
@@ -703,7 +702,7 @@ class Directory():
             filtered_directories = [
                 Directory(self.project, d.unique_name) for d in subdirectories_from_db]
             
-            logger.info(f"User {self.project.connection.user} retrieved information about subdirectories for directory '{self.name}'.")
+            logger.debug(f"User {self.project.connection.user} retrieved information about subdirectories for directory '{self.name}'.")
             return filtered_directories
         except:
             msg = f"Failed to get subdirectories for directory '{self.name}'."
@@ -724,7 +723,7 @@ class Directory():
             fs = self._xnat_directory.get_all_files()
             files = [self.get_file(
                 file_name=f.name, _file_filestorage_object=f) for f in fs]
-            logger.info(f"User {self.project.connection.user} retrieved information about all files for directory '{self.name}'.")
+            logger.debug(f"User {self.project.connection.user} retrieved information about all files for directory '{self.name}'.")
             return files
         except:
             msg = f"Failed to get all files for directory '{self.name}'."
@@ -785,9 +784,9 @@ class File():
         elif self.directory.project.connection._kind == "XNAT":
             try:
                 self._xnat_file = XNATFile(directory._xnat_directory, name)
+            except:
                 msg = f"Failed to get File '{name}' in directory '{self.directory.name}'."
                 logger.exception(msg)
-            except:
                 raise UnsuccessfulGetException(f"File '{name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm

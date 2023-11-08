@@ -73,7 +73,8 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
     # Get file information as rows for table
     for index, f in enumerate(files):
         # Only show rows if no filter is applied of if the filter has a match in the file tags
-        if len(filter) == 0 or (len(filter) > 0 and filter.lower() in f.tags.lower()):
+        tags = f.tags if f.tags else ''
+        if len(filter) == 0 or (len(filter) > 0 and filter.lower() in tags.lower()):
             rows.append(html.Tr([html.Td(index+1),
                                  html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
                                          ),
@@ -83,7 +84,7 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
                                     f"{round(f.size/1024,2)} KB ({f.size} Bytes)"),
                                 html.Td(f.timestamp_creation.strftime(
                                     "%dth %B %Y, %H:%M:%S")),
-                                html.Td(f.tags),
+                                html.Td(tags),
                                 html.Td([modal_delete_file(directory, f), modal_edit_file(f), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]))
 
     # Table header
