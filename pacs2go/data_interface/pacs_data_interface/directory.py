@@ -16,38 +16,45 @@ from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
 
 
-timezone = timezone("Europe/Berlin")
+class Directory:
+    this_timezone = timezone("Europe/Berlin")
 
-class Directory():
-    def __init__(self, project: Project, name: str, _directory_filestorage_object=None) -> None:
-        self.name = name  # unique
-        self.display_name = self.name.split('::')[-1]
+    def __init__(self, project: Project, name: str, parent_dir:'Directory' = None) -> None:
+        self.display_name = name.rsplit('::',1)[-1] # Get Directory name
         self.project = project
+        self._file_store_directory = None
 
         try:
             with PACS_DB() as db:
                 self._db_directory = db.get_directory_by_name(name)
-
+                if self._db_directory is None:
+                    # Create directory in DB and in file store
+                    if not parent_dir:
+                        self._file_store_directory, self._db_directory = self.project.create_directory(unique_name=self.project + "::" + self.display_name)
+                    else:
+                        self._file_store_directory, self._db_directory = parent_dir.create_subdirectory(unique_name=parent_dir + "::" + self.display_name)
+                self.unique_name = self._db_directory.unique_name
+                
         except:
-            msg = f"Failed to initialize Directory '{name}'"
+            msg = f"Failed to create Directory '{name}' at initialization."
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
-        if _directory_filestorage_object:
-            self._xnat_directory = _directory_filestorage_object
-        elif self.project.connection._kind == "XNAT":
-            try:
-                self._xnat_directory = XNATDirectory(
-                    project._xnat_project, name)
-            except:
-                msg = f"Failed to initialize XNATDirectory for '{name}'"
+        if not self._file_store_directory:
+            # Get file store object
+            if self.project.connection._kind == "XNAT":
+                try:
+                    self._file_store_directory = XNATDirectory(
+                        project._file_store_project, name)
+                except:
+                    msg = f"Failed to initialize XNATDirectory for '{name}'"
+                    logger.exception(msg)
+                    raise UnsuccessfulGetException(f"Directory '{name}'")
+            else:
+                # FailedConnectionException because only these connection types are supported atm
+                msg = f"Failed to initialize Directory '{name}' due to unsupported connection type"
                 logger.exception(msg)
-                raise UnsuccessfulGetException(f"Directory '{name}'")
-        else:
-            # FailedConnectionException because only these connection types are supported atm
-            msg = f"Failed to initialize Directory '{name}' due to unsupported connection type"
-            logger.exception(msg)
-            raise FailedConnectionException
+                raise FailedConnectionException
 
     @property
     def number_of_files(self) -> int:
@@ -88,7 +95,7 @@ class Directory():
             with PACS_DB() as db:
                 db.update_attribute(
                     table_name='Directory', attribute_name='parameters', new_value=parameters_string, condition_column='unique_name', condition_value=self.name)
-            self.set_last_updated(datetime.now(timezone))
+            self.set_last_updated(datetime.now(self.this_timezone))
             logger.info(
                 f"User {self.project.connection.user} set parameters for Directory '{self.name}' to '{parameters_string}'.")
         except:
@@ -130,7 +137,7 @@ class Directory():
                 "The timestamp of directory creation")
 
     def exists(self) -> bool:
-        return self._xnat_directory.exists()
+        return self._file_store_directory.exists()
 
     def delete_directory(self) -> None:
         try:
@@ -140,9 +147,9 @@ class Directory():
                 db.delete_directory_by_name(self.name)
 
             # Update the parents last updated
-            self.project.set_last_updated(datetime.now(timezone))
+            self.project.set_last_updated(datetime.now(self.this_timezone))
             if self.parent_directory:
-                self.parent_directory.set_last_updated(datetime.now(timezone))
+                self.parent_directory.set_last_updated(datetime.now(self.this_timezone))
             logger.info(
                 f"User {self.project.connection.user} deleted directory '{self.name}'.")
 
@@ -151,46 +158,48 @@ class Directory():
             logger.exception(msg)
             raise UnsuccessfulDeletionException(f"directory '{self.name}'")
 
-    def create_subdirectory(self, name: str, parameters: str = '') -> 'Directory':
+    def create_subdirectory(self, unique_name: str, parameters: str = ''):
         try:
-            d = self.project.get_directory(self.name + '::' + name)
-            return d
-        except:
-            try:
-                with PACS_DB() as db:
-                    unique_name = self.name + '::' + name
-                    timestamp_now = datetime.now(
-                        timezone).strftime("%Y-%m-%d %H:%M:%S")
-                    logger.info(f"insert {unique_name}")
-                    db.insert_into_directory(DirectoryData(
-                        unique_name=unique_name, dir_name=name, parent_project=None, parent_directory=self.name, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now, ))
+            with PACS_DB() as db:
+                timestamp_now = datetime.now(
+                    self.this_timezone).strftime("%Y-%m-%d %H:%M:%S")
+                logger.info(f"insert {unique_name}")
+                # Insert into DB
+                db.insert_into_directory(DirectoryData(
+                    unique_name=unique_name, dir_name=unique_name.rsplit("::",1)[-1], parent_project=None, parent_directory=self.unique_name, timestamp_creation=timestamp_now, parameters=parameters, timestamp_last_updated=timestamp_now, ))
+                db_dir = db.get_directory_by_name(unique_name)
 
-                dir = self.project._xnat_project.create_directory(unique_name)
-                self.set_last_updated(datetime.now(timezone))
+            # Upload to file store
+            file_store_dir = self.project._file_store_project.create_directory(unique_name)
 
-                logger.info(
-                    f"User {self.project.connection.user} created subdirectory '{name}' in directory '{self.name}'.")
-                return Directory(project=self.project, name=unique_name, _directory_filestorage_object=dir)
+            self.set_last_updated(datetime.now(self.this_timezone))
 
-            except Exception:
-                msg = f"Failed to create subdirectory '{name}' in directory '{self.name}'."
-                logger.exception(msg)
-                raise UnsuccessfulCreationException(str(name))
+            logger.info(
+                f"User {self.project.connection.user} created subdirectory '{unique_name}' in directory '{self.unique_name}'.")
+            return file_store_dir, db_dir
+        except Exception:
+            msg = f"Failed to create subdirectory '{unique_name}' in directory '{self.unique_name}'."
+            logger.exception(msg)
+            raise UnsuccessfulCreationException(str(unique_name))
 
     def get_subdirectories(self) -> List['Directory']:
         try:
             with PACS_DB() as db:
                 subdirectories_from_db = db.get_subdirectories_by_directory(
-                    self.name)
+                    self.unique_name)
 
             # Only return the directories that are subdirectories of this directory
             filtered_directories = [
                 Directory(self.project, d.unique_name) for d in subdirectories_from_db]
+
+            # Check for inconsistencies and log as warning
+            if len(subdirectories_from_db) != len(filtered_directories):
+                logger.warning(f"There might be inconsistencies concerning Project {self.unique_name}.")
             
-            logger.debug(f"User {self.project.connection.user} retrieved information about subdirectories for directory '{self.name}'.")
+            logger.debug(f"User {self.project.connection.user} retrieved information about subdirectories for directory '{self.unique_name}'.")
             return filtered_directories
         except:
-            msg = f"Failed to get subdirectories for directory '{self.name}'."
+            msg = f"Failed to get subdirectories for directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException(msg)
 
@@ -199,19 +208,19 @@ class Directory():
             file = File(self, name=file_name, _file_filestorage_object=_file_filestorage_object)
             return file
         except:
-            msg = f"Failed to get file '{file_name}' in directory '{self.name}'."
+            msg = f"Failed to get file '{file_name}' in directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException(f"File '{file_name}'")
 
     def get_all_files(self) -> List['File']:
         try:
-            fs = self._xnat_directory.get_all_files()
+            fs = self._file_store_directory.get_all_files()
             files = [self.get_file(
                 file_name=f.name, _file_filestorage_object=f) for f in fs]
-            logger.debug(f"User {self.project.connection.user} retrieved information about all files for directory '{self.name}'.")
+            logger.debug(f"User {self.project.connection.user} retrieved information about all files for directory '{self.unique_name}'.")
             return files
         except:
-            msg = f"Failed to get all files for directory '{self.name}'."
+            msg = f"Failed to get all files for directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("Files")
 
@@ -220,10 +229,10 @@ class Directory():
         if zip:
             destination_zip = shutil.make_archive(os.path.join(
                 destination, self.display_name), 'zip', destination, self.display_name)
-            logger.info(f"User {self.project.connection.user} downloaded all files for directory '{self.name}'.")
+            logger.info(f"User {self.project.connection.user} downloaded all files for directory '{self.unique_name}'.")
             return destination_zip
         else:
-            msg = f"Failed to download directory '{self.name}'."
+            msg = f"Failed to download directory '{self.unique_name}'."
             logger.exception(msg)
             return destination
 
@@ -234,9 +243,9 @@ class Directory():
         try:
             for file in self.get_all_files():
                 # Copy files to the current folder
-                file._xnat_file.download(current_folder)
+                file._file_store_file.download(current_folder)
         except Exception:
-            msg = f"Failed to copy files for download in directory '{self.name}'."
+            msg = f"Failed to copy files for download in directory '{self.unique_name}'."
             logger.exception(msg)
             raise DownloadException
 
@@ -245,6 +254,6 @@ class Directory():
                 subdirectory._create_folders_and_copy_files_for_download(
                     current_folder)
             except Exception:
-                msg = f"Failed to copy files for download in subdirectory '{subdirectory.name}' of directory '{self.name}'."
+                msg = f"Failed to copy files for download in subdirectory '{subdirectory.unique_name}' of directory '{self.unique_name}'."
                 logger.exception(msg)
                 raise DownloadException

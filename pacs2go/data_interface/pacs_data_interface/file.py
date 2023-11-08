@@ -12,10 +12,9 @@ from pacs2go.data_interface.pacs_data_interface.directory import Directory
 from pacs2go.data_interface.xnat_rest_wrapper import XNATFile
 
 
-timezone = timezone("Europe/Berlin")
+class File:
+    this_timezone = timezone("Europe/Berlin")
 
-
-class File():
     def __init__(self, directory: Directory, name: str, _file_filestorage_object=None) -> None:
         self.directory = directory
         self.name = name
@@ -30,10 +29,10 @@ class File():
             raise UnsuccessfulGetException(f"DB-File '{name}'")
 
         if _file_filestorage_object:
-            self._xnat_file = _file_filestorage_object
+            self._file_store_file = _file_filestorage_object
         elif self.directory.project.connection._kind == "XNAT":
             try:
-                self._xnat_file = XNATFile(directory._xnat_directory, name)
+                self._file_store_file = XNATFile(directory._file_store_directory, name)
             except:
                 msg = f"Failed to get File '{name}' in directory '{self.directory.name}'."
                 logger.exception(msg)
@@ -66,7 +65,7 @@ class File():
                 db.update_attribute(
                     table_name='File', attribute_name='tags', new_value=tags, condition_column='file_name',
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
-            self.set_last_updated(datetime.now(timezone))
+            self.set_last_updated(datetime.now(self.this_timezone))
             logger.info(f"User {self.directory.project.connection.user} set tags for File '{self.name}' in directory '{self.directory.name}' to '{tags}'.")
         except:
             msg = f"Failed to update tags for File '{self.name}' in directory '{self.directory.name}'."
@@ -89,7 +88,7 @@ class File():
                 db.update_attribute(
                     table_name='File', attribute_name='modality', new_value=modality, condition_column='file_name',
                     condition_value=self.name, second_condition_column='parent_directory', second_condition_value=self.directory.name)
-            self.set_last_updated(datetime.now(timezone))
+            self.set_last_updated(datetime.now(self.this_timezone))
             logger.info(f"User {self.directory.project.connection.user} set modality for File '{self.name}' in directory '{self.directory.name}' to '{modality}'.")
         except:
             msg = f"Failed to update modality for File '{self.name}' in directory '{self.directory.name}'."
@@ -131,7 +130,7 @@ class File():
     @property
     def content_type(self) -> str:
         try:
-            return self._xnat_file.content_type
+            return self._file_store_file.content_type
         except:
             msg = f"Failed to get content type for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
@@ -140,7 +139,7 @@ class File():
     @property
     def size(self) -> int:
         try:
-            return self._xnat_file.size
+            return self._file_store_file.size
         except:
             msg = f"Failed to get size for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
@@ -149,19 +148,19 @@ class File():
     @property
     def data(self) -> bytes:
         try:
-            return self._xnat_file.data
+            return self._file_store_file.data
         except:
             msg = f"Failed to get file data for File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("The actual file data itself")
 
     def exists(self) -> bool:
-        return self._xnat_file.exists()
+        return self._file_store_file.exists()
 
     def download(self, destination: str = '') -> str:
         try:
             logger.info(f"User {self.directory.project.connection.user} downloaded File '{self.name}' from {self.directory.name}.")
-            return self._xnat_file.download(destination)
+            return self._file_store_file.download(destination)
         except:
             msg = f"Failed to download File '{self.name}' in directory '{self.directory.name}'."
             logger.exception(msg)
@@ -169,12 +168,12 @@ class File():
 
     def delete_file(self) -> None:
         try:
-            self._xnat_file.delete_file()
+            self._file_store_file.delete_file()
 
             with PACS_DB() as db:
                 db.delete_file_by_name(self.name)
 
-            self.directory.set_last_updated(datetime.now(timezone))
+            self.directory.set_last_updated(datetime.now(self.this_timezone))
             logger.info(f"User {self.directory.project.connection.user} deleted File '{self.name}' from {self.directory.name}.")
 
         except:
