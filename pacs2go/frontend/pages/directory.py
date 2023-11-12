@@ -406,7 +406,7 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
         try:
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
-            sd = directory.create_subdirectory(name, parameters)
+            sd = Directory(directory.project, name, directory, parameters)
 
             return is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",

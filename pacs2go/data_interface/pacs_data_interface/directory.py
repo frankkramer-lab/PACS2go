@@ -19,7 +19,7 @@ from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
 class Directory:
     this_timezone = timezone("Europe/Berlin")
 
-    def __init__(self, project, name: str, parent_dir:'Directory' = None) -> None:
+    def __init__(self, project, name: str, parent_dir:'Directory' = None, parameters:str = "") -> None:
         self.display_name = name.rsplit('::',1)[-1] # Get Directory name
         self.project = project
         self._file_store_directory = None
@@ -30,9 +30,9 @@ class Directory:
                 if self._db_directory is None:
                     # Create directory in DB and in file store
                     if not parent_dir:
-                        self._file_store_directory, self._db_directory = self.project.create_directory(unique_name=self.project.name + "::" + self.display_name)
+                        self._file_store_directory, self._db_directory = self.project.create_directory(unique_name=self.project.name + "::" + self.display_name, parameters=parameters)
                     else:
-                        self._file_store_directory, self._db_directory = parent_dir.create_subdirectory(unique_name=parent_dir.unique_name + "::" + self.display_name)
+                        self._file_store_directory, self._db_directory = parent_dir.create_subdirectory(unique_name=parent_dir.unique_name + "::" + self.display_name, parameters=parameters)
                 self.unique_name = self._db_directory.unique_name
 
         except:

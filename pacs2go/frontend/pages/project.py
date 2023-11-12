@@ -11,8 +11,11 @@ from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulAttributeUpdateException,
     UnsuccessfulDeletionException, UnsuccessfulGetException)
 from pacs2go.data_interface.pacs_data_interface.project import Project
+from pacs2go.data_interface.pacs_data_interface.directory import Directory
+
 from pacs2go.frontend.helpers import (colors, format_linebreaks,
                                       get_connection, login_required_interface)
+
 
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')
@@ -455,7 +458,8 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
-            directory = project.create_directory(name, parameters)
+            directory = Directory(project=project,name=name,parameters=parameters)
+            
             return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
                                                           href=f"/dir/{project.name}/{directory.unique_name}",
