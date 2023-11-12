@@ -20,8 +20,9 @@ def get_projects_table(filter: str = ''):
         rows = []
         projects = connection.get_all_projects()
         for p in projects:
+            keywords = p.keywords if p.keywords else "-"
             # Only show rows if no filter is applied of if the filter has a match in the project's keywords
-            if filter.lower() in p.keywords.lower() or len(filter) == 0:
+            if filter.lower() in keywords or filter.lower() in keywords or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
                     p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))

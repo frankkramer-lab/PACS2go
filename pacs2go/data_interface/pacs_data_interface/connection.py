@@ -81,6 +81,11 @@ class Connection:
             raise FailedDisconnectException
 
     def create_project(self, name: str, description: str = '', keywords: str = '', parameters: str = '') -> 'Project':
+        # Remove unallowed chars
+        name = name.replace(".","")
+        name = name.replace(",","")
+        name = name.replace(";","")
+        name = name.replace(":","")
         try:
             with self._file_store_connection as file_store:
                 file_store_project = file_store.create_project(
