@@ -66,7 +66,7 @@ def get_single_file_preview(directory: Directory):
 
         return dbc.Card([
             dbc.CardHeader("Preview the first file of this directory:"),
-            dbc.CardBody(content, className="w-25 h-25")])
+            dbc.CardBody(content, className="w-25 h-25")], className="custom-card")
 
 
 def get_files_table(directory: Directory, filter: str = '', active_page: int = 0):
@@ -697,7 +697,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         html.H4("Details"), 
                         modal_edit_directory(project, directory)],
                     className="d-flex justify-content-between align-items-center"),
-                dbc.Spinner(dbc.CardBody(get_details(directory), id="dir_details_card"))], class_name="mb-3"),
+                dbc.Spinner(dbc.CardBody(get_details(directory), id="dir_details_card"))], class_name="custom-card mb-3"),
             # Sub-Directories Table
             dbc.Card([
                 dbc.CardHeader(children=[html.H4('Directories'),
@@ -714,7 +714,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     # Directories Table
                     dbc.Spinner(html.Div(get_subdirectories_table(
                         directory), id='subdirectory_table')),
-                ])], class_name="mb-3"),
+                ])], class_name="custom-card mb-3"),
 
             # Files Table
             dbc.Card([
@@ -733,7 +733,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         directory), id='files_table')),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
                         int(directory.number_of_files)/20), first_last=True, previous_next=True, active_page=0)
-                ])], class_name="mb-3"),
+                ])], class_name="custom-card mb-3"),
 
             # Display a preview of the first file's content
             get_single_file_preview(directory),

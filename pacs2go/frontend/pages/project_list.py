@@ -46,8 +46,8 @@ def modal_create():
     # Modal view for project creation
     return html.Div([
         # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-plus-circle-dotted me-2"),
-                    "Create new Project"], id="create_project", size="lg", color="success"),
+        dbc.Button([html.I(className="bi bi-plus-circle me-2"),
+                    "Create new Project"], id="create_project", size="md", color="success"),
         # Actual modal view
         dbc.Modal(
             [
@@ -192,6 +192,6 @@ def layout():
 
                     dbc.Spinner(
                         html.Div(get_projects_table(), id='projects_table')),
-                ])], class_name="mb-3"),
+                ])], class_name="custom-card mb-3"),
 
         ])

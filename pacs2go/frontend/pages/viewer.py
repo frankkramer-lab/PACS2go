@@ -101,7 +101,7 @@ def show_file(file: File):
             # ... (add any other relevant information that you want to display)
             html.Img(id="my-img", className="image", width="100%",
                     src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
-        ]))
+        ], className="custom-card"))
 
     else:
         # Handle all other file formats that are at this point not displayable
@@ -127,7 +127,7 @@ def show_file(file: File):
                           dcc.Download(id="download-file"), 
                           dcc.Store(data=file.name, id='file_name'), 
                           modal_edit_file(file), modal_delete_file(file)], className="mt-3 d-grid gap-2 d-md-flex justify-content-md-end")
-            ],))
+            ], className="custom-card"))
 
     return data
 

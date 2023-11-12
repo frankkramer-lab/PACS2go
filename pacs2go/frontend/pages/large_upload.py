@@ -86,7 +86,7 @@ def uploader(passed_project: Optional[str]):
     if passed_project == 'none':
         passed_project = ''
     # Upload drag and drop area
-    return html.Div([
+    return dbc.Card(dbc.CardBody(html.Div([
         dbc.Row(html.H5([html.B("1."), " Specify the project's name."])),
         dbc.Row([
             dbc.Col(
@@ -121,7 +121,7 @@ def uploader(passed_project: Optional[str]):
                 # Placeholder for 'Upload to XNAT' button
                 html.Div(id='du-callback-output'),
             ])
-    ])
+    ])), className="custom-card")
 
 
 #################

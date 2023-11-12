@@ -620,7 +620,7 @@ def layout(project_name: Optional[str] = None):
                         html.H4("Details"),
                         modal_edit_project(project)],
                     className="d-flex justify-content-between align-items-center"),
-                dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="mb-3"),
+                dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="custom-card mb-3"),
             dbc.Card([
                 dbc.CardHeader(children=[
                     html.H4("Directories"),
@@ -637,7 +637,7 @@ def layout(project_name: Optional[str] = None):
                     # Directories Table
                     dbc.Spinner(html.Div(get_directories_table(
                         project), id='directory_table')),
-                ])], class_name="mb-3"),
+                ])], class_name="custom-card mb-3"),
             dbc.Card([
                 dbc.CardHeader([
                     html.H4("Sources"),
@@ -647,7 +647,7 @@ def layout(project_name: Optional[str] = None):
                     dbc.Spinner(html.Div(get_citations(
                         project), id='citation_table'))
                 ])
-            ], class_name="mb-3"),
+            ], class_name="custom-card mb-3"),
         ])
 
     else:

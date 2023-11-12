@@ -122,7 +122,7 @@ def layout():
                 ),
                 dbc.CardBody(html.Div(id="card-content",
                                       className="card-text m-3")),
-            ]
+            ], className="custom-card"
             )
         ]
     )

@@ -62,7 +62,7 @@ def layout():
                                 ], method='POST'), style={'background-color': 'rgb(211, 228, 216)'}
                         ),
                     ],
-                    className="mt-5"
+                    className="custom-card mt-5"
                 ),
             ),
         ],
