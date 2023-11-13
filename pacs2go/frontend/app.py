@@ -122,7 +122,7 @@ app.layout = html.Div(
                 "position": "fixed",
                 "bottom": "0",
                 "width": "100%",
-                "text-align": "center",
+                "text-align": "right",
                 "padding": "10px",
                 "font-size": "10px",
             },
