@@ -23,7 +23,7 @@ $ docker-compose up
 ## Built with 
 
 - Docker (20.10.18) with docker-compose (1.29.2)
-- pyxnat (1.4)
-- dash (2.6.1)
+- Plotly dash (2.14.1)
 - dash-uploader (0.6.0)
+- Postgres
 
