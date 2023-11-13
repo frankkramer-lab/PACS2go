@@ -12,7 +12,7 @@ from flask_login import current_user
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulGetException,
     UnsuccessfulUploadException, WrongUploadFormatException)
-from pacs2go.data_interface.pacs_data_interface import Project
+from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface)
 
@@ -44,8 +44,8 @@ def get_subdirectory_names_recursive(directory):
     # Recursively fetch all nested subdirectories using depth-first traversal
     dir_list = []
     for d in directory.get_subdirectories():
-        label = f"{d.name.replace('::', ' / ')}"
-        dir_list.append(html.Option(label=label, value=d.name))
+        label = f"{d.unique_name.replace('::', ' / ')}"
+        dir_list.append(html.Option(label=label, value=d.unique_name))
         dir_list.extend(get_subdirectory_names_recursive(d))
 
     return dir_list
@@ -58,7 +58,7 @@ def get_directory_names(project: Project) -> List[str]:
 
         for d in directories:
             # html option to create a html datalist
-            dir_list.append(html.Option(label=d.name.replace('::', ' / '), value=d.name))
+            dir_list.append(html.Option(label=d.unique_name.replace('::', ' / '), value=d.unique_name))
             if len(d.get_subdirectories()) > 0:
                 dir_list.extend(get_subdirectory_names_recursive(d))
             
@@ -86,8 +86,8 @@ def uploader(passed_project: Optional[str]):
     if passed_project == 'none':
         passed_project = ''
     # Upload drag and drop area
-    return html.Div([
-        dbc.Row(html.H5([html.B("1."), " Specify the project's name."])),
+    return dbc.Card(dbc.CardBody(html.Div([
+        dbc.Card(dbc.CardBody([       dbc.Row(html.H5([html.B("1."), " Specify the project's name and metadata"])),
         dbc.Row([
             dbc.Col(
                 # Input field value equals project name, if user navigates to upload via a specific project
@@ -101,7 +101,7 @@ def uploader(passed_project: Optional[str]):
                  html.Datalist(id='dir_names'),
                  dbc.Input(id="directory_name",
                            placeholder="Directory Name... (optional)", list='dir_names'),
-                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
+                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used. Double click on the textfield to choose an existing directory.")], className="mb-3")
         ]),
         dbc.Row(dbc.Col(
                 [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
@@ -112,16 +112,20 @@ def uploader(passed_project: Optional[str]):
                 [dbc.Label("Modality - In case that the modality is consistent for all files."),
                  dbc.Input(id="upload_file_modality",
                            placeholder="CT, MRI,... (optional)"),
-                 dbc.FormText("Modality will be added to every file.")], className="mb-3")),
-        dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
+                 dbc.FormText("Modality will be added to every file.")], className="mb-3")),]), className="custom-card mb-3"),
+
+        dbc.Card(dbc.CardBody([
+            dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
                          'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
-        dbc.Row(
-            [
-                get_upload_component(id='dash-uploader'),
-                # Placeholder for 'Upload to XNAT' button
-                html.Div(id='du-callback-output'),
-            ])
-    ])
+            dbc.Row(
+                [
+                    get_upload_component(id='dash-uploader'),
+            ], className="p-3")
+        ],), className="custom-card mb-3"),
+        # Placeholder for 'Upload to XNAT' button
+        html.Div(id='du-callback-output'),
+        
+    ])), className="custom-card mb-3")
 
 
 #################
@@ -138,14 +142,14 @@ def uploader(passed_project: Optional[str]):
 def pass_filename_and_show_upload_button(filenames: List[str]):
     # Get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
-    return [html.Div([
-        html.H5([html.B("3."), ' Confirm upload to XNAT.']),
-        dbc.Button("Upload to XNAT", id="click-upload",
-                   size="lg", color="success"),
-        # Placeholder for successful upload message + Spinner to symbolize loading
-        dbc.Spinner(html.Div(id='output-uploader', className="mt-3"))], className="mt-3"),
-        filename]
-
+    return dbc.Card(dbc.CardBody([
+                html.Div([
+                html.H5([html.B("3."), ' Confirm upload to XNAT.']),
+                dbc.Button("Upload to XNAT", id="click-upload",
+                        size="lg", color="success"),
+                # Placeholder for successful upload message + Spinner to symbolize loading
+                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
+        ), className="custom-card mb-3"), filename
 
 # Called when 'Upload to XNAT' button (appears after dash-uploader received an upload) is clicked
 # and triggers the file upload to XNAT.
@@ -179,9 +183,9 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                     new_location = project.insert(file_path=filename, tags_string=tags, modality=modality)
 
                 if filename.endswith('.zip'):
-                    dir_name = new_location.name
+                    dir_name = new_location.unique_name
                 else:
-                    dir_name = new_location.directory.name
+                    dir_name = new_location.directory.unique_name
 
                 # Remove tempdir after successful upload to XNAT
                 shutil.rmtree(dirpath)

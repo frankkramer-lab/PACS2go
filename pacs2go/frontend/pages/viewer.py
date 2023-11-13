@@ -9,14 +9,18 @@ import numpy as np
 import pandas as pd
 import pydicom
 from dash import (Input, Output, State, callback, ctx, dash_table, dcc, html,
-                  register_page, no_update)
+                  no_update, register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 from PIL import Image
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    DownloadException, FailedConnectionException, UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Directory, File, Project
+    DownloadException, FailedConnectionException,
+    UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
+    UnsuccessfulGetException)
+from pacs2go.data_interface.pacs_data_interface.directory import Directory
+from pacs2go.data_interface.pacs_data_interface.file import File
+from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface, pil_to_b64)
 
@@ -97,7 +101,7 @@ def show_file(file: File):
             # ... (add any other relevant information that you want to display)
             html.Img(id="my-img", className="image", width="100%",
                     src='data:image/png;base64,{}'.format(pil_to_b64(final_image)))
-        ]))
+        ], className="custom-card"))
 
     else:
         # Handle all other file formats that are at this point not displayable
@@ -123,7 +127,7 @@ def show_file(file: File):
                           dcc.Download(id="download-file"), 
                           dcc.Store(data=file.name, id='file_name'), 
                           modal_edit_file(file), modal_delete_file(file)], className="mt-3 d-grid gap-2 d-md-flex justify-content-md-end")
-            ],))
+            ], className="custom-card"))
 
     return data
 
@@ -148,7 +152,7 @@ def file_card_view():
     return html.Div([
         dbc.Row([
             # dbc.Col(dbc.Button(html.I(className="bi bi-arrow-left"), id="previous", class_name="align-text-end"),),
-            dbc.Col(dbc.Spinner(html.Div(id="current_image"))),
+            dbc.Col(dcc.Loading(html.Div(id="current_image"), color=colors['sage'])),
             # dbc.Col(dbc.Button(html.I(className="bi bi-arrow-right"), id="next")),
         ])
     ], className="d-flex justify-content-center")

@@ -15,3 +15,7 @@
 .env
 /data
 /pacs2go/data_interface/tests/__pycache__
+/pacs2go/data_interface/logs/__pycache__
+/pacs2go/data_interface/logs/log_files/*
+/pacs2go/data_interface/pacs_data_interface/__pycache__/
+!/pacs2go/data_interface/logs/log_files/.gitkeep

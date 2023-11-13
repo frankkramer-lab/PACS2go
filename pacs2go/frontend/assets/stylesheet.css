@@ -1,3 +1,14 @@
+body {
+  background-color: #ecf5ef;
+}
+
+.custom-card {
+  border-radius: 7px;
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s;
+}
+
+/*Loading Spiral*/
 ._dash-loading {
   margin: auto;
   color: transparent;

@@ -2,17 +2,20 @@ from tempfile import TemporaryDirectory
 from typing import Optional
 
 import dash_bootstrap_components as dbc
-from dash import (ALL, Input, Output, State, callback, ctx, dcc, html, no_update,
-                  register_page)
+from dash import (ALL, Input, Output, State, callback, ctx, dcc, html,
+                  no_update, register_page)
 from dash.exceptions import PreventUpdate
 from flask_login import current_user
 
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, UnsuccessfulAttributeUpdateException,
     UnsuccessfulDeletionException, UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface import Project
-from pacs2go.frontend.helpers import (colors, format_linebreaks, get_connection,
-                                      login_required_interface)
+from pacs2go.data_interface.pacs_data_interface.project import Project
+from pacs2go.data_interface.pacs_data_interface.directory import Directory
+
+from pacs2go.frontend.helpers import (colors, format_linebreaks,
+                                      get_connection, login_required_interface)
+
 
 register_page(__name__, title='Project - PACS2go',
               path_template='/project/<project_name>')
@@ -54,7 +57,7 @@ def get_directories_table(project: Project, filter: str = ''):
         if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([
-                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.name}",
+                html.Td(dcc.Link(d.display_name, href=f"/dir/{project.name}/{d.unique_name}",
                         className="text-decoration-none", style={'color': colors['links']})),
                 html.Td(d.number_of_files),
                 html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")),
@@ -303,7 +306,7 @@ def download_project_data():
     return html.Div([
         dbc.Button([
             html.I(className="bi bi-download me-2"), "Download"], id="btn_download_project", size="md"),
-        dbc.Spinner(dcc.Download(id="download_project"))])
+        dcc.Loading(dcc.Download(id="download_project"), color=colors['sage'])])
 
 
 #################
@@ -455,10 +458,11 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
-            directory = project.create_directory(name, parameters)
+            directory = Directory(project=project,name=name,parameters=parameters)
+            
             return is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
-                                                          href=f"/dir/{project.name}/{directory.name}",
+                                                          href=f"/dir/{project.name}/{directory.unique_name}",
                                                           className="fw-bold text-decoration-none",
                                                           style={'color': colors['links']}))], color="success"), get_directories_table(project)
 
@@ -616,7 +620,7 @@ def layout(project_name: Optional[str] = None):
                         html.H4("Details"),
                         modal_edit_project(project)],
                     className="d-flex justify-content-between align-items-center"),
-                dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="mb-3"),
+                dcc.Loading(dbc.CardBody(get_details(project), id="details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
             dbc.Card([
                 dbc.CardHeader(children=[
                     html.H4("Directories"),
@@ -631,19 +635,19 @@ def layout(project_name: Optional[str] = None):
                             "Filter", id="filter_directory_tags_btn"))
                     ], class_name="mb-3"),
                     # Directories Table
-                    dbc.Spinner(html.Div(get_directories_table(
-                        project), id='directory_table')),
-                ])], class_name="mb-3"),
+                    dcc.Loading(html.Div(get_directories_table(
+                        project), id='directory_table'), color=colors['sage']),
+                ])], class_name="custom-card mb-3"),
             dbc.Card([
                 dbc.CardHeader([
                     html.H4("Sources"),
                     modal_add_citation(project)],
                     className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
-                    dbc.Spinner(html.Div(get_citations(
-                        project), id='citation_table'))
+                    dcc.Loading(html.Div(get_citations(
+                        project), id='citation_table'), color=colors['sage'])
                 ])
-            ], class_name="mb-3"),
+            ], class_name="custom-card mb-3"),
         ])
 
     else:

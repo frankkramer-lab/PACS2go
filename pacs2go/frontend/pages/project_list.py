@@ -20,8 +20,9 @@ def get_projects_table(filter: str = ''):
         rows = []
         projects = connection.get_all_projects()
         for p in projects:
+            keywords = p.keywords if p.keywords else "-"
             # Only show rows if no filter is applied of if the filter has a match in the project's keywords
-            if filter.lower() in p.keywords.lower() or len(filter) == 0:
+            if filter.lower() in keywords or filter.lower() in keywords or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
                     p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
@@ -45,8 +46,8 @@ def modal_create():
     # Modal view for project creation
     return html.Div([
         # Button which triggers modal activation
-        dbc.Button([html.I(className="bi bi-plus-circle-dotted me-2"),
-                    "Create new Project"], id="create_project", size="lg", color="success"),
+        dbc.Button([html.I(className="bi bi-plus-circle me-2"),
+                    "Create new Project"], id="create_project", size="md", color="success"),
         # Actual modal view
         dbc.Modal(
             [
@@ -189,8 +190,8 @@ def layout():
                             "Filter", id="filter_project_keywords_btn"))
                     ], class_name="mb-3"),
 
-                    dbc.Spinner(
-                        html.Div(get_projects_table(), id='projects_table')),
-                ])], class_name="mb-3"),
+                    dcc.Loading(
+                        html.Div(get_projects_table(), id='projects_table'), color=colors['sage']),
+                ])], class_name="custom-card mb-3"),
 
         ])

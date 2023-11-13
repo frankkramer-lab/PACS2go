@@ -2,13 +2,16 @@ import dash
 from dash import dcc, html
 from flask_login import current_user, logout_user
 
+from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.frontend.helpers import colors
 
 dash.register_page(__name__)
 
 
 def layout():
+    username = current_user.id
     logout_user()
+    logger.info(f"User {username} logged out.")
     return html.Div(
         [
             html.Div(
