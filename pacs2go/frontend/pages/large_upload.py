@@ -87,7 +87,7 @@ def uploader(passed_project: Optional[str]):
         passed_project = ''
     # Upload drag and drop area
     return dbc.Card(dbc.CardBody(html.Div([
-        dbc.Row(html.H5([html.B("1."), " Specify the project's name."])),
+        dbc.Card(dbc.CardBody([       dbc.Row(html.H5([html.B("1."), " Specify the project's name and metadata"])),
         dbc.Row([
             dbc.Col(
                 # Input field value equals project name, if user navigates to upload via a specific project
@@ -101,7 +101,7 @@ def uploader(passed_project: Optional[str]):
                  html.Datalist(id='dir_names'),
                  dbc.Input(id="directory_name",
                            placeholder="Directory Name... (optional)", list='dir_names'),
-                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used")], className="mb-3")
+                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used. Double click on the textfield to choose an existing directory.")], className="mb-3")
         ]),
         dbc.Row(dbc.Col(
                 [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
@@ -112,16 +112,20 @@ def uploader(passed_project: Optional[str]):
                 [dbc.Label("Modality - In case that the modality is consistent for all files."),
                  dbc.Input(id="upload_file_modality",
                            placeholder="CT, MRI,... (optional)"),
-                 dbc.FormText("Modality will be added to every file.")], className="mb-3")),
-        dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
+                 dbc.FormText("Modality will be added to every file.")], className="mb-3")),]), className="custom-card mb-3"),
+
+        dbc.Card(dbc.CardBody([
+            dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
                          'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
-        dbc.Row(
-            [
-                get_upload_component(id='dash-uploader'),
-                # Placeholder for 'Upload to XNAT' button
-                html.Div(id='du-callback-output'),
-            ])
-    ])), className="custom-card")
+            dbc.Row(
+                [
+                    get_upload_component(id='dash-uploader'),
+            ], className="p-3")
+        ],), className="custom-card mb-3"),
+        # Placeholder for 'Upload to XNAT' button
+        html.Div(id='du-callback-output'),
+        
+    ])), className="custom-card mb-3")
 
 
 #################
@@ -138,14 +142,14 @@ def uploader(passed_project: Optional[str]):
 def pass_filename_and_show_upload_button(filenames: List[str]):
     # Get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
-    return [html.Div([
-        html.H5([html.B("3."), ' Confirm upload to XNAT.']),
-        dbc.Button("Upload to XNAT", id="click-upload",
-                   size="lg", color="success"),
-        # Placeholder for successful upload message + Spinner to symbolize loading
-        dbc.Spinner(html.Div(id='output-uploader', className="mt-3"))], className="mt-3"),
-        filename]
-
+    return dbc.Card(dbc.CardBody([
+                html.Div([
+                html.H5([html.B("3."), ' Confirm upload to XNAT.']),
+                dbc.Button("Upload to XNAT", id="click-upload",
+                        size="lg", color="success"),
+                # Placeholder for successful upload message + Spinner to symbolize loading
+                dbc.Spinner(html.Div(id='output-uploader', className="mt-3"))])]
+        ), className="custom-card mb-3"), filename
 
 # Called when 'Upload to XNAT' button (appears after dash-uploader received an upload) is clicked
 # and triggers the file upload to XNAT.
