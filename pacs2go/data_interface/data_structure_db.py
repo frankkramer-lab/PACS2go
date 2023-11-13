@@ -192,7 +192,6 @@ class PACS_DB():
         except psycopg2.IntegrityError as e:
             # Check if the error message contains "duplicate key value violates unique constraint"
             if "duplicate key value violates unique constraint" in str(e):
-                logger.exception("Duplicate primary key violation")
                 self.conn.rollback()
                 # Create a new instance of FileData with the updated file_name
                 data = self.get_next_available_file_data(data)
