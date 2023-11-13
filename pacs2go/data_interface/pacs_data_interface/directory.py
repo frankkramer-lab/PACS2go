@@ -70,6 +70,15 @@ class Directory:
             msg = f"Failed to get the number of files for Directory '{self.unique_name}'"
             logger.exception(msg)
             raise UnsuccessfulGetException(msg)
+        
+    @property
+    def number_of_files_on_this_level(self) -> int:
+        try:
+            return len(self.get_all_files())
+        except Exception:
+            msg = f"Failed to get the number of files on this level for Directory '{self.unique_name}'"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(msg)
 
     @property
     def parent_directory(self) -> 'Directory':

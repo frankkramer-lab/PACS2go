@@ -152,7 +152,7 @@ def file_card_view():
     return html.Div([
         dbc.Row([
             # dbc.Col(dbc.Button(html.I(className="bi bi-arrow-left"), id="previous", class_name="align-text-end"),),
-            dbc.Col(dbc.Spinner(html.Div(id="current_image"))),
+            dbc.Col(dcc.Loading(html.Div(id="current_image"), color=colors['sage'])),
             # dbc.Col(dbc.Button(html.I(className="bi bi-arrow-right"), id="next")),
         ])
     ], className="d-flex justify-content-center")

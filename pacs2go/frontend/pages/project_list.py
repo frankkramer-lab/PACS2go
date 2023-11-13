@@ -190,8 +190,8 @@ def layout():
                             "Filter", id="filter_project_keywords_btn"))
                     ], class_name="mb-3"),
 
-                    dbc.Spinner(
-                        html.Div(get_projects_table(), id='projects_table')),
+                    dcc.Loading(
+                        html.Div(get_projects_table(), id='projects_table'), color=colors['sage']),
                 ])], class_name="custom-card mb-3"),
 
         ])

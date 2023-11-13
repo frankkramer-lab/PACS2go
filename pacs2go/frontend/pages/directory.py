@@ -69,40 +69,43 @@ def get_single_file_preview(directory: Directory):
             dbc.CardBody(content, className="w-25 h-25")], className="custom-card")
 
 
+def format_file_details(file: File, index: int):
+    tags = file.tags if file.tags else ''
+    formatted_size = f"{round(file.size/1024, 2)} KB ({file.size} Bytes)"
+    formatted_timestamp = file.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")
+    return [html.Td(index + 1),
+            html.Td(dcc.Link(file.name, href=f"/viewer/{file.directory.project.name}/{file.directory.unique_name}/{file.name}", className="text-decoration-none", style={'color': colors['links']})),
+            html.Td(file.format),
+            html.Td(file.modality),
+            html.Td(formatted_size),
+            html.Td(formatted_timestamp),
+            html.Td(tags),
+            html.Td([modal_delete_file(file.directory, file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
+
 def get_files_table(directory: Directory, filter: str = '', active_page: int = 0):
     rows = []
     files = directory.get_all_files()
 
+    # Filter files based on the provided tag filter
+    if len(filter) > 0:
+        files = [f for f in files if (len(filter) > 0 and filter.lower() in f.tags.lower())]
+
     # Get file information as rows for table
-    for index, f in enumerate(files):
-        # Only show rows if no filter is applied of if the filter has a match in the file tags
-        tags = f.tags if f.tags else ''
-        if len(filter) == 0 or (len(filter) > 0 and filter.lower() in tags.lower()):
-            rows.append(html.Tr([html.Td(index+1),
-                                 html.Td(dcc.Link(f.name, href=f"/viewer/{directory.project.name}/{directory.unique_name}/{f.name}", className="text-decoration-none", style={'color': colors['links']})
-                                         ),
-                                html.Td(f.format),
-                                html.Td(f.modality),
-                                html.Td(
-                                    f"{round(f.size/1024,2)} KB ({f.size} Bytes)"),
-                                html.Td(f.timestamp_creation.strftime(
-                                    "%dth %B %Y, %H:%M:%S")),
-                                html.Td(tags),
-                                html.Td([modal_delete_file(directory, f), modal_edit_file(f), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': f.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]))
+    for index, file in enumerate(files[active_page * 20:min((active_page + 1) * 20, len(files))]):
+        index = index + active_page*20
+        rows.append(html.Tr(format_file_details(file, index)))
 
     # Table header
     table_header = [
         html.Thead(
-            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"),  html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
+            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
     ]
 
     # Only show 20 rows at a time - pagination
-    table_body = [html.Tbody(
-        rows[active_page*20:min((active_page+1)*20, int(directory.number_of_files))])]
+    table_body = [html.Tbody(rows)]
 
     # Put together file table
-    table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+    table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True)
     return table
 
 
@@ -697,7 +700,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         html.H4("Details"), 
                         modal_edit_directory(project, directory)],
                     className="d-flex justify-content-between align-items-center"),
-                dbc.Spinner(dbc.CardBody(get_details(directory), id="dir_details_card"))], class_name="custom-card mb-3"),
+                dcc.Loading(dbc.CardBody(get_details(directory), id="dir_details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
             # Sub-Directories Table
             dbc.Card([
                 dbc.CardHeader(children=[html.H4('Directories'),
@@ -712,8 +715,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             "Filter", id="filter_subdirectory_tags_btn")),
                     ], class_name="mb-3"),
                     # Directories Table
-                    dbc.Spinner(html.Div(get_subdirectories_table(
-                        directory), id='subdirectory_table')),
+                    dcc.Loading(html.Div(get_subdirectories_table(
+                        directory), id='subdirectory_table'), color=colors['sage']),
                 ])], class_name="custom-card mb-3"),
 
             # Files Table
@@ -729,10 +732,10 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     ], class_name="mb-3"),
 
                     # Display a table of the directory's files
-                    dbc.Spinner(html.Div(get_files_table(
-                        directory), id='files_table')),
+                    dcc.Loading(html.Div(get_files_table(
+                        directory), id='files_table'), color=colors['sage']),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
-                        int(directory.number_of_files)/20), first_last=True, previous_next=True, active_page=0)
+                        int(directory.number_of_files_on_this_level)/20), first_last=True, previous_next=True, active_page=0)
                 ])], class_name="custom-card mb-3"),
 
             # Display a preview of the first file's content

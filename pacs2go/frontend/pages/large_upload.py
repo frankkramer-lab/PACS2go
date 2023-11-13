@@ -148,7 +148,7 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
                 dbc.Button("Upload to XNAT", id="click-upload",
                         size="lg", color="success"),
                 # Placeholder for successful upload message + Spinner to symbolize loading
-                dbc.Spinner(html.Div(id='output-uploader', className="mt-3"))])]
+                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
         ), className="custom-card mb-3"), filename
 
 # Called when 'Upload to XNAT' button (appears after dash-uploader received an upload) is clicked

@@ -306,7 +306,7 @@ def download_project_data():
     return html.Div([
         dbc.Button([
             html.I(className="bi bi-download me-2"), "Download"], id="btn_download_project", size="md"),
-        dbc.Spinner(dcc.Download(id="download_project"))])
+        dcc.Loading(dcc.Download(id="download_project"), color=colors['sage'])])
 
 
 #################
@@ -620,7 +620,7 @@ def layout(project_name: Optional[str] = None):
                         html.H4("Details"),
                         modal_edit_project(project)],
                     className="d-flex justify-content-between align-items-center"),
-                dbc.Spinner(dbc.CardBody(get_details(project), id="details_card"))], class_name="custom-card mb-3"),
+                dcc.Loading(dbc.CardBody(get_details(project), id="details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
             dbc.Card([
                 dbc.CardHeader(children=[
                     html.H4("Directories"),
@@ -635,8 +635,8 @@ def layout(project_name: Optional[str] = None):
                             "Filter", id="filter_directory_tags_btn"))
                     ], class_name="mb-3"),
                     # Directories Table
-                    dbc.Spinner(html.Div(get_directories_table(
-                        project), id='directory_table')),
+                    dcc.Loading(html.Div(get_directories_table(
+                        project), id='directory_table'), color=colors['sage']),
                 ])], class_name="custom-card mb-3"),
             dbc.Card([
                 dbc.CardHeader([
@@ -644,8 +644,8 @@ def layout(project_name: Optional[str] = None):
                     modal_add_citation(project)],
                     className="d-flex justify-content-between align-items-center"),
                 dbc.CardBody([
-                    dbc.Spinner(html.Div(get_citations(
-                        project), id='citation_table'))
+                    dcc.Loading(html.Div(get_citations(
+                        project), id='citation_table'), color=colors['sage'])
                 ])
             ], class_name="custom-card mb-3"),
         ])
