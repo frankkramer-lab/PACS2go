@@ -182,3 +182,21 @@ class File:
             msg = f"Failed to delete File '{self.name}' in directory '{self.directory.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulDeletionException(f"file '{self.name}'")
+
+
+
+    def to_dict(self) -> dict:
+        """
+        Convert various attributes of the File object to a dictionary for serialization.
+        """
+        return {
+            'name': self.name,
+            'format': self.format,
+            'modality': self.modality,
+            'tags': self.tags,
+            'size': self.size,
+            'upload': self.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S"),
+            'associated_directory': self.directory.unique_name,
+            'associated_project': self.directory.project.name,
+            'user_rights': self.directory.project.your_user_role
+        }
