@@ -117,7 +117,7 @@ app.layout = html.Div(
                             src="/assets/uni-logo-for-web.png",  # Adjust the path based on your directory structure
                             style={"width": "25px"},  # Adjust the width and height as needed
                         ),
-            "University of Augsburg |  Version 1.0.0"],
+            f"University of Augsburg |  Version {os.getenv('PACS2GO_VERSION')}"],
             style={
                 "position": "fixed",
                 "bottom": "0",
@@ -183,4 +183,4 @@ if __name__ == '__main__':
     #         restrictions=[50],
     #     )
     # Start App
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)
