@@ -195,7 +195,7 @@ class File:
             'modality': self.modality,
             'tags': self.tags,
             'size': self.size,
-            'upload': self.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S"),
+            'upload': self.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
             'associated_directory': self.directory.unique_name,
             'associated_project': self.directory.project.name,
             'user_rights': self.directory.project.your_user_role

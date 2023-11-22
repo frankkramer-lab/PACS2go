@@ -34,7 +34,7 @@ def get_details(directory: Directory):
         detail_data.append(html.H6(parameters))
 
     time = html.B("Created on: "), directory.timestamp_creation.strftime(
-        "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%dth %B %Y, %H:%M:%S")
+        "%d.%m.%Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%d.%m.%Y, %H:%M:%S")
     detail_data.append(html.H6(time))
 
     return detail_data
@@ -128,7 +128,7 @@ def get_subdirectories_table(directory: Directory, filter: str = ''):
         if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
+                d.number_of_files), html.Td(d.timestamp_creation.strftime("%d.%m.%Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%d.%m.%Y, %H:%M:%S"))]))
 
     table_header = [
         html.Thead(
