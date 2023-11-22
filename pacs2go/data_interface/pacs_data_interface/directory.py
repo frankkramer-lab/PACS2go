@@ -23,6 +23,7 @@ class Directory:
         self.display_name = name.rsplit('::',1)[-1] # Get Directory name
         self.project = project
         self._file_store_directory = None
+        self.is_consistent = True
 
         try:
             with PACS_DB() as db:
@@ -219,14 +220,23 @@ class Directory:
         except:
             msg = f"Failed to get file '{file_name}' in directory '{self.unique_name}'."
             logger.exception(msg)
-            raise UnsuccessfulGetException(f"File '{file_name}'")
+            return None
 
     def get_all_files(self) -> List['File']:
         try:
             fs = self._file_store_directory.get_all_files()
             files = [self.get_file(
                 file_name=f.name, _file_filestorage_object=f) for f in fs]
+
+            if any(file is None for file in files):
+                # Handle the case where at least one file is None (failed to retrieve from DB)
+                logger.warning(f"At least one file in directory '{self.unique_name}' could not be retrieved.")
+                self.is_consistent = False
+                # Clean up None entries in files list
+                files = [file for file in files if file is not None]
+            
             logger.debug(f"User {self.project.connection.user} retrieved information about all files for directory '{self.unique_name}'.")
+
             return files
         except:
             msg = f"Failed to get all files for directory '{self.unique_name}'."

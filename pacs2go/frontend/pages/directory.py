@@ -106,7 +106,18 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
 
     # Put together file table
     table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True)
-    return table
+
+    
+    # Warning message if the data is not consistent
+    warning_message = None
+    if not directory.is_consistent:
+        warning_message = dbc.Alert(
+            "Warning: The directory's metadata and file storage data are not consistent. The inconsistent files are not shown. Please contact your admin.",
+            color="warning"
+        )
+
+    # Return the table and the warning message
+    return [warning_message, table]
 
 
 def get_subdirectories_table(directory: Directory, filter: str = ''):

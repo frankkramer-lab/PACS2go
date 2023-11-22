@@ -23,6 +23,8 @@ class File:
             with PACS_DB() as db:
                 self._db_file = db.get_file_by_name_and_directory(
                     self.name, self.directory.unique_name)
+                if self._db_file is None:
+                    raise FileNotFoundError
         except:
             msg = f"Failed to get DB-File '{name}' in directory '{self.directory.unique_name}'."
             logger.exception(msg)
