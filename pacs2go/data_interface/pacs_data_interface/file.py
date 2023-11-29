@@ -23,6 +23,8 @@ class File:
             with PACS_DB() as db:
                 self._db_file = db.get_file_by_name_and_directory(
                     self.name, self.directory.unique_name)
+                if self._db_file is None:
+                    raise FileNotFoundError
         except:
             msg = f"Failed to get DB-File '{name}' in directory '{self.directory.unique_name}'."
             logger.exception(msg)
@@ -180,3 +182,21 @@ class File:
             msg = f"Failed to delete File '{self.name}' in directory '{self.directory.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulDeletionException(f"file '{self.name}'")
+
+
+
+    def to_dict(self) -> dict:
+        """
+        Convert various attributes of the File object to a dictionary for serialization.
+        """
+        return {
+            'name': self.name,
+            'format': self.format,
+            'modality': self.modality,
+            'tags': self.tags,
+            'size': self.size,
+            'upload': self.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
+            'associated_directory': self.directory.unique_name,
+            'associated_project': self.directory.project.name,
+            'user_rights': self.directory.project.your_user_role
+        }

@@ -25,7 +25,7 @@ def get_projects_table(filter: str = ''):
             if filter.lower() in keywords or filter.lower() in keywords or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
-                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
+                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%d.%m.%Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%d.%m.%Y, %H:%M:%S"))]))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 

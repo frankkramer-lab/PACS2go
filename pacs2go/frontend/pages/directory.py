@@ -34,7 +34,7 @@ def get_details(directory: Directory):
         detail_data.append(html.H6(parameters))
 
     time = html.B("Created on: "), directory.timestamp_creation.strftime(
-        "%dth %B %Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%dth %B %Y, %H:%M:%S")
+        "%d.%m.%Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%d.%m.%Y, %H:%M:%S")
     detail_data.append(html.H6(time))
 
     return detail_data
@@ -69,31 +69,31 @@ def get_single_file_preview(directory: Directory):
             dbc.CardBody(content, className="w-25 h-25")], className="custom-card")
 
 
-def format_file_details(file: File, index: int):
-    tags = file.tags if file.tags else ''
-    formatted_size = f"{round(file.size/1024, 2)} KB ({file.size} Bytes)"
-    formatted_timestamp = file.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")
+def format_file_details(file: dict, index: int):
+    tags = file['tags'] if file['tags'] else ''
+    formatted_size = f"{round(file['size']/1024, 2)} KB ({file['size']} Bytes)"
+    formatted_timestamp = file['upload']
     return [html.Td(index + 1),
-            html.Td(dcc.Link(file.name, href=f"/viewer/{file.directory.project.name}/{file.directory.unique_name}/{file.name}", className="text-decoration-none", style={'color': colors['links']})),
-            html.Td(file.format),
-            html.Td(file.modality),
+            html.Td(dcc.Link(file['name'], href=f"/viewer/{file['associated_project']}/{file['associated_directory']}/{file['name']}", className="text-decoration-none", style={'color': colors['links']})),
+            html.Td(file['format']),
+            html.Td(file['modality']),
             html.Td(formatted_size),
             html.Td(formatted_timestamp),
             html.Td(tags),
-            html.Td([modal_delete_file(file.directory, file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file.name})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
+            html.Td([modal_delete_file(file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file['name']})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
 
-def get_files_table(directory: Directory, filter: str = '', active_page: int = 0):
+def get_files_table(directory: Directory, files: dict, filter: str = '', active_page: int = 0):
     rows = []
-    files = directory.get_all_files()
+    file_data = json.loads(files)
 
     # Filter files based on the provided tag filter
     if len(filter) > 0:
-        files = [f for f in files if (len(filter) > 0 and filter.lower() in f.tags.lower())]
+        file_data = [file_info for file_info in file_data if (filter.lower() in str(file_info['tags']).lower())]
 
     # Get file information as rows for table
-    for index, file in enumerate(files[active_page * 20:min((active_page + 1) * 20, len(files))]):
+    for index, file_info in enumerate(file_data[active_page * 20:min((active_page + 1) * 20, len(file_data))]):
         index = index + active_page*20
-        rows.append(html.Tr(format_file_details(file, index)))
+        rows.append(html.Tr(format_file_details(file_info, index)))
 
     # Table header
     table_header = [
@@ -106,7 +106,18 @@ def get_files_table(directory: Directory, filter: str = '', active_page: int = 0
 
     # Put together file table
     table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True)
-    return table
+
+    
+    # Warning message if the data is not consistent
+    warning_message = None
+    if not directory.is_consistent:
+        warning_message = dbc.Alert(
+            "Warning: The directory's metadata and file storage data are not consistent. The inconsistent files are not shown. Please contact your admin.",
+            color="warning"
+        )
+
+    # Return the table and the warning message
+    return [warning_message, table]
 
 
 def get_subdirectories_table(directory: Directory, filter: str = ''):
@@ -117,7 +128,7 @@ def get_subdirectories_table(directory: Directory, filter: str = ''):
         if filter.lower() in d.display_name.lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
             rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d.number_of_files), html.Td(d.timestamp_creation.strftime("%dth %B %Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%dth %B %Y, %H:%M:%S"))]))
+                d.number_of_files), html.Td(d.timestamp_creation.strftime("%d.%m.%Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%d.%m.%Y, %H:%M:%S"))]))
 
     table_header = [
         html.Thead(
@@ -202,14 +213,14 @@ def modal_delete(directory: Directory):
         ])
 
 
-def modal_delete_file(directory: Directory, file: File):
-    if directory.project.your_user_role == 'Owners':
-        # Modal view for directory deletion
+def modal_delete_file(file: dict):
+    if file['user_rights'] == 'Owners':
+        # Modal view for file deletion
         return html.Div([
-            dcc.Store('file', data=file.name),
+            dcc.Store('file', data=file['name']),
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-trash")],
-                       id={'type': 'delete_file', 'index': file.name}, size="md", color="danger"),
+                       id={'type': 'delete_file', 'index': file['name']}, size="md", color="danger"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -222,7 +233,7 @@ def modal_delete_file(directory: Directory, file: File):
                     dbc.ModalFooter([
                         # Button which triggers the deletion of the file
                         dbc.Button("Delete File",
-                                   id={'type': 'delete_file_and_close', 'index': file.name}, color="danger"),
+                                   id={'type': 'delete_file_and_close', 'index': file['name']}, color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button(
                             "Close", id='close_modal_delete_file'),
@@ -265,13 +276,13 @@ def modal_edit_directory(project: Project, directory: Directory):
             ),
         ])
 
-def modal_edit_file(file:File):
+def modal_edit_file(file:dict):
     # Modal view for project creation
-    if file.directory.project.your_user_role == 'Owners' or file.directory.project.your_user_role == 'Members':
+    if file['user_rights'] == 'Owners' or file['user_rights'] == 'Members':
         return html.Div([
-            dcc.Store('file_for_edit', data=file.name),
+            dcc.Store('file_for_edit', data=file['name']),
             # Button which triggers modal activation
-            dbc.Button([html.I(className="bi bi-pencil")], id={'type': 'edit_file_in_list', 'index': file.name}, size="md", color="success"),
+            dbc.Button([html.I(className="bi bi-pencil")], id={'type': 'edit_file_in_list', 'index': file['name']}, size="md", color="success"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -282,17 +293,17 @@ def modal_edit_file(file:File):
                             "Please enter desired modality.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Input(id="edit_file_in_list_modality",
-                                placeholder="e.g.: CT, MRI", value=file.modality),
+                                placeholder="e.g.: CT, MRI", value=''),
                         dbc.Label(
                             "Please enter desired tags.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Input(id="edit_file_in_list_tags",
-                                placeholder="e.g.: Dermatology, control group", value=file.tags),
+                                placeholder="e.g.: Dermatology, control group", value=''),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the creation of a project (see modal_and_project_creation)
                         dbc.Button("Update Directory Metadata",
-                                id={'type': 'edit_file_in_list_and_close', 'index': file.name}, color="success"),
+                                id={'type': 'edit_file_in_list_and_close', 'index': file['name']}, color="success"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_edit_file_in_list")
                     ]),
@@ -318,7 +329,7 @@ def modal_edit_file(file:File):
     State('project', 'data'),
     prevent_initial_call=True)
 # Callback for the directory deletion modal view and the actual directory deletion
-def modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
+def cb_modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
     # Open/close Modal View via button click
     if ctx.triggered_id == "delete_directory" or ctx.triggered_id == "close_modal_delete_directory":
         return not is_open, no_update
@@ -357,7 +368,7 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     State('edit_directory_parameters', 'value'),
     prevent_initial_call=True)
 # Callback used to edit project description, parameters and keywords
-def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_name, directory_name, parameters):
+def cb_modal_edit_directory_callback(open, close, edit_and_close, is_open, project_name, directory_name, parameters):
     # Open/close modal via button click
     if ctx.triggered_id == "edit_directory_metadata" or ctx.triggered_id == "close_modal_edit_dir":
         return not is_open, no_update, no_update
@@ -393,7 +404,7 @@ def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_
     State("directory", "data"),
     State("project", "data"),
     prevent_initial_call=True)
-def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
+def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
         return not is_open, no_update, no_update
@@ -431,7 +442,7 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
     State('directory', 'data'),
     State('project', 'data'),
     prevent_initial_call=True)
-def filter_directory_table(btn, filter, directory_name, project_name):
+def cb_filter_directory_table(btn, filter, directory_name, project_name):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
         if filter or filter == "":
@@ -447,15 +458,16 @@ def filter_directory_table(btn, filter, directory_name, project_name):
 
 
 @callback(
-    Output('files_table', 'children'),
+    Output('files_table', 'children', allow_duplicate=True),
     Input('filter_file_tags_btn', 'n_clicks'),
     Input('filter_file_tags', 'value'),
     Input('pagination-files', 'active_page'),
     State('directory', 'data'),
     State('project', 'data'),
+    State('file-store', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
-def filter_files_table(btn, filter, active_page, directory_name, project_name):
+def cb_filter_files_table(btn, filter, active_page, directory_name, project_name, files):
     # Filter button is clicked or the input field registers a user input
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
@@ -466,7 +478,7 @@ def filter_files_table(btn, filter, active_page, directory_name, project_name):
                 active_page = 1
             if not filter:
                 filter = ''
-            return get_files_table(directory, filter, int(active_page)-1)
+            return get_files_table(directory, files, filter, int(active_page)-1)
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
     else:
@@ -481,7 +493,7 @@ def filter_files_table(btn, filter, active_page, directory_name, project_name):
     prevent_initial_call=True,
 )
 # Callback for the download (directory) feature
-def download(n_clicks, directory_name, project_name):
+def cb_download(n_clicks, directory_name, project_name):
     # Download button is triggered
     if ctx.triggered_id == 'btn_download_dir':
         try:
@@ -504,7 +516,7 @@ def download(n_clicks, directory_name, project_name):
     prevent_initial_call=True,
 )
 # Callback for the download (single files) feature
-def download_single_file(n_clicks, directory_name, project_name):
+def cb_download_single_file(n_clicks, directory_name, project_name):
     if isinstance(ctx.triggered_id, dict):
         # Download button in the files table is triggered
         if ctx.triggered_id['type'] == 'btn_download_file' and any(n_clicks):
@@ -525,19 +537,18 @@ def download_single_file(n_clicks, directory_name, project_name):
 @callback(
     [Output('modal_delete_file', 'is_open'),
      Output('delete-file-content', 'children'), Output('file', 'data'),
-     Output('files_table', 'children', allow_duplicate=True),],
+     Output('file-store', 'data', allow_duplicate=True),],
     [Input({'type': 'delete_file', 'index': ALL}, 'n_clicks'),
      Input('close_modal_delete_file', 'n_clicks'),
      Input({'type': 'delete_file_and_close', 'index': ALL}, 'n_clicks')],
     [State('modal_delete_file', 'is_open'),
      State('directory', 'data'),
      State('project', 'data'),
-     State('file', 'data'),
-     State('pagination-files', 'active_page')],
+     State('file', 'data')],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name, page):
+def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
     if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
             # Delete Button in File list - open/close Modal View
@@ -554,7 +565,7 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
                     file.delete_file()
                     # Close Modal and show message
                     return is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, get_files_table(directory, active_page=page if page==0 else page - 1)
+                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, json.dumps([file.to_dict() for file in directory.get_all_files()])
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
 
@@ -568,30 +579,44 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
         raise PreventUpdate
 
 @callback(
-    [Output('modal_edit_file_in_list', 'is_open'),
-     Output('edit_file_in_list_content', 'children'), Output('file_for_edit', 'data'),
-     Output('files_table', 'children', allow_duplicate=True),],
+    [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
+    Output('edit_file_in_list_modality', 'value', ),
+    Output('edit_file_in_list_tags', 'value', ),
+    Output('file_for_edit', 'data', allow_duplicate=True)],
+    Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
+    State('directory', 'data'),
+    State('project', 'data'),
+    prevent_initial_call=True
+)
+def cb_open_edit_file_modal(is_open, directory_name, project_name):
+    if isinstance(ctx.triggered_id, dict):
+        # Edit Button in File list - open/close Modal View
+        if ctx.triggered_id['type'] == "edit_file_in_list":
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            file = directory.get_file(ctx.triggered_id['index'])
+            return True, file.modality, file.tags, ctx.triggered_id['index']
+
+
+@callback(
+    [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
+     Output('edit_file_in_list_content', 'children'), 
+     Output('file-store', 'data', allow_duplicate=True),], 
     [Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
      Input('close_modal_edit_file_in_list', 'n_clicks'),
      Input({'type': 'edit_file_in_list_and_close', 'index': ALL}, 'n_clicks')],
-    [State('modal_edit_file_in_list', 'is_open'),
-     State('directory', 'data'),
+    [State('directory', 'data'),
      State('project', 'data'),
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
-     State('edit_file_in_list_tags', 'value'),
-     State('pagination-files', 'active_page')],
+     State('edit_file_in_list_tags', 'value')],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, project_name, file_name, modality, tags, page):
+def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_name, file_name, modality, tags):
     if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
-            # Delete Button in File list - open/close Modal View
-            if ctx.triggered_id['type'] == "edit_file_in_list":
-                return not is_open, dbc.Label(
-                    f"Are you sure you want to edit this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
-            # Delete Button in the Modal View
+            # Edit Button in the Modal View
             if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
                 try:
                     connection = get_connection()
@@ -601,18 +626,45 @@ def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, pr
                         file.set_modality(modality)
                     if tags:
                         file.set_tags(tags)
-                    return not is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully edited! "], color="success"), no_update, get_files_table(directory, active_page=page if page==0 else page - 1)
+                    return False, dbc.Alert(
+                        [f"The file {file.name} has been successfully edited! "], color="success"), json.dumps([file.to_dict() for file in directory.get_all_files()])
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-                    return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
+                    return False, dbc.Alert(str(err), color="danger"), no_update
+            else:
+                raise PreventUpdate
 
-    elif isinstance(ctx.triggered_id, str):
-        if ctx.triggered_id == "close_modal_edit_file_in_list":
-            # Close Modal View
-            return not is_open, no_update, no_update, no_update
+        elif isinstance(ctx.triggered_id, str):
+            if ctx.triggered_id == "close_modal_edit_file_in_list":
+                # Close Modal View
+                return False, no_update, no_update
+            else:
+                raise PreventUpdate
+        
+        else:
+            raise PreventUpdate
 
     else:
         raise PreventUpdate
+
+@callback(
+    Output('files_table', 'children', allow_duplicate=True),
+    Input('file-store', 'data'),
+    State('pagination-files', 'active_page'),
+    State('directory', 'data'),
+    State('project', 'data'),
+    prevent_initial_call=True)
+# Callback to update file table if files change
+def cb_reload_files_table(files, active_page, directory_name, project_name):
+    try:
+        connection = get_connection()
+        directory = connection.get_directory(project_name, directory_name)
+
+        if not active_page:
+            active_page = 1
+        return get_files_table(directory, files, active_page=int(active_page)-1)
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        return dbc.Alert(str(err), color="danger")
+
 
 #################
 #  Page Layout  #
@@ -645,11 +697,15 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             if directory_name.count('::') > 2:
                 breadcrumb_buffer = html.Span(
                     " ...   \u00A0 >  ", style={"marginRight": "1%"})
+                
+        # Initial file list
+        initial_data = json.dumps([file.to_dict() for file in directory.get_all_files()])
 
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory', data=directory.unique_name),
             dcc.Store(id='project', data=project_name),
+            dcc.Store(id='file-store', data=initial_data),
 
             # Breadcrumbs
             html.Div(
@@ -733,7 +789,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
                     # Display a table of the directory's files
                     dcc.Loading(html.Div(get_files_table(
-                        directory), id='files_table'), color=colors['sage']),
+                        directory, initial_data), id='files_table'), color=colors['sage']),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
                         int(directory.number_of_files_on_this_level)/20), first_last=True, previous_next=True, active_page=0)
                 ])], class_name="custom-card mb-3"),

@@ -117,7 +117,7 @@ app.layout = html.Div(
                             src="/assets/uni-logo-for-web.png",  # Adjust the path based on your directory structure
                             style={"width": "25px"},  # Adjust the width and height as needed
                         ),
-            "University of Augsburg |  Version 1.0.0"],
+            f"University of Augsburg |  Version {os.getenv('PACS2GO_VERSION')}"],
             style={
                 "position": "fixed",
                 "bottom": "0",
