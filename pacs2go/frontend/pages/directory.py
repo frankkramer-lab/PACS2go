@@ -293,12 +293,12 @@ def modal_edit_file(file:dict):
                             "Please enter desired modality.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Input(id="edit_file_in_list_modality",
-                                placeholder="e.g.: CT, MRI", value=file['modality']),
+                                placeholder="e.g.: CT, MRI", value=''),
                         dbc.Label(
                             "Please enter desired tags.", class_name="mt-2"),
                         # Input Text Field for project parameters
                         dbc.Input(id="edit_file_in_list_tags",
-                                placeholder="e.g.: Dermatology, control group", value=file['tags']),
+                                placeholder="e.g.: Dermatology, control group", value=''),
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the creation of a project (see modal_and_project_creation)
@@ -329,7 +329,7 @@ def modal_edit_file(file:dict):
     State('project', 'data'),
     prevent_initial_call=True)
 # Callback for the directory deletion modal view and the actual directory deletion
-def modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
+def cb_modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
     # Open/close Modal View via button click
     if ctx.triggered_id == "delete_directory" or ctx.triggered_id == "close_modal_delete_directory":
         return not is_open, no_update
@@ -368,7 +368,7 @@ def modal_and_directory_deletion(open, close, delete_and_close, is_open, directo
     State('edit_directory_parameters', 'value'),
     prevent_initial_call=True)
 # Callback used to edit project description, parameters and keywords
-def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_name, directory_name, parameters):
+def cb_modal_edit_directory_callback(open, close, edit_and_close, is_open, project_name, directory_name, parameters):
     # Open/close modal via button click
     if ctx.triggered_id == "edit_directory_metadata" or ctx.triggered_id == "close_modal_edit_dir":
         return not is_open, no_update, no_update
@@ -404,7 +404,7 @@ def modal_edit_directory_callback(open, close, edit_and_close, is_open, project_
     State("directory", "data"),
     State("project", "data"),
     prevent_initial_call=True)
-def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
+def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
         return not is_open, no_update, no_update
@@ -442,7 +442,7 @@ def modal_and_subdirectory_creation(open, close, create_and_close, is_open, name
     State('directory', 'data'),
     State('project', 'data'),
     prevent_initial_call=True)
-def filter_directory_table(btn, filter, directory_name, project_name):
+def cb_filter_directory_table(btn, filter, directory_name, project_name):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
         if filter or filter == "":
@@ -467,7 +467,7 @@ def filter_directory_table(btn, filter, directory_name, project_name):
     State('file-store', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
-def filter_files_table(btn, filter, active_page, directory_name, project_name, files):
+def cb_filter_files_table(btn, filter, active_page, directory_name, project_name, files):
     # Filter button is clicked or the input field registers a user input
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
@@ -493,7 +493,7 @@ def filter_files_table(btn, filter, active_page, directory_name, project_name, f
     prevent_initial_call=True,
 )
 # Callback for the download (directory) feature
-def download(n_clicks, directory_name, project_name):
+def cb_download(n_clicks, directory_name, project_name):
     # Download button is triggered
     if ctx.triggered_id == 'btn_download_dir':
         try:
@@ -516,7 +516,7 @@ def download(n_clicks, directory_name, project_name):
     prevent_initial_call=True,
 )
 # Callback for the download (single files) feature
-def download_single_file(n_clicks, directory_name, project_name):
+def cb_download_single_file(n_clicks, directory_name, project_name):
     if isinstance(ctx.triggered_id, dict):
         # Download button in the files table is triggered
         if ctx.triggered_id['type'] == 'btn_download_file' and any(n_clicks):
@@ -548,7 +548,7 @@ def download_single_file(n_clicks, directory_name, project_name):
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
+def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
     if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
             # Delete Button in File list - open/close Modal View
@@ -579,15 +579,33 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
         raise PreventUpdate
 
 @callback(
-    [Output('modal_edit_file_in_list', 'is_open'),
+    [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
+    Output('edit_file_in_list_modality', 'value', ),
+    Output('edit_file_in_list_tags', 'value', ),
+    Output('file_for_edit', 'data', allow_duplicate=True)],
+    Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
+    State('directory', 'data'),
+    State('project', 'data'),
+    prevent_initial_call=True
+)
+def cb_open_edit_file_modal(is_open, directory_name, project_name):
+    if isinstance(ctx.triggered_id, dict):
+        # Edit Button in File list - open/close Modal View
+        if ctx.triggered_id['type'] == "edit_file_in_list":
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            file = directory.get_file(ctx.triggered_id['index'])
+            return True, file.modality, file.tags, ctx.triggered_id['index']
+
+
+@callback(
+    [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
      Output('edit_file_in_list_content', 'children'), 
-     Output('file_for_edit', 'data'),
-     Output('file-store', 'data', allow_duplicate=True),],
+     Output('file-store', 'data', allow_duplicate=True),], 
     [Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
      Input('close_modal_edit_file_in_list', 'n_clicks'),
      Input({'type': 'edit_file_in_list_and_close', 'index': ALL}, 'n_clicks')],
-    [State('modal_edit_file_in_list', 'is_open'),
-     State('directory', 'data'),
+    [State('directory', 'data'),
      State('project', 'data'),
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
@@ -595,14 +613,10 @@ def modal_and_file_deletion(open, close, delete_and_close, is_open, directory_na
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, project_name, file_name, modality, tags):
+def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_name, file_name, modality, tags):
     if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
-            # Delete Button in File list - open/close Modal View
-            if ctx.triggered_id['type'] == "edit_file_in_list":
-                return not is_open, dbc.Label(
-                    f"Are you sure you want to edit this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
-            # Delete Button in the Modal View
+            # Edit Button in the Modal View
             if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
                 try:
                     connection = get_connection()
@@ -612,15 +626,17 @@ def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, pr
                         file.set_modality(modality)
                     if tags:
                         file.set_tags(tags)
-                    return not is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully edited! "], color="success"), no_update, json.dumps([file.to_dict() for file in directory.get_all_files()])
+                    return False, dbc.Alert(
+                        [f"The file {file.name} has been successfully edited! "], color="success"), json.dumps([file.to_dict() for file in directory.get_all_files()])
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-                    return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
+                    return False, dbc.Alert(str(err), color="danger"), no_update
+            else:
+                raise PreventUpdate
 
         elif isinstance(ctx.triggered_id, str):
             if ctx.triggered_id == "close_modal_edit_file_in_list":
                 # Close Modal View
-                return not is_open, no_update, no_update, no_update
+                return False, no_update, no_update
             else:
                 raise PreventUpdate
         
@@ -638,7 +654,7 @@ def modal_and_file_edit(open, close, edit_and_close, is_open, directory_name, pr
     State('project', 'data'),
     prevent_initial_call=True)
 # Callback to update file table if files change
-def reload_files_table(files, active_page, directory_name, project_name):
+def cb_reload_files_table(files, active_page, directory_name, project_name):
     try:
         connection = get_connection()
         directory = connection.get_directory(project_name, directory_name)
