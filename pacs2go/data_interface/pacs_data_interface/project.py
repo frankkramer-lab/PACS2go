@@ -419,3 +419,19 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulUploadException(str(file_path.split("/")[-1]))
 
+
+    def to_dict(self) -> dict:
+        """
+        Convert various attributes of the Project object to a dictionary for serialization.
+        """
+        return {
+            'name': self.name,
+            'creation': self.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
+            'last_updated': self.last_updated.strftime("%d.%B %Y, %H:%M:%S"),     
+            'description': self.description,   
+            'keywords': self.keywords,   
+            'parameters': self.parameters,
+            'citations': [{'id':c.cit_id, 'citation':c.citation, 'link':c.link} for c in self.citations],     
+            'user_rights': self.your_user_role,
+            'owners': self.owners,   
+        }
