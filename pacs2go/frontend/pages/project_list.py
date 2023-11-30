@@ -97,7 +97,8 @@ def modal_create():
 # Callback for project creation modal view and executing project creation
 @callback(
     [Output('modal_create', 'is_open'),
-     Output('create-project-content', 'children')],
+     Output('create-project-content', 'children'),
+     Output('projects_table', 'children', allow_duplicate=True),],
     [Input('create_project', 'n_clicks'),
      Input('close_modal_create', 'n_clicks'),
      Input('create_and_close', 'n_clicks')],
@@ -110,11 +111,11 @@ def modal_create():
 def modal_and_project_creation(open, close, create_and_close, is_open, project_name, description, keywords, parameters):
     # Open/close modal via button click
     if ctx.triggered_id == "create_project" or ctx.triggered_id == "close_modal_create":
-        return not is_open, no_update
+        return not is_open, no_update, no_update
 
     # User tries to create modal without specifying a project name -> show alert feedback
     elif ctx.triggered_id == "create_and_close" and project_name is None:
-        return is_open, dbc.Alert("Please specify project name.", color="danger")
+        return is_open, dbc.Alert("Please specify project name.", color="danger"), no_update
 
     # User does everything "right" for project creation
     elif ctx.triggered_id == "create_and_close" and project_name is not None:
@@ -128,21 +129,22 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             # Try to create project
             project = connection.create_project(
                 name=project_name, description=description, keywords=keywords, parameters=parameters)
+            projects = json.dumps([p.to_dict() for p in connection.get_all_projects()])
             return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new project {project.name}.",
                                                           href=f"/project/{project.name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success")
+                                                          style={'color': colors['links']}))], color="success"), get_projects_table(projects)
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException, UnsuccessfulCreationException) as err:
-            return is_open, dbc.Alert(str(err), color="danger")
+            return is_open, dbc.Alert(str(err), color="danger"), no_update
 
     else:
         raise PreventUpdate
 
 
 @callback(
-    Output('projects_table', 'children'),
+    Output('projects_table', 'children', allow_duplicate=True),
     Input('filter_project_keywords_btn', 'n_clicks'),
     Input('filter_project_keywords', 'value'),
     State('projects_list_store', 'data'),
