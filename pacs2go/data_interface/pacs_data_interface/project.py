@@ -167,6 +167,15 @@ class Project:
             raise UnsuccessfulGetException("The timestamp of project creation")
 
     @property
+    def number_of_directories(self) -> int:
+        try:
+            return len(self.get_all_directories())
+        except Exception:
+            msg = f"Failed to get the number of directories for Project '{self.name}'"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(msg)
+
+    @property
     def owners(self) -> List[str]:
         try:
             return self._file_store_project.owners
@@ -431,6 +440,7 @@ class Project:
             'description': self.description,   
             'keywords': self.keywords,   
             'parameters': self.parameters,
+            'number_of_directories': self.number_of_directories,
             'citations': [{'id':c.cit_id, 'citation':c.citation, 'link':c.link} for c in self.citations],     
             'user_rights': self.your_user_role,
             'owners': self.owners,   

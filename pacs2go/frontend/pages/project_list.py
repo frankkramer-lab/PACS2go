@@ -1,3 +1,4 @@
+import json
 import dash_bootstrap_components as dbc
 from dash import (Input, Output, State, callback, ctx, dcc, html, no_update,
                   register_page)
@@ -13,19 +14,19 @@ from pacs2go.frontend.helpers import (colors, get_connection,
 register_page(__name__, title='Projects - PACS2go', path='/projects')
 
 
-def get_projects_table(filter: str = ''):
+def get_projects_table(projects_json_data: dict, filter: str = ''):
     try:
-        # Get list of all project names, specific user roles and number of directories per project
-        connection = get_connection()
         rows = []
-        projects = connection.get_all_projects()
+        projects = json.loads(projects_json_data)
+
+
         for p in projects:
-            keywords = p.keywords if p.keywords else "-"
+            keywords = p['keywords'] if p['keywords'] else "-"
             # Only show rows if no filter is applied of if the filter has a match in the project's keywords
-            if filter.lower() in keywords or filter.lower() in keywords or len(filter) == 0:
+            if filter.lower() in keywords or filter.lower() in p['name'] or len(filter) == 0:
                 # Project names represent links to individual project pages
-                rows.append(html.Tr([html.Td(dcc.Link(p.name, href=f"/project/{p.name}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
-                    p.your_user_role.capitalize()), html.Td(len(p.get_all_directories())), html.Td(p.keywords), html.Td(p.timestamp_creation.strftime("%d.%m.%Y, %H:%M:%S")), html.Td(p.last_updated.strftime("%d.%m.%Y, %H:%M:%S"))]))
+                rows.append(html.Tr([html.Td(dcc.Link(p['name'], href=f"/project/{p['name']}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
+                    p['user_rights'].capitalize()), html.Td(p['number_of_directories']), html.Td(p['keywords']), html.Td(p['creation']), html.Td(p['last_updated'])]))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
@@ -144,11 +145,12 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
     Output('projects_table', 'children'),
     Input('filter_project_keywords_btn', 'n_clicks'),
     Input('filter_project_keywords', 'value'),
+    State('projects_list_store', 'data'),
     prevent_initial_call=True)
-def filter_projects_table(btn, filter):
+def filter_projects_table(btn, filter, projects):
     # Apply filter to the projects table
     if ctx.triggered_id == 'filter_project_keywords_btn' or filter:
-        return get_projects_table(filter)
+        return get_projects_table(projects, filter)
     else:
         raise PreventUpdate
 
@@ -160,38 +162,42 @@ def filter_projects_table(btn, filter):
 def layout():
     if not current_user.is_authenticated:
         return login_required_interface()
+    else:
+        connection = get_connection()
+        initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects()])
+        
+        return html.Div(
+            children=[
+                dcc.Store(id='projects_list_store', data=initial_projects_data),
+                # Breadcrumbs
+                html.Div(
+                    [
+                        dcc.Link(
+                            "Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
+                        html.Span(" > ", style={"marginRight": "1%"}),
+                        html.Span("All Projects", className='active fw-bold', style={"color": "#707070"})],
+                    className='breadcrumb'),
 
-    return html.Div(
-        children=[
-            # Breadcrumbs
-            html.Div(
-                [
-                    dcc.Link(
-                        "Home", href="/", style={"color": colors['sage'], "marginRight": "1%"}),
-                    html.Span(" > ", style={"marginRight": "1%"}),
-                    html.Span("All Projects", className='active fw-bold', style={"color": "#707070"})],
-                className='breadcrumb'),
+                # Header including page title and create button
+                html.Div([
+                    html.H1(
+                        children='Your Projects'),
+                    html.Div(modal_create(),
+                            className="d-flex justify-content-between")
+                ], className="d-flex justify-content-between mb-4"),
 
-            # Header including page title and create button
-            html.Div([
-                html.H1(
-                    children='Your Projects'),
-                html.Div(modal_create(),
-                         className="d-flex justify-content-between")
-            ], className="d-flex justify-content-between mb-4"),
+                # Project table
+                dbc.Card([
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col(dbc.Input(id="filter_project_keywords",
+                                            placeholder="Search keywords.. (e.g. 'CT')")),
+                            dbc.Col(dbc.Button(
+                                "Filter", id="filter_project_keywords_btn"))
+                        ], class_name="mb-3"),
 
-            # Project table
-            dbc.Card([
-                dbc.CardBody([
-                    dbc.Row([
-                        dbc.Col(dbc.Input(id="filter_project_keywords",
-                                          placeholder="Search keywords.. (e.g. 'CT')")),
-                        dbc.Col(dbc.Button(
-                            "Filter", id="filter_project_keywords_btn"))
-                    ], class_name="mb-3"),
+                        dcc.Loading(
+                            html.Div(get_projects_table(initial_projects_data), id='projects_table'), color=colors['sage']),
+                    ])], class_name="custom-card mb-3"),
 
-                    dcc.Loading(
-                        html.Div(get_projects_table(), id='projects_table'), color=colors['sage']),
-                ])], class_name="custom-card mb-3"),
-
-        ])
+            ])
