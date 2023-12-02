@@ -276,3 +276,21 @@ class Directory:
                 msg = f"Failed to copy files for download in subdirectory '{subdirectory.unique_name}' of directory '{self.unique_name}'."
                 logger.exception(msg)
                 raise DownloadException
+            
+    def to_dict(self) -> dict:
+        """
+        Convert various attributes of the Directory object to a dictionary for serialization.
+        """
+        return {
+            'unique_name': self.unique_name,
+            'display_name': self.display_name,
+            'timestamp_creation': self.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
+            'last_updated': self.last_updated.strftime("%d.%B %Y, %H:%M:%S"),     
+            'is_consistent': self.is_consistent,   
+            'parameters': self.parameters,
+            'number_of_files': self.number_of_files, 
+            'number_of_files_on_this_level': self.number_of_files_on_this_level,   
+            'associated_directory': self.parent_directory.unique_name if self.parent_directory else None,
+            'associated_project': self.project.name,
+            'user_rights': self.project.your_user_role,  
+        }
