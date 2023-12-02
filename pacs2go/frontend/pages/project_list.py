@@ -26,7 +26,7 @@ def get_projects_table(projects_json_data: dict, filter: str = ''):
             if filter.lower() in keywords or filter.lower() in p['name'] or len(filter) == 0:
                 # Project names represent links to individual project pages
                 rows.append(html.Tr([html.Td(dcc.Link(p['name'], href=f"/project/{p['name']}", className="fw-bold text-decoration-none", style={'color': colors['links']})), html.Td(
-                    p['user_rights'].capitalize()), html.Td(p['number_of_directories']), html.Td(p['keywords']), html.Td(p['creation']), html.Td(p['last_updated'])]))
+                    p['your_user_role'].capitalize()), html.Td(p['number_of_directories']), html.Td(p['keywords']), html.Td(p['timestamp_creation']), html.Td(p['last_updated'])]))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 

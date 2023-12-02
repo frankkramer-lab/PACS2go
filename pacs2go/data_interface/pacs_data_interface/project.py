@@ -435,13 +435,13 @@ class Project:
         """
         return {
             'name': self.name,
-            'creation': self.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
+            'timestamp_creation': self.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
             'last_updated': self.last_updated.strftime("%d.%B %Y, %H:%M:%S"),     
             'description': self.description,   
             'keywords': self.keywords,   
             'parameters': self.parameters,
             'number_of_directories': self.number_of_directories,
-            'citations': [{'id':c.cit_id, 'citation':c.citation, 'link':c.link} for c in self.citations],     
-            'user_rights': self.your_user_role,
+            'citations': [{'cit_id':c.cit_id, 'citation':c.citation, 'link':c.link} for c in self.citations],     
+            'your_user_role': self.your_user_role,
             'owners': self.owners,   
         }
