@@ -17,7 +17,6 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
     UnsuccessfulGetException)
 from pacs2go.data_interface.pacs_data_interface.directory import Directory
-from pacs2go.data_interface.pacs_data_interface.file import File
 from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, format_linebreaks,
                                       get_connection, login_required_interface)
@@ -26,15 +25,15 @@ register_page(__name__, title='Directory - PACS2go',
               path_template='/dir/<project_name>/<directory_name>')
 
 
-def get_details(directory: Directory):
+def get_details(directory: dict):
+    directory = json.loads(directory)
     detail_data = []
-    if directory.parameters:
-        formatted_parameters = format_linebreaks(directory.parameters)
+    if directory['parameters']:
+        formatted_parameters = format_linebreaks(directory['parameters'])
         parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
         detail_data.append(html.H6(parameters))
 
-    time = html.B("Created on: "), directory.timestamp_creation.strftime(
-        "%d.%m.%Y, %H:%M:%S"), html.B(" | Last updated on: "), directory.last_updated.strftime("%d.%m.%Y, %H:%M:%S")
+    time = html.B("Created on: "), directory['timestamp_creation'], html.B(" | Last updated on: "), directory['last_updated']
     detail_data.append(html.H6(time))
 
     return detail_data
@@ -82,13 +81,14 @@ def format_file_details(file: dict, index: int):
             html.Td(tags),
             html.Td([modal_delete_file(file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file['name']})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
 
-def get_files_table(directory: Directory, files: dict, filter: str = '', active_page: int = 0):
+def get_files_table(directory: dict, files: dict, filter: str = '', active_page: int = 0):
     rows = []
     file_data = json.loads(files)
+    directory = json.loads(directory)
 
     # Filter files based on the provided tag filter
     if len(filter) > 0:
-        file_data = [file_info for file_info in file_data if (filter.lower() in str(file_info['tags']).lower())]
+        file_data = [file_info for file_info in file_data if (filter.lower() in str(file_info['tags']).lower() or filter.lower() in str(file_info['name']).lower())]
 
     # Get file information as rows for table
     for index, file_info in enumerate(file_data[active_page * 20:min((active_page + 1) * 20, len(file_data))]):
@@ -110,7 +110,7 @@ def get_files_table(directory: Directory, files: dict, filter: str = '', active_
     
     # Warning message if the data is not consistent
     warning_message = None
-    if not directory.is_consistent:
+    if not directory['is_consistent']:
         warning_message = dbc.Alert(
             "Warning: The directory's metadata and file storage data are not consistent. The inconsistent files are not shown. Please contact your admin.",
             color="warning"
@@ -120,15 +120,16 @@ def get_files_table(directory: Directory, files: dict, filter: str = '', active_
     return [warning_message, table]
 
 
-def get_subdirectories_table(directory: Directory, filter: str = ''):
+def get_subdirectories_table(subdirectories: dict, filter: str = ''):
+    subdirectories = json.loads(subdirectories)
     # Get list of all directory names and number of files per directory
     rows = []
-    for d in directory.get_subdirectories():
+    for d in subdirectories:
         # Only show rows if no filter is applied of if the filter has a match in the directory's name
-        if filter.lower() in d.display_name.lower() or len(filter) == 0:
+        if filter.lower() in d['display_name'].lower() or len(filter) == 0:
             # Directory names represent links to individual directory pages
-            rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{directory.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d.number_of_files), html.Td(d.timestamp_creation.strftime("%d.%m.%Y, %H:%M:%S")), html.Td(d.last_updated.strftime("%d.%m.%Y, %H:%M:%S"))]))
+            rows.append(html.Tr([html.Td(dcc.Link(d['display_name'], href=f"/dir/{d['associated_project']}/{d['unique_name']}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+                d['number_of_files']), html.Td(d['timestamp_creation']), html.Td(d['last_updated'])]))
 
     table_header = [
         html.Thead(
@@ -325,8 +326,8 @@ def modal_edit_file(file:dict):
      Input('close_modal_delete_directory', 'n_clicks'),
      Input('delete_directory_and_close', 'n_clicks')],
     State("modal_delete_directory", "is_open"),
-    State('directory', 'data'),
-    State('project', 'data'),
+    State("directory_name", 'data'),
+    State("project_name", 'data'),
     prevent_initial_call=True)
 # Callback for the directory deletion modal view and the actual directory deletion
 def cb_modal_and_directory_deletion(open, close, delete_and_close, is_open, directory_name, project_name):
@@ -363,8 +364,8 @@ def cb_modal_and_directory_deletion(open, close, delete_and_close, is_open, dire
      Input('close_modal_edit_dir', 'n_clicks'),
      Input('edit_dir_and_close', 'n_clicks')],
     State("modal_edit_directory_metadata", "is_open"),
-    State('project', 'data'),
-    State('directory', 'data'),
+    State("project_name", 'data'),
+    State("directory_name", 'data'),
     State('edit_directory_parameters', 'value'),
     prevent_initial_call=True)
 # Callback used to edit project description, parameters and keywords
@@ -381,9 +382,10 @@ def cb_modal_edit_directory_callback(open, close, edit_and_close, is_open, proje
             if parameters:
                 # Set new parameters
                 directory.set_parameters(parameters)
-            # Retrieve updated directory to forece reload
+            # Retrieve updated directory to force reload
             directory = connection.get_directory(project_name, directory_name)
-            return not is_open, no_update, get_details(directory)
+            directory_json = json.dumps(directory.to_dict())
+            return not is_open, no_update, get_details(directory_json)
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
@@ -401,10 +403,11 @@ def cb_modal_edit_directory_callback(open, close, edit_and_close, is_open, proje
     State("modal_create_new_subdirectory", "is_open"),
     State('new_subdir_name', 'value'),
     State('new_subdir_parameters', 'value'),
-    State("directory", "data"),
-    State("project", "data"),
+    State("directory_name", "data"),
+    State("project_name", "data"),
+    State("subdirectories_store", "data"),
     prevent_initial_call=True)
-def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name):
+def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name, subdirectories):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
         return not is_open, no_update, no_update
@@ -417,16 +420,22 @@ def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, n
     elif ctx.triggered_id == "create_subdir_and_close" and name is not None:
         # Directory name cannot contain whitespaces
         name = str(name).replace(" ", "_")
+
         try:
+            subdirectories_data = json.loads(subdirectories)
+
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             sd = Directory(directory.project, name, directory, parameters)
 
-            return is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
+            subdirectories_data.append(sd.to_dict())
+            updated_subdirlist_json = json.dumps(subdirectories_data)
+
+            return not is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
                                                           href=f"/dir/{project_name}/{sd.unique_name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(directory)
+                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(updated_subdirlist_json)
 
         except Exception as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
@@ -439,16 +448,14 @@ def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, n
     Output('subdirectory_table', 'children'),
     Input('filter_subdirectory_tags_btn', 'n_clicks'),
     Input('filter_subdirectory_tags', 'value'),
-    State('directory', 'data'),
-    State('project', 'data'),
+    State("subdirectories_store", 'data'),
     prevent_initial_call=True)
-def cb_filter_directory_table(btn, filter, directory_name, project_name):
+def cb_filter_directory_table(btn, filter, subdirectories):
     # Apply filter to the directories table
     if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
         if filter or filter == "":
             try:
-                connection = get_connection()
-                return get_subdirectories_table(connection.get_directory(project_name, directory_name), filter)
+                return get_subdirectories_table(subdirectories, filter)
             except (FailedConnectionException, UnsuccessfulGetException) as err:
                 return dbc.Alert(str(err), color="danger")
         else:
@@ -463,17 +470,13 @@ def cb_filter_directory_table(btn, filter, directory_name, project_name):
     Input('filter_file_tags', 'value'),
     Input('pagination-files', 'active_page'),
     State('directory', 'data'),
-    State('project', 'data'),
     State('file-store', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
-def cb_filter_files_table(btn, filter, active_page, directory_name, project_name, files):
+def cb_filter_files_table(btn, filter, active_page, directory, files):
     # Filter button is clicked or the input field registers a user input
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
-            connection = get_connection()
-            directory = connection.get_directory(project_name, directory_name)
-
             if not active_page:
                 active_page = 1
             if not filter:
@@ -488,8 +491,8 @@ def cb_filter_files_table(btn, filter, active_page, directory_name, project_name
 @callback(
     Output("download_directory", "data"),
     Input("btn_download_dir", "n_clicks"),
-    State("directory", "data"),
-    State("project", "data"),
+    State("directory_name", "data"),
+    State("project_name", "data"),
     prevent_initial_call=True,
 )
 # Callback for the download (directory) feature
@@ -511,8 +514,8 @@ def cb_download(n_clicks, directory_name, project_name):
 @callback(
     Output("download_single_file", "data"),
     Input({'type': 'btn_download_file', 'index': ALL}, 'n_clicks'),
-    State("directory", "data"),
-    State("project", "data"),
+    State("directory_name", "data"),
+    State("project_name", "data"),
     prevent_initial_call=True,
 )
 # Callback for the download (single files) feature
@@ -542,8 +545,8 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
      Input('close_modal_delete_file', 'n_clicks'),
      Input({'type': 'delete_file_and_close', 'index': ALL}, 'n_clicks')],
     [State('modal_delete_file', 'is_open'),
-     State('directory', 'data'),
-     State('project', 'data'),
+     State("directory_name", 'data'),
+     State("project_name", 'data'),
      State('file', 'data')],
     prevent_initial_call=True
 )
@@ -584,8 +587,8 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
     Output('edit_file_in_list_tags', 'value', ),
     Output('file_for_edit', 'data', allow_duplicate=True)],
     Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
-    State('directory', 'data'),
-    State('project', 'data'),
+    State("directory_name", 'data'),
+    State("project_name", 'data'),
     prevent_initial_call=True
 )
 def cb_open_edit_file_modal(is_open, directory_name, project_name):
@@ -605,8 +608,8 @@ def cb_open_edit_file_modal(is_open, directory_name, project_name):
     [Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
      Input('close_modal_edit_file_in_list', 'n_clicks'),
      Input({'type': 'edit_file_in_list_and_close', 'index': ALL}, 'n_clicks')],
-    [State('directory', 'data'),
-     State('project', 'data'),
+    [State("directory_name", 'data'),
+     State("project_name", 'data'),
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
      State('edit_file_in_list_tags', 'value')],
@@ -650,15 +653,11 @@ def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_
     Output('files_table', 'children', allow_duplicate=True),
     Input('file-store', 'data'),
     State('pagination-files', 'active_page'),
-    State('directory', 'data'),
-    State('project', 'data'),
+    State("directory", 'data'),
     prevent_initial_call=True)
 # Callback to update file table if files change
-def cb_reload_files_table(files, active_page, directory_name, project_name):
+def cb_reload_files_table(files, active_page, directory):
     try:
-        connection = get_connection()
-        directory = connection.get_directory(project_name, directory_name)
-
         if not active_page:
             active_page = 1
         return get_files_table(directory, files, active_page=int(active_page)-1)
@@ -699,13 +698,18 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     " ...   \u00A0 >  ", style={"marginRight": "1%"})
                 
         # Initial file list
-        initial_data = json.dumps([file.to_dict() for file in directory.get_all_files()])
+        initial_files_data = json.dumps([file.to_dict() for file in directory.get_all_files()])
+        # Initial directory data
+        initial_directory_data = json.dumps(directory.to_dict())
+        initial_subdir_data = json.dumps([sd.to_dict() for sd in directory.get_subdirectories()])
 
         return html.Div([
             # dcc Store components for project and directory name strings
-            dcc.Store(id='directory', data=directory.unique_name),
-            dcc.Store(id='project', data=project_name),
-            dcc.Store(id='file-store', data=initial_data),
+            dcc.Store(id='directory_name', data=directory.unique_name),
+            dcc.Store(id='project_name', data=project_name),
+            dcc.Store(id='directory', data=initial_directory_data),
+            dcc.Store(id='subdirectories_store', data=initial_subdir_data),
+            dcc.Store(id='file-store', data=initial_files_data),
 
             # Breadcrumbs
             html.Div(
@@ -735,8 +739,6 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 'textAlign': 'left', })),
                     dbc.Col(
                         [
-                            # Modal for directory deletion
-                            modal_delete(directory),
                             html.Div([
                                 # Button to access the File Viewer (viewer.py)
                                 dbc.Button([html.I(className="bi bi-play me-2"),
@@ -756,7 +758,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         html.H4("Details"), 
                         modal_edit_directory(project, directory)],
                     className="d-flex justify-content-between align-items-center"),
-                dcc.Loading(dbc.CardBody(get_details(directory), id="dir_details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
+                dcc.Loading(dbc.CardBody(get_details(initial_directory_data), id="dir_details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
             # Sub-Directories Table
             dbc.Card([
                 dbc.CardHeader(children=[html.H4('Directories'),
@@ -772,7 +774,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     ], class_name="mb-3"),
                     # Directories Table
                     dcc.Loading(html.Div(get_subdirectories_table(
-                        directory), id='subdirectory_table'), color=colors['sage']),
+                        initial_subdir_data), id='subdirectory_table'), color=colors['sage']),
                 ])], class_name="custom-card mb-3"),
 
             # Files Table
@@ -789,13 +791,15 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
                     # Display a table of the directory's files
                     dcc.Loading(html.Div(get_files_table(
-                        directory, initial_data), id='files_table'), color=colors['sage']),
+                        initial_directory_data, initial_files_data), id='files_table'), color=colors['sage']),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
                         int(directory.number_of_files_on_this_level)/20), first_last=True, previous_next=True, active_page=0)
                 ])], class_name="custom-card mb-3"),
 
             # Display a preview of the first file's content
             get_single_file_preview(directory),
+            html.Div([
+                modal_delete(directory)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end"),
         ])
 
     else:
