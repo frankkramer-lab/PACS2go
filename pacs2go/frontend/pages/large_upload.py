@@ -116,7 +116,7 @@ def uploader(passed_project: Optional[str]):
 
         dbc.Card(dbc.CardBody([
             dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
-                         'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.'])),
+                         'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV, TXT and JSON.', html.Br(), html.Br(), 'Please make sure that all files have a valid file extension.'])),
             dbc.Row(
                 [
                     get_upload_component(id='dash-uploader'),
@@ -125,7 +125,7 @@ def uploader(passed_project: Optional[str]):
         # Placeholder for 'Upload to XNAT' button
         html.Div(id='du-callback-output'),
         
-    ])), className="custom-card mb-3")
+    ])), className="custom-card mb-3",style={'background-color': '#fafafa'})
 
 
 #################
@@ -144,14 +144,14 @@ def pass_filename_and_show_upload_button(filenames: List[str]):
     filename = filenames[0]
     return dbc.Card(dbc.CardBody([
                 html.Div([
-                html.H5([html.B("3."), ' Confirm upload to XNAT.']),
-                dbc.Button("Upload to XNAT", id="click-upload",
+                html.H5([html.B("3."), 'Finish Upload and Assemble Metadata']),
+                dbc.Button("Complete Upload Process", id="click-upload",
                         size="lg", color="success"),
                 # Placeholder for successful upload message + Spinner to symbolize loading
                 dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
         ), className="custom-card mb-3"), filename
 
-# Called when 'Upload to XNAT' button (appears after dash-uploader received an upload) is clicked
+# Called when step 3 button (appears after dash-uploader received an upload) is clicked
 # and triggers the file upload to XNAT.
 @callback(
     Output('output-uploader', 'children'),
