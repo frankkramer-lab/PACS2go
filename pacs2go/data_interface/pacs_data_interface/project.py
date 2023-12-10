@@ -169,7 +169,9 @@ class Project:
     @property
     def number_of_directories(self) -> int:
         try:
-            return len(self.get_all_directories())
+            with PACS_DB() as db:
+                return db.get_numberofdirectories_in_project(self.name)
+            
         except Exception:
             msg = f"Failed to get the number of directories for Project '{self.name}'"
             logger.exception(msg)
@@ -336,10 +338,8 @@ class Project:
                 parent_dir = self.get_directory(
                     directory_name.rsplit('::', 1)[0])
 
-                # Create/get the subdirectory from parent directory TODO
+                # Create/get the subdirectory from parent directory 
                 directory = Directory(self, directory_name, parent_dir=parent_dir)
-                # directory = parent_dir.create_subdirectory(
-                #     directory_name.rsplit('::', 1)[-1])
 
             timestamp = datetime.now(self.this_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -407,7 +407,7 @@ class Project:
                                     # Insert into DB
                                     updated_file_data = db.insert_into_file(
                                         file_data)
-                                    logger.info(f"insert {updated_file_data.file_name}, {updated_file_data.parent_directory}")
+                                    # logger.info(f"insert {updated_file_data.file_name}, {updated_file_data.parent_directory}") # only for debugging as it is very time consuming
 
                                 # Upload to file store
                                 self._file_store_project.insert_file_into_project(

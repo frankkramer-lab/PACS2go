@@ -413,6 +413,64 @@ class PACS_DB():
             logger.exception(msg)
             raise Exception(msg)
 
+    def get_numberofdirectories_in_project(self, name: str) -> int:
+        try:
+            query = f"""
+                SELECT count(distinct unique_name)
+                FROM {self.DIRECTORY_TABLE}
+                WHERE parent_project = %s
+            """
+            self.cursor.execute(query, (name, ))  
+            result = self.cursor.fetchone()
+
+            if result:
+                return result[0]
+            else:
+                return 0
+        except Exception as err:
+            msg = f"Error retrieving directory count for {name} from the database"
+            logger.exception(msg)
+            raise Exception(msg)
+
+    def get_numberoffiles_under_directory(self, unique_name: str) -> int:
+        try:
+            query = f"""
+                SELECT count(distinct file_name)
+                FROM {self.FILE_TABLE}
+                WHERE parent_directory LIKE %s
+            """
+            self.cursor.execute(query, (unique_name + '%', ))  # Attach % for string matching 
+            result = self.cursor.fetchone()
+            print(result)
+            if result:
+                return result[0]
+            else:
+                return 0
+        except Exception as err:
+            msg = f"Error retrieving file count for {unique_name} from the database"
+            logger.exception(msg)
+            raise Exception(msg)
+    
+    def get_numberoffiles_within_directory(self, unique_name: str) -> int:
+        try:
+            query = f"""
+                SELECT count(distinct file_name)
+                FROM {self.FILE_TABLE}
+                WHERE parent_directory = %s
+            """
+            self.cursor.execute(query, (unique_name, )) 
+            result = self.cursor.fetchone()
+            print(result)
+            if result:
+                return result[0]
+            else:
+                return 0
+        except Exception as err:
+            msg = f"Error retrieving file count for {unique_name} from the database"
+            logger.exception(msg)
+            raise Exception(msg)
+    
+
     # --------- Update Tables -------- #
     def update_attribute(self, table_name: str, attribute_name: str, new_value: str, condition_column: str = None, condition_value: str = None, second_condition_column: str = None, second_condition_value: str = None) -> None:
         try:
