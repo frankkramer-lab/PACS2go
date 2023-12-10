@@ -437,11 +437,11 @@ class PACS_DB():
             query = f"""
                 SELECT count(distinct file_name)
                 FROM {self.FILE_TABLE}
-                WHERE parent_directory LIKE %s
+                WHERE parent_directory = %s OR parent_directory LIKE %s
             """
-            self.cursor.execute(query, (unique_name + '%', ))  # Attach % for string matching 
+            self.cursor.execute(query, (unique_name, unique_name + '::%', ))  # Attach % for string matching 
             result = self.cursor.fetchone()
-            print(result)
+
             if result:
                 return result[0]
             else:
