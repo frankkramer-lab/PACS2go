@@ -60,11 +60,8 @@ class Directory:
     @property
     def number_of_files(self) -> int:
         try:
-            total_files = len(self.get_all_files())
-
-            # Recursively calculate the number of files in subdirectories
-            for subdirectory in self.get_subdirectories():
-                total_files += subdirectory.number_of_files
+            with PACS_DB() as db:
+                total_files = db.get_numberoffiles_under_directory(self.unique_name)
 
             return total_files
         except Exception:
@@ -75,7 +72,9 @@ class Directory:
     @property
     def number_of_files_on_this_level(self) -> int:
         try:
-            return len(self.get_all_files())
+            with PACS_DB() as db:
+                return db.get_numberoffiles_within_directory(self.unique_name)
+
         except Exception:
             msg = f"Failed to get the number of files on this level for Directory '{self.unique_name}'"
             logger.exception(msg)
@@ -288,8 +287,7 @@ class Directory:
             'last_updated': self.last_updated.strftime("%d.%B %Y, %H:%M:%S"),     
             'is_consistent': self.is_consistent,   
             'parameters': self.parameters,
-            'number_of_files': self.number_of_files, 
-            'number_of_files_on_this_level': self.number_of_files_on_this_level,   
+            'number_of_files': self.number_of_files,  
             'associated_directory': self.parent_directory.unique_name if self.parent_directory else None,
             'associated_project': self.project.name,
             'user_rights': self.project.your_user_role,  
