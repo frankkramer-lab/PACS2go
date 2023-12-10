@@ -460,7 +460,7 @@ class PACS_DB():
             """
             self.cursor.execute(query, (unique_name, )) 
             result = self.cursor.fetchone()
-            print(result)
+    
             if result:
                 return result[0]
             else:
