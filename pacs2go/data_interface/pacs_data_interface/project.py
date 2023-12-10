@@ -373,51 +373,58 @@ class Project:
 
                     # Walk through the unzipped directory
                     for root, dirs, files in os.walk(temp_dir):
-                        if root == temp_dir:
-                            # Skip tempdir name
+                    
+                        try:
+                            if root == temp_dir:
+                                # Skip tempdir name
+                                continue
+                            if os.path.basename(root) == root_dir.display_name:
+                                # First level directory is already created
+                                current_dir = root_dir
+                            else:
+                                # Create sub-directory according to zipfile
+                                current_dir = Directory(self, os.path.basename(root), parent_dir=directory)
+                            
+                            if len(files) > 0:
+                                # Handle files of current directory
+                                for file_name in files:
+
+                                    if Path(file_name).suffix == '':
+                                        # Skip files that do not have a file extension
+                                        logger.info(
+                                            f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
+                                        continue
+
+                                    # Create a FileData object
+                                    file_data = FileData(
+                                        file_name=file_name,
+                                        parent_directory=current_dir.unique_name,
+                                        format=self.file_format[Path(file_name).suffix],
+                                        tags=tags_string,
+                                        modality=modality,
+                                        timestamp_creation=timestamp,
+                                        timestamp_last_updated=timestamp
+                                    )
+                                
+                                    # Insert file to current directory
+                                    with PACS_DB() as db:
+                                        # Insert into DB
+                                        updated_file_data = db.insert_into_file(
+                                            file_data)
+                                        # logger.info(f"insert {updated_file_data.file_name}, {updated_file_data.parent_directory}") # only for debugging as it is very time consuming
+
+                                    # Upload to file store
+                                    self._file_store_project.insert_file_into_project(
+                                        file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.unique_name, tags_string=tags_string)
+                        except Exception as e:
+                            logger.exception(f"An error occurred while processing files: {e}")
                             continue
-                        if os.path.basename(root) == root_dir.display_name:
-                            # First level directory is already created
-                            current_dir = root_dir
-                        else:
-                            # Create sub-directory according to zipfile
-                            current_dir = Directory(self, os.path.basename(root), parent_dir=directory)
-
-                        if len(files) > 0:
-                            # Handle files of current directory
-                            for file_name in files:
-                                if Path(file_name).suffix == '':
-                                    # Skip files that do not have a file extension
-                                    logger.info(
-                                        f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
-                                    continue
-                                # Create a FileData object
-                                file_data = FileData(
-                                    file_name=file_name,
-                                    parent_directory=current_dir.unique_name,
-                                    format=self.file_format[Path(file_name).suffix],
-                                    tags=tags_string,
-                                    modality=modality,
-                                    timestamp_creation=timestamp,
-                                    timestamp_last_updated=timestamp
-                                )
-                               
-                                # Insert file to current directory
-                                with PACS_DB() as db:
-                                    # Insert into DB
-                                    updated_file_data = db.insert_into_file(
-                                        file_data)
-                                    # logger.info(f"insert {updated_file_data.file_name}, {updated_file_data.parent_directory}") # only for debugging as it is very time consuming
-
-                                # Upload to file store
-                                self._file_store_project.insert_file_into_project(
-                                    file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.unique_name, tags_string=tags_string)
-
                         directory = current_dir
 
                     self.set_last_updated(datetime.now(self.this_timezone))
                     logger.info(
                         f"User {self.connection.user} inserted a zip file into Directory '{directory.unique_name}' in Project '{self.name}'.")
+                    
                 return root_dir
 
             else:
