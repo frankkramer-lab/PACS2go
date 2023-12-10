@@ -118,6 +118,6 @@ class WrongUploadFormatException(Exception):
 
     def __str__(self):
         if self.message:
-            return f'Upload of {self.message} was unsuccessful. The format you tried to upload is not supported (yet). Please contact us.'
+            return f'Upload of {self.message} was unsuccessful. The format you tried to upload is not supported (yet). Please make sure that all files have a valid file extensions.'
         else:
             return f'Format is not allowed. Please contact us.'

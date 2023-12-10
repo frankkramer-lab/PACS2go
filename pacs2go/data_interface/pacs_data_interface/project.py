@@ -386,6 +386,11 @@ class Project:
                         if len(files) > 0:
                             # Handle files of current directory
                             for file_name in files:
+                                if Path(file_name).suffix == '':
+                                    # Skip files that do not have a file extension
+                                    logger.info(
+                                        f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
+                                    continue
                                 # Create a FileData object
                                 file_data = FileData(
                                     file_name=file_name,
@@ -396,7 +401,7 @@ class Project:
                                     timestamp_creation=timestamp,
                                     timestamp_last_updated=timestamp
                                 )
-
+                               
                                 # Insert file to current directory
                                 with PACS_DB() as db:
                                     # Insert into DB
