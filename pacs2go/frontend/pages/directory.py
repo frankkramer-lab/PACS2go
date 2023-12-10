@@ -793,7 +793,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     dcc.Loading(html.Div(get_files_table(
                         initial_directory_data, initial_files_data), id='files_table'), color=colors['sage']),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
-                        int(directory.number_of_files_on_this_level)/20), first_last=True, previous_next=True, active_page=0)
+                        int(directory.number_of_files_on_this_level)/20), first_last=True, previous_next=True, active_page=0, fully_expanded=False)
                 ])], class_name="custom-card mb-3"),
 
             # Display a preview of the first file's content
