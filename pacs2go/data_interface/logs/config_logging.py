@@ -32,7 +32,7 @@ class PostgreSQLHandler(logging.Handler):
         # Write logs to db every day at 4am
         schedule.every().day.at("04:00").do(self.save_db)
         # Clean up logs every month on the 1st day at 5:00 AM
-        schedule.every(30).days.at("03:00").do(self.cleanup_logs)
+        schedule.every(30).days.at("05:00").do(self.cleanup_logs)
 
         # Start the scheduler in a separate thread
         self.schedule_thread = threading.Thread(target=self.run_schedule)
