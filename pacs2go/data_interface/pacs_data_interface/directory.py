@@ -251,8 +251,8 @@ class Directory:
         try:
             # Only get files from a specific range (quantity and offset)
             with PACS_DB() as db:
-                files_data = db.get_directory_files_slice(self.unique_name, filter, quantity, offset)
-      
+                files_data = db.get_directory_files_slice(directory_name=self.unique_name, filter=filter, quantity=quantity, offset=offset)
+
             files = [ { 
             'name': f.file_name,
             'format': f.format,
