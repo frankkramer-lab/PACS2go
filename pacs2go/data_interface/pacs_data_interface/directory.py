@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 from datetime import datetime
@@ -223,10 +224,13 @@ class Directory:
 
     def get_all_files(self) -> List['File']:
         try:
+            # Get all files, necessary for file viewer
+            # Retrieval via file store logic to make sure that the physical file really exists and is not merely a db entry
             fs = self._file_store_directory.get_all_files()
             files = [self.get_file(
                 file_name=f.name, _file_filestorage_object=f) for f in fs]
 
+            
             if any(file is None for file in files):
                 # Handle the case where at least one file is None (failed to retrieve from DB)
                 logger.warning(f"At least one file in directory '{self.unique_name}' could not be retrieved.")
@@ -236,11 +240,36 @@ class Directory:
             
             logger.debug(f"User {self.project.connection.user} retrieved information about all files for directory '{self.unique_name}'.")
 
+            files = [i for i in files if i is not None]
             return files
         except:
             msg = f"Failed to get all files for directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("Files")
+
+    def get_all_files_sliced_and_as_json(self,  filter:str= '', quantity:int = 20, offset:int = 0) -> dict:
+        try:
+            # Only get files from a specific range (quantity and offset)
+            with PACS_DB() as db:
+                files_data = db.get_directory_files_slice(directory_name=self.unique_name, filter=filter, quantity=quantity, offset=offset)
+
+            files = [ { 
+            'name': f.file_name,
+            'format': f.format,
+            'modality': f.modality,
+            'tags': f.tags,
+            'size': 0,
+            'upload': f.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
+            'associated_directory': f.parent_directory,
+            'associated_project': self.project.name,
+            'user_rights': self.project.your_user_role
+                    } for f in files_data]
+            return json.dumps(files)
+        except:
+            msg = f"Failed to get all files for directory '{self.unique_name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException("Files")
+
 
     def download(self, destination, zip: bool = True) -> str:
         self._create_folders_and_copy_files_for_download(destination)

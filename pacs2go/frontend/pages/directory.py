@@ -40,7 +40,7 @@ def get_details(directory: dict):
 
 def get_single_file_preview(directory: Directory):
     # Preview first image within the directory
-    if len(directory.get_all_files()) > 0:
+    if directory.number_of_files > 0:
         file = directory.get_all_files()[0]
         file = directory.get_file(file.name)
         if file.format == 'JPEG' or file.format == 'PNG' or file.format == 'TIFF':
@@ -81,18 +81,21 @@ def format_file_details(file: dict, index: int):
             html.Td(tags),
             html.Td([modal_delete_file(file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file['name']})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
 
-def get_files_table(directory: dict, files: dict, filter: str = '', active_page: int = 0):
+def get_files_table(directory: dict, files: dict = None, filter: str = '', active_page: int = 1, quantity:int = 20):
     rows = []
-    file_data = json.loads(files)
     directory = json.loads(directory)
 
-    # Filter files based on the provided tag filter
-    if len(filter) > 0:
-        file_data = [file_info for file_info in file_data if (filter.lower() in str(file_info['tags']).lower() or filter.lower() in str(file_info['name']).lower())]
+    if not files:
+        dir = get_connection().get_directory(project_name=directory['associated_project'], directory_name=directory['unique_name'])
+
+        # Filter files based on the provided tag filter, quantity and offset
+        files = dir.get_all_files_sliced_and_as_json(filter, quantity, (active_page-1)*quantity)
+    
+    file_data = json.loads(files)
 
     # Get file information as rows for table
-    for index, file_info in enumerate(file_data[active_page * 20:min((active_page + 1) * 20, len(file_data))]):
-        index = index + active_page*20
+    for index, file_info in enumerate(file_data):
+        index = index + (active_page-1)*quantity
         rows.append(html.Tr(format_file_details(file_info, index)))
 
     # Table header
@@ -101,7 +104,7 @@ def get_files_table(directory: dict, files: dict, filter: str = '', active_page:
             html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
     ]
 
-    # Only show 20 rows at a time - pagination
+    # Only show quantity (20) rows at a time - pagination
     table_body = [html.Tbody(rows)]
 
     # Put together file table
@@ -470,10 +473,9 @@ def cb_filter_directory_table(btn, filter, subdirectories):
     Input('filter_file_tags', 'value'),
     Input('pagination-files', 'active_page'),
     State('directory', 'data'),
-    State('file-store', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
-def cb_filter_files_table(btn, filter, active_page, directory, files):
+def cb_filter_files_table(btn, filter, active_page, directory):
     # Filter button is clicked or the input field registers a user input
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
@@ -481,7 +483,7 @@ def cb_filter_files_table(btn, filter, active_page, directory, files):
                 active_page = 1
             if not filter:
                 filter = ''
-            return get_files_table(directory, files, filter, int(active_page)-1)
+            return get_files_table(directory=directory, filter=filter, active_page=int(active_page))
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
     else:
@@ -547,11 +549,12 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
     [State('modal_delete_file', 'is_open'),
      State("directory_name", 'data'),
      State("project_name", 'data'),
-     State('file', 'data')],
+     State('file', 'data'),
+     State('pagination-files', 'active_page'),],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name):
+def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name, active_page):
     if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
             # Delete Button in File list - open/close Modal View
@@ -568,7 +571,7 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
                     file.delete_file()
                     # Close Modal and show message
                     return is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, json.dumps([file.to_dict() for file in directory.get_all_files()])
+                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(20, (active_page-1) * 20)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
 
@@ -612,11 +615,12 @@ def cb_open_edit_file_modal(is_open, directory_name, project_name):
      State("project_name", 'data'),
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
-     State('edit_file_in_list_tags', 'value')],
+     State('edit_file_in_list_tags', 'value'),
+     State('pagination-files', 'active_page'),],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_name, file_name, modality, tags):
+def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_name, file_name, modality, tags, active_page):
     if any(item is not None for item in open):
         if isinstance(ctx.triggered_id, dict):
             # Edit Button in the Modal View
@@ -630,7 +634,7 @@ def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_
                     if tags:
                         file.set_tags(tags)
                     return False, dbc.Alert(
-                        [f"The file {file.name} has been successfully edited! "], color="success"), json.dumps([file.to_dict() for file in directory.get_all_files()])
+                        [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(20, (active_page-1) * 20)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return False, dbc.Alert(str(err), color="danger"), no_update
             else:
@@ -660,7 +664,7 @@ def cb_reload_files_table(files, active_page, directory):
     try:
         if not active_page:
             active_page = 1
-        return get_files_table(directory, files, active_page=int(active_page)-1)
+        return get_files_table(directory=directory, files=files, active_page=int(active_page))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
@@ -696,9 +700,11 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             if directory_name.count('::') > 2:
                 breadcrumb_buffer = html.Span(
                     " ...   \u00A0 >  ", style={"marginRight": "1%"})
-                
-        # Initial file list
-        initial_files_data = json.dumps([file.to_dict() for file in directory.get_all_files()])
+
+        # Pagination info
+        current_active_page = 1 # offset
+        items_per_page = 20     # quantity
+
         # Initial directory data
         initial_directory_data = json.dumps(directory.to_dict())
         initial_subdir_data = json.dumps([sd.to_dict() for sd in directory.get_subdirectories()])
@@ -709,7 +715,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             dcc.Store(id='project_name', data=project_name),
             dcc.Store(id='directory', data=initial_directory_data),
             dcc.Store(id='subdirectories_store', data=initial_subdir_data),
-            dcc.Store(id='file-store', data=initial_files_data),
+            dcc.Store(id='file-store'),
 
             # Breadcrumbs
             html.Div(
@@ -791,13 +797,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
                     # Display a table of the directory's files
                     dcc.Loading(html.Div(get_files_table(
-                        initial_directory_data, initial_files_data), id='files_table'), color=colors['sage']),
+                        directory=initial_directory_data, quantity=items_per_page), id='files_table'), color=colors['sage']),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
-                        int(directory.number_of_files_on_this_level)/20), first_last=True, previous_next=True, active_page=0)
+                        int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False)
                 ])], class_name="custom-card mb-3"),
 
             # Display a preview of the first file's content
-            get_single_file_preview(directory),
+            # get_single_file_preview(directory),
             html.Div([
                 modal_delete(directory)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end"),
         ])

@@ -270,12 +270,13 @@ class PACS_DB():
             logger.exception(msg)
             raise Exception(msg)
 
-    def get_all_files(self) -> List[str]:
+    def get_all_files(self, directory_name:str) -> List[str]:
         try:
             query = f"""
-                SELECT file_name FROM {self.FILE_TABLE}
-            """
-            self.cursor.execute(query)
+                SELECT file_name FROM {self.FILE_TABLE} 
+                WHERE parent_directory = %s
+            """  
+            self.cursor.execute(query, (directory_name,))
             results = self.cursor.fetchall()
 
             file_list = []
@@ -288,6 +289,26 @@ class PACS_DB():
             msg = "Error retrieving all files"
             logger.exception(msg)
             raise Exception(msg)
+
+    def get_directory_files_slice(self, directory_name:str, filter:str = '', quantity:int = None, offset:int = 0) -> List['FileData']:
+            # quantity defines the number of retrievd files, offset defines how many rows are skipped before the retrieved files
+            query = f"""
+                SELECT file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated FROM {self.FILE_TABLE}
+                WHERE parent_directory = %s AND (tags ILIKE %s OR file_name ILIKE %s)
+                ORDER BY file_name 
+                OFFSET %s ROWS
+                FETCH FIRST %s ROW ONLY;
+            """    
+            self.cursor.execute(query, (directory_name,f'%{filter}%', f'%{filter}%', offset, quantity))
+            results = self.cursor.fetchall()
+            
+            file_list = []
+            for row in results:
+                file = FileData(*row)
+                file_list.append(file)
+   
+            return file_list
+
 
     def get_project_by_name(self, project_name: str) -> 'ProjectData':
         try:
@@ -338,7 +359,7 @@ class PACS_DB():
             """
             self.cursor.execute(query, (unique_name,))
             result = self.cursor.fetchone()
-
+            
             if result:
                 # Directory exists in the database
                 return DirectoryData(*result)
@@ -460,7 +481,7 @@ class PACS_DB():
             """
             self.cursor.execute(query, (unique_name, )) 
             result = self.cursor.fetchone()
-            print(result)
+    
             if result:
                 return result[0]
             else:
