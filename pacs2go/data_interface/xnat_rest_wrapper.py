@@ -525,12 +525,12 @@ class XNATDirectory():
             # Directory list retrieval was successfull
             file_results = response.json()['ResultSet']['Result']
             if len(file_results) == 0:
-                # No projects yet
+                # No files yet
                 return []
 
             files = []
             for file in file_results:
-                # Create List of all Project objects
+                # Create List of all File objects
                 file_object = self.get_file(file_name = file['Name'], metadata = file)
                 files.append(file_object)
             files = natsorted(files, key=lambda obj: obj.name)
