@@ -86,7 +86,7 @@ def uploader(passed_project: Optional[str]):
     if passed_project == 'none':
         passed_project = ''
     # Upload drag and drop area
-    return dbc.Card(dbc.CardBody(html.Div([
+    return html.Div([
         dbc.Card(dbc.CardBody([       dbc.Row(html.H5([html.B("1."), " Specify the project's name and metadata"])),
         dbc.Row([
             dbc.Col(
@@ -124,8 +124,15 @@ def uploader(passed_project: Optional[str]):
         ],), className="custom-card mb-3"),
         # Placeholder for 'Upload to XNAT' button
         html.Div(id='du-callback-output'),
-        
-    ])), className="custom-card mb-3",style={'background-color': '#fafafa'})
+        dbc.Card(dbc.CardBody([
+                html.Div([
+                html.H5([html.B("3. "), 'Finish Upload and Assemble Metadata']),
+                dbc.Button("Complete Upload Process", id="click-upload",
+                        size="lg", color="success", disabled=True),
+                # Placeholder for successful upload message + Spinner to symbolize loading
+                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
+        ), className="custom-card mb-3")
+    ])
 
 
 #################
@@ -135,21 +142,14 @@ def uploader(passed_project: Optional[str]):
 # Callback for the dash-uploader Upload component -> called when something is uploaded
 # Triggers the appearance of an 'Upload to XNAT' button
 @du.callback(
-    output=[Output('du-callback-output', 'children'),
+    output=[Output('click-upload', 'disabled'),
             Output('filename-storage', 'data')],
     id='dash-uploader',
 )
 def pass_filename_and_show_upload_button(filenames: List[str]):
     # Get file -> only one file should be in this list bc 'dirpath' is removed after each upload
     filename = filenames[0]
-    return dbc.Card(dbc.CardBody([
-                html.Div([
-                html.H5([html.B("3."), 'Finish Upload and Assemble Metadata']),
-                dbc.Button("Complete Upload Process", id="click-upload",
-                        size="lg", color="success"),
-                # Placeholder for successful upload message + Spinner to symbolize loading
-                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
-        ), className="custom-card mb-3"), filename
+    return False, filename
 
 # Called when step 3 button (appears after dash-uploader received an upload) is clicked
 # and triggers the file upload to XNAT.

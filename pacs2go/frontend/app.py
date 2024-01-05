@@ -111,15 +111,14 @@ app.layout = html.Div(
             style={'paddingRight': '1%'}
         ),
         # placeholder for each registered page (see pages folder)
-        html.Div([page_container], style={'padding': '1% 10%'}),
+        html.Div([page_container], style={'padding': '1% 10%', "min-height": "85vh"}),
         html.Div(
             [html.Img(
                             src="/assets/uni-logo-for-web.png",  # Adjust the path based on your directory structure
                             style={"width": "25px"},  # Adjust the width and height as needed
                         ),
-            f"University of Augsburg |  Version {os.getenv('PACS2GO_VERSION')}"],
+            f" University of Augsburg |  Version {os.getenv('PACS2GO_VERSION')}"],
             style={
-                "position": "fixed",
                 "bottom": "0",
                 "width": "100%",
                 "text-align": "right",

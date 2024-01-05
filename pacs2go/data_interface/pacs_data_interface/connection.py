@@ -60,6 +60,16 @@ class Connection:
             msg = f"Failed to retrieve user information: {str(e)}"
             logger.exception(msg)
             raise FailedConnectionException
+    
+    @property
+    def all_users(self) -> list:
+        try:
+            return self._file_store_connection.all_users
+        except Exception as e:
+            # FailedConnectionException because if this information can not be retrieved the connection is corrupted
+            msg = f"Failed to retrieve user information: {str(e)}"
+            logger.exception(msg)
+            raise FailedConnectionException
 
     def __enter__(self) -> 'Connection':
         try:
