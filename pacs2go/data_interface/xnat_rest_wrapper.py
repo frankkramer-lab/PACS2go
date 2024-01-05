@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import pathlib
 import uuid
@@ -71,6 +72,21 @@ class XNAT():
         else:
             # User not found
             msg = "User not found."
+            logger.error(msg)
+            raise HTTPException(msg + str(response.status_code))
+        
+    @property
+    def all_users(self) -> list:
+        response = requests.get(
+            self.server + "/xapi/users", cookies=self.cookies)
+
+        if response.status_code == 200:
+            # users were found, return list of users
+            user_list = json.loads(response.text)
+            return user_list
+        else:
+            # User not found
+            msg = "User list not found."
             logger.error(msg)
             raise HTTPException(msg + str(response.status_code))
 
@@ -252,6 +268,16 @@ class XNATProject():
             msg = "Something went wrong trying to retrieve your user role. " + str(response.status_code)
             logger.error(msg)
             raise HTTPException(msg)
+        
+    def grant_rights_to_user(self, user: str, level: str) -> None:
+        response = requests.put(
+            self.connection.server + f"/data/projects/{self.name}/users/{level}/{user}", cookies=self.connection.cookies)
+        if not response.status_code == 200:
+            # Attention: the status code is 200 even if the user does not exist, bc originally the server then sends an invite to the stated email.
+            msg = f"Something went wrong trying to add {user} to this project. " + str(response.status_code)
+            logger.error(msg)
+            raise HTTPException(msg)
+
 
     def exists(self) -> bool:
         response = requests.get(

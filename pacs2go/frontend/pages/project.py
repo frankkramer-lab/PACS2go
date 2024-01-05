@@ -222,6 +222,43 @@ def modal_edit_project(project: Project):
                 is_open=False,
             ),
         ])
+    
+def modal_add_user_to_project(project: Project, users):
+    if project.your_user_role == 'Owners':
+        # Modal view for project editing
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button([html.I(className="bi bi-plus me-2"),
+                        "Add user"], id="add_user_project", size="md", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(
+                        f"Add user to Project {project.name}")),
+                    dbc.ModalBody([
+                        html.Div(id='add_user_project_content'),
+                        dbc.Label(
+                            "Please enter the username of the user to whom you would like to grant rights.", class_name="mt-2"),
+                        # Input Text Field for project name
+                        dcc.Dropdown(options=users,id="add_user_project_username"),
+                        dbc.Label(
+                            "Kindly select the user group to which you wish to add them. Please be aware that adding them to the Owners user group will grant them complete rights, including the ability to delete and reduce the rights of other Owners.", class_name="mt-2"),
+                        dcc.Dropdown(options=["Owners","Members", "Collaborators"],id="add_user_project_group",
+                          value="Collaborators")
+
+                    ]),
+                    dbc.ModalFooter([
+                        # Button which triggers the update of a project
+                        dbc.Button("Add user.",
+                                   id="add_user_and_close", color="success"),
+                        # Button which causes modal to close/disappear
+                        dbc.Button("Close", id="close_modal_add_user")
+                    ]),
+                ],
+                id="modal_add_user_project",
+                is_open=False,
+            ),
+        ])
 
 
 def modal_create_new_directory(project: Project):
@@ -392,7 +429,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
 @callback(
     [Output('modal_edit_project', 'is_open'),
      Output('edit-project-content', 'children'),
-     Output('details_card', 'children')],
+     Output('details_card', 'children', allow_duplicate=True)],
     [Input('edit_project', 'n_clicks'),
      Input('close_modal_edit', 'n_clicks'),
      Input('edit_and_close', 'n_clicks')],
@@ -432,9 +469,43 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
     else:
         raise PreventUpdate
 
+@callback(
+    [Output('modal_add_user_project', 'is_open'), 
+    Output('add_user_project_content', 'children'),
+    Output('details_card', 'children', allow_duplicate=True)],
+    [Input('add_user_project', 'n_clicks'),
+     Input('close_modal_add_user', 'n_clicks'),
+     Input('add_user_and_close', 'n_clicks')],
+    State('modal_edit_project', 'is_open'),
+    State('add_user_project_username', 'value'),
+    State('add_user_project_group', 'value'),
+    State('project_name', 'data'),
+    prevent_initial_call=True
+    )
+def modal_add_user_project_callback(open, close, add_and_close, is_open, username, level, project_name):
+    # Open/close modal via button click
+    if ctx.triggered_id == "add_user_project" or ctx.triggered_id == "close_modal_add_user":
+        return not is_open, no_update, no_update
+
+    elif ctx.triggered_id == "add_user_and_close" and username and level:
+        try:
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            if username and level:
+                project.grant_rights_to_user(username, level)
+            project = connection.get_project(project_name)
+            project_json = json.dumps(project.to_dict())
+            return False, no_update, get_details(project_json)
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
+            return True, dbc.Alert(str(err), color="danger"), no_update
+
+    elif username is None or level is None:
+        return True, dbc.Alert("Please insert username and usergroup.", color="warning"), no_update
+        
+    else:
+        raise PreventUpdate
+
 # Callback for project creation modal view and executing project creation
-
-
 @callback(
     [Output('modal_create_new_directory', 'is_open'),
      Output('create-directory-content', 'children'),
@@ -594,80 +665,88 @@ def layout(project_name: Optional[str] = None):
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
+
             initial_project_data = json.dumps(project.to_dict())
             initial_directory_list_data = json.dumps([d.to_dict() for d in project.get_all_directories()])
-            # TODO: directories dump 
+        
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
-        return html.Div([
-            dcc.Store(id='project_store', data=initial_project_data),
-            dcc.Store(id='dirlist_store', data=initial_directory_list_data),
-            dcc.Store(id='project_name', data=project.name),
+        
+        # Only show project contents if the user possesses rights (necessary because otherwise users that are not assigned rights, see everything!)
+        if project.your_user_role in ["Owners","Members", "Collaborators"]:
+            return html.Div([
+                dcc.Store(id='project_store', data=initial_project_data),
+                dcc.Store(id='dirlist_store', data=initial_directory_list_data),
+                dcc.Store(id='project_name', data=project.name),
 
-            # Breadcrumbs
-            html.Div(
-                [
-                    dcc.Link("Home", href="/",
-                             style={"color": colors['sage'], "marginRight": "1%"}),
-                    html.Span(" > ", style={"marginRight": "1%"}),
-                    dcc.Link("All Projects", href="/projects",
-                             style={"color": colors['sage'], "marginRight": "1%"}),
-                    html.Span(" > ", style={"marginRight": "1%"}),
-                    html.Span(f"{project.name}", className='active fw-bold',
-                              style={"color": "#707070"})
-                ],
-                className='breadcrumb'
-            ),
+                # Breadcrumbs
+                html.Div(
+                    [
+                        dcc.Link("Home", href="/",
+                                style={"color": colors['sage'], "marginRight": "1%"}),
+                        html.Span(" > ", style={"marginRight": "1%"}),
+                        dcc.Link("All Projects", href="/projects",
+                                style={"color": colors['sage'], "marginRight": "1%"}),
+                        html.Span(" > ", style={"marginRight": "1%"}),
+                        html.Span(f"{project.name}", className='active fw-bold',
+                                style={"color": "#707070"})
+                    ],
+                    className='breadcrumb'
+                ),
 
-            # Header including page title and action buttons
-            dbc.Row([
-                dbc.Col(html.H1(f"Project {project.name}", style={
-                        'textAlign': 'left', })),
-                dbc.Col(
-                    [insert_data(project),
-                        download_project_data(),
-                        ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
-            ], className="mb-3"),
+                # Header including page title and action buttons
+                dbc.Row([
+                    dbc.Col(html.H1(f"Project {project.name}", style={
+                            'textAlign': 'left', })),
+                    dbc.Col(
+                        [insert_data(project),
+                            download_project_data(),
+                            ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+                ], className="mb-3"),
 
-            # Project Information (owners,..)
-            dbc.Card([
-                dbc.CardHeader(
-                    children=[
-                        html.H4("Details"),
-                        modal_edit_project(project)],
-                    className="d-flex justify-content-between align-items-center"),
-                dcc.Loading(dbc.CardBody(get_details(initial_project_data), id="details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
-            dbc.Card([
-                dbc.CardHeader(children=[
-                    html.H4("Directories"),
-                    modal_create_new_directory(project)],
-                    className="d-flex justify-content-between align-items-center"),
-                dbc.CardBody([
-                    # Filter file tags
-                    dbc.Row([
-                        dbc.Col(dbc.Input(id="filter_directory_tags",
-                            placeholder="Search directory... ")),
-                        dbc.Col(dbc.Button(
-                            "Filter", id="filter_directory_tags_btn"))
-                    ], class_name="mb-3"),
-                    # Directories Table
-                    dcc.Loading(html.Div(get_directories_table(
-                        initial_directory_list_data), id='directory_table'), color=colors['sage']),
-                ])], class_name="custom-card mb-3"),
-            dbc.Card([
-                dbc.CardHeader([
-                    html.H4("Sources"),
-                    modal_add_citation(project)],
-                    className="d-flex justify-content-between align-items-center"),
-                dbc.CardBody([
-                    dcc.Loading(html.Div(get_citations(
-                        initial_project_data), id='citation_table'), color=colors['sage'])
-                ])
-            ], class_name="custom-card mb-3"),
-            html.Div([
-                modal_delete(project),
-                modal_delete_data(project)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end"),
-        ])
-
+                # Project Information (owners,..)
+                dbc.Card([
+                    dbc.CardHeader(
+                        children=[
+                            html.H4("Details"),
+                            html.Div([
+                                modal_edit_project(project),
+                                modal_add_user_to_project(project,connection.all_users)], className="d-grid gap-2 d-md-flex justify-content-md-end")
+                           ],
+                        className="d-flex justify-content-between align-items-center"),
+                    dcc.Loading(dbc.CardBody(get_details(initial_project_data), id="details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
+                dbc.Card([
+                    dbc.CardHeader(children=[
+                        html.H4("Directories"),
+                        modal_create_new_directory(project)],
+                        className="d-flex justify-content-between align-items-center"),
+                    dbc.CardBody([
+                        # Filter file tags
+                        dbc.Row([
+                            dbc.Col(dbc.Input(id="filter_directory_tags",
+                                placeholder="Search directory... ")),
+                            dbc.Col(dbc.Button(
+                                "Filter", id="filter_directory_tags_btn"))
+                        ], class_name="mb-3"),
+                        # Directories Table
+                        dcc.Loading(html.Div(get_directories_table(
+                            initial_directory_list_data), id='directory_table'), color=colors['sage']),
+                    ])], class_name="custom-card mb-3"),
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("Sources"),
+                        modal_add_citation(project)],
+                        className="d-flex justify-content-between align-items-center"),
+                    dbc.CardBody([
+                        dcc.Loading(html.Div(get_citations(
+                            initial_project_data), id='citation_table'), color=colors['sage'])
+                    ])
+                ], class_name="custom-card mb-3"),
+                html.Div([
+                    modal_delete(project),
+                    modal_delete_data(project)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end"),
+            ])
+        else:
+            return dbc.Alert(f"Security warning: no access rights. If you wish to access this data, please contact: {', '.join(str(i) for i in project.owners )}.", color="warning")
     else:
         return dbc.Alert("No Project found.", color="danger")

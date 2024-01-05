@@ -196,6 +196,14 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException("Your user role")
 
+    def grant_rights_to_user(self, user: str, level: str) -> None:
+        try:
+            self._file_store_project.grant_rights_to_user(user, level)
+        except:
+            msg = f"Failed to add user {user} to Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException("New user")
+
     @property
     def citations(self) -> List['CitationData']:
         try:
