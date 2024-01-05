@@ -126,7 +126,7 @@ def uploader(passed_project: Optional[str]):
         html.Div(id='du-callback-output'),
         dbc.Card(dbc.CardBody([
                 html.Div([
-                html.H5([html.B("3."), 'Finish Upload and Assemble Metadata']),
+                html.H5([html.B("3. "), 'Finish Upload and Assemble Metadata']),
                 dbc.Button("Complete Upload Process", id="click-upload",
                         size="lg", color="success", disabled=True),
                 # Placeholder for successful upload message + Spinner to symbolize loading
