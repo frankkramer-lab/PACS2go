@@ -746,9 +746,10 @@ def layout(project_name: Optional[str] = None):
                             initial_project_data), id='citation_table'), color=colors['sage'])
                     ])
                 ], class_name="custom-card mb-3"),
+                dbc.Row(
                 html.Div([
                     modal_delete(project),
-                    modal_delete_data(project)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end"),
+                    modal_delete_data(project)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end")),
             ])
         else:
             return dbc.Alert(f"Security warning: no access rights. If you wish to access this data, please contact: {', '.join(str(i) for i in project.owners )}.", color="warning")
