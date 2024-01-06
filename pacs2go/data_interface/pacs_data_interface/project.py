@@ -186,6 +186,26 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException(
                 "Project users that are assigned an 'owner' role")
+    
+    @property
+    def members(self) -> List[str]:
+        try:
+            return self._file_store_project.members
+        except:
+            msg = f"Failed to get the list of Project members from Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException(
+                "Project users that are assigned a 'members' role")
+        
+    @property
+    def collaborators(self) -> List[str]:
+        try:
+            return self._file_store_project.collaborators
+        except:
+            msg = f"Failed to get the list of Project collaborators from Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException(
+                "Project users that are assigned a 'collaborators' role")
 
     @property
     def your_user_role(self) -> str:
@@ -464,4 +484,6 @@ class Project:
             'citations': [{'cit_id':c.cit_id, 'citation':c.citation, 'link':c.link} for c in self.citations],     
             'your_user_role': self.your_user_role,
             'owners': self.owners,   
+            'members': self.members,   
+            'collaborators': self.collaborators,   
         }

@@ -39,9 +39,13 @@ def get_details(project: dict):
 
     time = html.B("Created on: "), project['timestamp_creation'], html.B(" | Last updated on: "), project['last_updated']
     detail_data.append(html.H6(time))
-
+    detail_data.append(html.Br())
     owners = html.B("Owners: "), ', '.join(project['owners'])
     detail_data.append(html.H6(owners))
+    members = html.B("Members: "), ', '.join(project['members'] if project['members'] else '-')
+    detail_data.append(html.H6(members))
+    collaborators = html.B("Collaborators: "), ', '.join(project['collaborators'] if project['collaborators'] else '-')
+    detail_data.append(html.H6(collaborators))
 
     user_role = "You're part of the '", html.B(
         project['your_user_role'].capitalize()), "' user group."
