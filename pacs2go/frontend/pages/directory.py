@@ -804,8 +804,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
             # Display a preview of the first file's content
             # get_single_file_preview(directory),
-            html.Div([
-                modal_delete(directory)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end"),
+            dbc.Row(html.Div([
+                modal_delete(directory)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end")),
         ])
 
     else:
