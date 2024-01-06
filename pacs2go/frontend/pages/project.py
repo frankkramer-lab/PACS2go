@@ -232,13 +232,13 @@ def modal_add_user_to_project(project: Project, users):
         # Modal view for project editing
         return html.Div([
             # Button which triggers modal activation
-            dbc.Button([html.I(className="bi bi-plus me-2"),
-                        "Add user"], id="add_user_project", size="md", color="success"),
+            dbc.Button([html.I(className="bi bi-people me-2"),
+                        "Manage users"], id="add_user_project", size="md", color="success"),
             # Actual modal view
             dbc.Modal(
                 [
                     dbc.ModalHeader(dbc.ModalTitle(
-                        f"Add user to Project {project.name}")),
+                        f"Add user or update their user role")),
                     dbc.ModalBody([
                         html.Div(id='add_user_project_content'),
                         dbc.Label(
@@ -253,7 +253,7 @@ def modal_add_user_to_project(project: Project, users):
                     ]),
                     dbc.ModalFooter([
                         # Button which triggers the update of a project
-                        dbc.Button("Add user.",
+                        dbc.Button("Apply",
                                    id="add_user_and_close", color="success"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_add_user")
@@ -488,8 +488,11 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
     )
 def modal_add_user_project_callback(open, close, add_and_close, is_open, username, level, project_name):
     # Open/close modal via button click
-    if ctx.triggered_id == "add_user_project" or ctx.triggered_id == "close_modal_add_user":
+    if ctx.triggered_id == "add_user_project":
         return not is_open, no_update, no_update
+    
+    elif ctx.triggered_id == "close_modal_add_user":
+        return False, no_update, no_update
 
     elif ctx.triggered_id == "add_user_and_close" and username and level:
         try:
