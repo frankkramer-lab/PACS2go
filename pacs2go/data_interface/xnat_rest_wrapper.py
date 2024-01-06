@@ -235,6 +235,7 @@ class XNATProject():
             msg = "Something went wrong trying to change the keywords string." + str(response.status_code)
             logger.error(msg)
             raise HTTPException(msg)
+        
     @property
     def owners(self) -> List[str]:
         response = requests.get(
@@ -249,6 +250,40 @@ class XNATProject():
             return owners
         else:
             msg = "Something went wrong trying to retrieve the owners of this project." + str(response.status_code)
+            logger.error(msg)
+            raise HTTPException(msg)
+        
+    @property
+    def members(self) -> List[str]:
+        response = requests.get(
+            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
+
+        if response.status_code == 200:
+            # Retrieve only users with the role 'members'
+            members = []
+            for element in response.json()['ResultSet']['Result']:
+                if element['displayname'] == 'Members':
+                    members.append(element['login'])
+            return members
+        else:
+            msg = "Something went wrong trying to retrieve the members of this project." + str(response.status_code)
+            logger.error(msg)
+            raise HTTPException(msg)
+        
+    @property
+    def collaborators(self) -> List[str]:
+        response = requests.get(
+            self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
+
+        if response.status_code == 200:
+            # Retrieve only users with the role 'collaborators'
+            collaborators = []
+            for element in response.json()['ResultSet']['Result']:
+                if element['displayname'] == 'Collaborators':
+                    collaborators.append(element['login'])
+            return collaborators
+        else:
+            msg = "Something went wrong trying to retrieve the collaborators of this project." + str(response.status_code)
             logger.error(msg)
             raise HTTPException(msg)
         
