@@ -146,6 +146,16 @@ class Directory:
             raise UnsuccessfulGetException(
                 "The timestamp of directory creation")
 
+    def is_favorite(self, username) -> bool:
+        try:
+            with PACS_DB() as db:
+                return db.is_favorited_by_user(self.unique_name, username) 
+        except:
+            msg = f"Failed to get 'favorite' status for Directory '{self.unique_name}'"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(
+                "the 'favorite' status of this directory")            
+
     def exists(self) -> bool:
         return self._file_store_directory.exists()
 
@@ -270,6 +280,25 @@ class Directory:
             logger.exception(msg)
             raise UnsuccessfulGetException("Files")
 
+    def favorite_directory(self, username:str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.insert_favorite_directory(self.unique_name, username)
+        except:
+            msg = f"Failed to set favorite for Directory '{self.unique_name}' and {username}"
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException(
+                f"the users's favorite directories.")
+    
+    def remove_favorite_directory(self, username:str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.delete_favorite(self.unique_name, username)
+        except:
+            msg = f"Failed to un-favorite for Directory '{self.unique_name}' and {username}"
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException(
+                f"the users's favorite directories.")
 
     def download(self, destination, zip: bool = True) -> str:
         self._create_folders_and_copy_files_for_download(destination)

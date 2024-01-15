@@ -48,6 +48,44 @@ def card_view_projects():
     return card
 
 
+def card_view_favorites():
+    connection = get_connection()
+    try:
+        favs = connection.get_favorites(current_user.id)
+
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        return dbc.Alert(str(err))
+
+    fav_list = []
+    for index, d in enumerate(favs):
+        fav_list.append(dbc.ListGroupItem([dcc.Link(
+            f"{d.project.name} /../ {d.display_name}", href=f"/dir/{d.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']}),
+            ], 
+                class_name="d-flex justify-content-between"))
+
+    if len(favs) > 0:
+        card = dbc.Card(
+            dbc.CardBody(
+                [
+                    html.H4(["Your favorite directories  ", html.I(className=f"bi bi-heart-fill", style={'color': colors['favorite']},)], className="card-title"),
+                    dbc.ListGroup(fav_list,
+                                class_name="my-3"
+                                ),
+                ]
+            ), className="custom-card mt-3")
+    else:
+        card = dbc.Card(
+            dbc.CardBody(
+                [
+                    html.H4("Your favorite directories", className="card-title"),
+                    html.P(f"You have not favorited any directories or subdirectories yet. To do so, navigate to a directory and press the heart in the top right hand corner. This allows for faster access.",
+                       className="card-subtitle"),
+                ]
+            ), className="custom-card mt-3")
+
+    return card
+
+
 def card_view_upload():
     card = dbc.Card(
         dbc.CardBody(
@@ -77,6 +115,6 @@ def layout():
             html.Div('Exchange medical files.'),
             dbc.Row([
                 dbc.Col(card_view_projects(),),
-                dbc.Col(card_view_upload(),),
+                dbc.Col([card_view_upload(), card_view_favorites()]),
             ], class_name="my-3")
         ]
