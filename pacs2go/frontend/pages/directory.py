@@ -491,6 +491,33 @@ def cb_filter_files_table(btn, filter, active_page, directory):
 
 
 @callback(
+    Output("btn_fav_dir", "children"),
+    Input("btn_fav_dir", "n_clicks"),
+    State("directory_name", "data"),
+    State("project_name", "data"),
+    prevent_initial_call=True,
+)
+# Callback for the download (directory) feature
+def cb_download(n_clicks, directory_name, project_name):
+    # Download button is triggered
+    if ctx.triggered_id == 'btn_fav_dir':
+        try:
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            if not directory.is_favorite(current_user.id):
+                directory.favorite_directory(current_user.id)
+                return [html.I(className=f"bi bi-heart-fill")]
+            else:
+                directory.remove_favorite_directory(current_user.id)
+                return [html.I(className=f"bi bi-heart")]
+
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
+            return dbc.Alert(str(err), color="danger")
+    else:
+        raise PreventUpdate
+
+
+@callback(
     Output("download_directory", "data"),
     Input("btn_download_dir", "n_clicks"),
     State("directory_name", "data"),
@@ -700,6 +727,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             if directory_name.count('::') > 2:
                 breadcrumb_buffer = html.Span(
                     " ...   \u00A0 >  ", style={"marginRight": "1%"})
+        
+        # Favorite status
+        favorite_status = directory.is_favorite(username=current_user.id)
+        if favorite_status:
+            heart_icon = "bi-heart-fill"
+        else:
+            heart_icon = "bi-heart"
 
         # Pagination info
         current_active_page = 1 # offset
@@ -750,9 +784,11 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 dbc.Button([html.I(className="bi bi-play me-2"),
                                             "Viewer"], color="success", size="md",
                                            href=f"/viewer/{project_name}/{directory.unique_name}/none"),
+                                dbc.Button([html.I(className=f"bi {heart_icon}")], 
+                                            id="btn_fav_dir", size="md", color="light", outline=False, style={'color': colors['favorite']}, title="Add to Favorites",class_name="mx-2"),
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
-                                            "Download"], id="btn_download_dir", size="md", class_name="mx-2"),
+                                            "Download"], id="btn_download_dir", size="md", class_name="me-2"),
                                 # dcc download components for downloading directories and files
                                 dcc.Download(id="download_directory"), dcc.Download(id="download_single_file")])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
