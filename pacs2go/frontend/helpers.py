@@ -14,7 +14,8 @@ colors = {
     'background': '#FFFFFF',
     'text': '#000000',
     'sage': '#8cb897',
-    'links': '#2d9e2b'
+    'links': '#2d9e2b',
+    'favorite': '#ffb6c1'
 }
 
 

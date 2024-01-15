@@ -19,6 +19,8 @@ class PACS_DB():
     DIRECTORY_TABLE = "Directory"
     CITATION_TABLE = "Citation"
     FILE_TABLE = "File"
+    FAVORITE_TABLE = "FavoriteDirectories"
+
     def __init__(self, host: str = "data-structure-db", port: int = 5432) -> None:
         try:
             # Connect to the Postgres service
@@ -62,6 +64,7 @@ class PACS_DB():
         self.create_table_directory()
         self.create_table_citation()
         self.create_table_file()
+        self.create_table_favorite_directories()
 
     def create_table_project(self):
         try:
@@ -137,6 +140,22 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "File table could not be created."
+            logger.exception(msg)
+            raise Exception(msg)
+    
+    def create_table_favorite_directories(self):
+        try:
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.FAVORITE_TABLE} (
+                    fav_id SERIAL PRIMARY KEY,
+                    directory VARCHAR(256) REFERENCES {self.DIRECTORY_TABLE}(unique_name) ON DELETE CASCADE,
+                    username VARCHAR(128)
+                )
+            """)
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            msg = "FavoriteDirectories table could not be created."
             logger.exception(msg)
             raise Exception(msg)
             
@@ -225,6 +244,19 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "Error inserting multiple files"
+            logger.exception(msg)
+            raise Exception(msg)
+
+    def insert_favorite_directory(self, directory, username) -> None:
+        try:
+            self.cursor.execute(f"""
+                INSERT INTO {self.FAVORITE_TABLE} (directory, username)
+                VALUES (%s, %s)
+            """, (directory, username))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            msg = f"Error inserting into {self.FAVORITE_TABLE} table"
             logger.exception(msg)
             raise Exception(msg)
 
@@ -490,6 +522,51 @@ class PACS_DB():
             msg = f"Error retrieving file count for {unique_name} from the database"
             logger.exception(msg)
             raise Exception(msg)
+
+    def get_favorites_by_user(self, username: str) -> List['DirectoryData']:
+        try:
+            query = f"""
+                SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
+                FROM {self.FAVORITE_TABLE} f JOIN {self.DIRECTORY_TABLE} d ON f.directory=d.unique_name
+                WHERE f.username = %s
+            """
+            self.cursor.execute(query, (username,))
+            results = self.cursor.fetchall()
+
+            directory_list = []
+            for row in results:
+                directory = DirectoryData(*row)
+                directory_list.append(directory)
+
+            return directory_list
+        except Exception as err:
+            msg = f"Error retrieving favorite directories for this user {username}"
+            logger.exception(msg)
+            raise Exception(msg)
+        
+    def is_favorited_by_user(self, directory:str, username: str) -> bool:
+        try:
+            query = f"""
+                SELECT count(*)
+                FROM {self.FAVORITE_TABLE}
+                WHERE username = %s and directory=%s
+            """
+            self.cursor.execute(query, (username, directory))
+            result = self.cursor.fetchall()
+
+            if result:
+                if result[0][0] >= 1:
+                    return True
+                else:
+                    return False
+            else:
+                return False
+
+        except Exception as err:
+            print(err)
+            msg = f"Error retrieving favorite directories for this user {username}"
+            logger.exception(msg)
+            raise Exception(msg)
     
 
     # --------- Update Tables -------- #
@@ -570,6 +647,18 @@ class PACS_DB():
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting citation by id."
+            logger.exception(msg)
+            raise Exception(msg)
+    
+    def delete_favorite(self, directory:str, username:str) -> None:
+        try:
+            query = f"""
+                DELETE FROM {self.FAVORITE_TABLE} WHERE directory = %s AND username = %s
+            """
+            self.cursor.execute(query, (directory, username))
+            self.conn.commit()
+        except Exception as err:
+            msg = f"Error removing {directory} as a favorite for {username}."
             logger.exception(msg)
             raise Exception(msg)
 

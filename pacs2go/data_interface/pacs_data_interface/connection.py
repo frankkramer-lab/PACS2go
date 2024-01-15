@@ -158,3 +158,16 @@ class Connection:
             msg = f"Failed to get File '{file_name}' in Directory '{directory_name}' of Project '{project_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException(f"File '{file_name}'")
+
+    def get_favorites(self, username:str) -> List['Directory']:
+        try:
+            with PACS_DB() as db:
+                favs = db.get_favorites_by_user(username)
+            # Get directory objects
+            favs = [self.get_directory(dir_data.unique_name.split(':')[0],
+                dir_data.unique_name) for dir_data in favs]
+            return favs
+        except Exception:
+                msg = f"Failed to get favorited directories for {username}."
+                logger.exception(msg)
+                raise UnsuccessfulGetException(f"favorites for {username}")
