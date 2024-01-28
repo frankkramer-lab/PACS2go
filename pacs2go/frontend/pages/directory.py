@@ -483,7 +483,7 @@ def cb_filter_files_table(btn, filter, active_page, directory):
                 active_page = 1
             if not filter:
                 filter = ''
-            return get_files_table(directory=directory, filter=filter, active_page=int(active_page))
+            return get_files_table(directory=directory, filter=filter, active_page=1)
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
     else:
@@ -661,7 +661,7 @@ def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_
                     if tags:
                         file.set_tags(tags)
                     return False, dbc.Alert(
-                        [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(20, (active_page-1) * 20)
+                        [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return False, dbc.Alert(str(err), color="danger"), no_update
             else:
