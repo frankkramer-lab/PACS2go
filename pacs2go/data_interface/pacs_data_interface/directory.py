@@ -268,7 +268,7 @@ class Directory:
             'format': f.format,
             'modality': f.modality,
             'tags': f.tags,
-            'size': 0,
+            'size': float(f.size) if f.size else 0,
             'upload': f.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
             'associated_directory': f.parent_directory,
             'associated_project': self.project.name,

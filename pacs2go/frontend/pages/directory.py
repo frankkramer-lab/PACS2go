@@ -70,7 +70,11 @@ def get_single_file_preview(directory: Directory):
 
 def format_file_details(file: dict, index: int):
     tags = file['tags'] if file['tags'] else ''
-    formatted_size = f"{round(file['size']/1024, 2)} KB ({file['size']} Bytes)"
+    file_size_kb = round(file['size']/1024, 2)
+    if file_size_kb < 1024:
+        formatted_size = f"{file_size_kb} KB ({file['size']} Bytes)"
+    else:
+        formatted_size = f"{round(file['size']/1024/1024, 2)} MB ({file['size']} Bytes)"
     formatted_timestamp = file['upload']
     return [html.Td(index + 1),
             html.Td(dcc.Link(file['name'], href=f"/viewer/{file['associated_project']}/{file['associated_directory']}/{file['name']}", className="text-decoration-none", style={'color': colors['links']})),
