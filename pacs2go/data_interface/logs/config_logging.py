@@ -67,7 +67,7 @@ class PostgreSQLHandler(logging.Handler):
                     record_timestamp = datetime.datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S')
                     cursor.execute(
                         f"INSERT INTO {self.table_name} (timestamp, log_message, log_level) VALUES (%s, %s, %s)",
-                        (record_timestamp, record.msg, record.levelname)
+                        (record_timestamp, str(record.msg), record.levelname)
                     )
                 self.conn.commit()
             except Exception as e:

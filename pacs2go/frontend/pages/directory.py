@@ -602,7 +602,7 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
                     file.delete_file()
                     # Close Modal and show message
                     return is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(20, (active_page-1) * 20)
+                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
 
