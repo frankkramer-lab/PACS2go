@@ -51,7 +51,7 @@ class UnsuccessfulCreationException(Exception):
 
     def __str__(self):
         if self.message:
-            return f'The creation of {self.message} was unsuccessful. Try again or contact us.'
+            return f'The creation of {self.message} was unsuccessful. Please make sure that {self.message} does not exist yet. Try again or contact us.'
         else:
             return f'The creation of was unsuccessful. Try again or contact us.'
 

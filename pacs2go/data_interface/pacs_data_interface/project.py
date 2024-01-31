@@ -352,27 +352,18 @@ class Project:
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '') -> Union['Directory', 'File']:
         try:
-            if directory_name == '':
-                # No desired name was given, set the name as the current timestamp
-                directory_name = datetime.now(
-                    self.this_timezone).strftime("%Y_%m_%d_%H_%M_%S")
-
-            if directory_name.count('::') == 1 or directory_name.count('::') == 0:
-                # Name is not an inherited name and is directly under a project, create/get directory
-                directory = Directory(self, directory_name)
-
-            else:
-                # Get the parent directory of what is a subdirectory (contains a -) by its unique name
-                parent_dir = self.get_directory(
-                    directory_name.rsplit('::', 1)[0])
-
-                # Create/get the subdirectory from parent directory 
-                directory = Directory(self, directory_name, parent_dir=parent_dir)
-
             timestamp = datetime.now(self.this_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
             # File path leads to a single file
             if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
+                if directory_name == '':
+                    # No desired name was given, set the name as the current timestamp
+                    directory_name = datetime.now(
+                        self.this_timezone).strftime("%Y_%m_%d_%H_%M_%S")
+
+                parent_dir = None if directory_name.count('::') < 2 else self.get_directory(directory_name.rsplit('::', 1)[0])
+                directory = Directory(self, directory_name, parent_dir=parent_dir)
+           
                 with PACS_DB() as db:
                     # Get the file's suffix
                     format = self.file_format[Path(file_path).suffix]
@@ -398,11 +389,20 @@ class Project:
                     with zipfile.ZipFile(file_path, 'r') as zip_ref:
                         zip_ref.extractall(temp_dir)
 
+                    # Use the first directory inside the zip as the root directory
+                    first_level_dirs = [d for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d))]
+                    if len(first_level_dirs) != 1:
+                        raise ValueError("Zip file should contain exactly one root directory")
+
+                    root_dir_name = first_level_dirs[0]
+                    
+                    # If directory was choosen, create directory there else directly under project (parent_dir=none)
+                    parent_dir = None if directory_name=='' or directory_name.count('::') < 1 else self.get_directory(directory_name)
+                    directory = Directory(self, root_dir_name, parent_dir=parent_dir)
                     root_dir = directory
 
                     # Walk through the unzipped directory
                     for root, dirs, files in os.walk(temp_dir):
-                    
                         try:
                             if root == temp_dir:
                                 # Skip tempdir name
@@ -423,8 +423,6 @@ class Project:
                                         logger.info(
                                             f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
                                         continue
-
-                                    print(file_path)
 
                                     # Create a FileData object
                                     file_data = FileData(
@@ -461,6 +459,9 @@ class Project:
 
             else:
                 raise ValueError
+        
+        except UnsuccessfulCreationException as err:
+            raise Exception(err)
             
         except ValueError:
             msg = f"File format not supported for file path: '{file_path}'."

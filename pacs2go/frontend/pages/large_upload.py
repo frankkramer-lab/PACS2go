@@ -10,7 +10,7 @@ from dash.dependencies import Input, Output, State
 from flask_login import current_user
 
 from pacs2go.data_interface.exceptions.exceptions import (
-    FailedConnectionException, UnsuccessfulGetException,
+    FailedConnectionException, UnsuccessfulCreationException, UnsuccessfulGetException,
     UnsuccessfulUploadException, WrongUploadFormatException)
 from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
@@ -44,8 +44,7 @@ def get_subdirectory_names_recursive(directory):
     # Recursively fetch all nested subdirectories using depth-first traversal
     dir_list = []
     for d in directory.get_subdirectories():
-        label = f"{d.unique_name.replace('::', ' / ')}"
-        dir_list.append(html.Option(label=label, value=d.unique_name))
+        dir_list.append({'label': d.unique_name.replace('::', ' / '), 'value':d.unique_name})
         dir_list.extend(get_subdirectory_names_recursive(d))
 
     return dir_list
@@ -58,7 +57,7 @@ def get_directory_names(project: Project) -> List[str]:
 
         for d in directories:
             # html option to create a html datalist
-            dir_list.append(html.Option(label=d.unique_name.replace('::', ' / '), value=d.unique_name))
+            dir_list.append({'label': d.unique_name.replace('::', ' / '), 'value':d.unique_name})
             if len(d.get_subdirectories()) > 0:
                 dir_list.extend(get_subdirectory_names_recursive(d))
             
@@ -98,10 +97,9 @@ def uploader(passed_project: Optional[str]):
                  dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects',style={"color":colors['sage']}), "."])], className="mb-3"),
             dbc.Col(
                 [dbc.Label("Directory"),
-                 html.Datalist(id='dir_names'),
-                 dbc.Input(id="directory_name",
-                           placeholder="Directory Name... (optional)", list='dir_names'),
-                 dbc.FormText("If you choose not to specify the name of the directory, the current date and time will be used. Double click on the textfield to choose an existing directory.")], className="mb-3")
+                 dcc.Dropdown(options=[],id="directory_name", placeholder="Directory Name... (optional)",
+                          value=None),
+                 dbc.FormText("Select a directory from the dropdown if desired. For single file uploads, a new directory with the current timestamp will be created if none is selected.")], className="mb-3")
         ]),
         dbc.Row(dbc.Col(
                 [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
@@ -130,7 +128,7 @@ def uploader(passed_project: Optional[str]):
                 dbc.Button("Complete Upload Process", id="click-upload",
                         size="lg", color="success", disabled=True),
                 # Placeholder for successful upload message + Spinner to symbolize loading
-                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
+                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'], className="pb-5")])]
         ), className="custom-card mb-3")
     ])
 
@@ -195,7 +193,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                                            className="fw-bold text-decoration-none",
                                            style={'color': colors['links']})], color="success")
 
-            except (FailedConnectionException, UnsuccessfulGetException, WrongUploadFormatException, UnsuccessfulUploadException) as err:
+            except (FailedConnectionException, UnsuccessfulGetException, WrongUploadFormatException, UnsuccessfulUploadException, Exception) as err:
                 return dbc.Alert(str(err), color="danger")
 
         else:
@@ -204,7 +202,7 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
     else:
         return no_update
 
-@callback(Output('dir_names', 'children'),Input('project_name','value'), prevent_initial_call=True)
+@callback(Output('directory_name', 'options'),Input('project_name','value'), prevent_initial_call=True)
 def display_directory_dropdown(project):
     # When a project is selected, the directory field suggests existing directories to upload to
     return get_directory_names(project)
