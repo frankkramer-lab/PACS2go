@@ -473,9 +473,10 @@ def cb_filter_directory_table(btn, filter, subdirectories):
 
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
+    Output('pagination-files', 'active_page'),
     Input('filter_file_tags_btn', 'n_clicks'),
     Input('filter_file_tags', 'value'),
-    Input('pagination-files', 'active_page'),
+    State('pagination-files', 'active_page'),
     State('directory', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
@@ -483,14 +484,11 @@ def cb_filter_files_table(btn, filter, active_page, directory):
     # Filter button is clicked or the input field registers a user input
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
-            if not active_page:
-                active_page = 1
             if not filter:
                 filter = ''
-            return get_files_table(directory=directory, filter=filter, active_page=active_page)
+            return get_files_table(directory=directory, filter=filter, active_page=1), 1
         except (FailedConnectionException, UnsuccessfulGetException) as err:
-            return dbc.Alert(str(err), color="danger")
-    else:
+            return dbc.Alert(str(err), color="danger"), 1
         raise PreventUpdate
 
 
@@ -687,15 +685,18 @@ def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
     Input('file-store', 'data'),
-    State('pagination-files', 'active_page'),
+    Input('pagination-files', 'active_page'),
     State("directory", 'data'),
+    State('filter_file_tags', 'value'),
     prevent_initial_call=True)
 # Callback to update file table if files change
-def cb_reload_files_table(files, active_page, directory):
+def cb_reload_files_table(files, active_page, directory, filter):
     try:
         if not active_page:
             active_page = 1
-        return get_files_table(directory=directory, files=files, active_page=int(active_page))
+        if not filter:
+            filter = ''
+        return get_files_table(directory=directory, files=files, filter=filter, active_page=int(active_page))
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
