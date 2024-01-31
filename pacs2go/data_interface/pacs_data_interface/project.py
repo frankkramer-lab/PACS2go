@@ -376,10 +376,11 @@ class Project:
                 with PACS_DB() as db:
                     # Get the file's suffix
                     format = self.file_format[Path(file_path).suffix]
+                    size = Path(file_path).stat().st_size
                     file_id = file_path.split("/")[-1]
                     # Insert file into DB
                     updated_file_data = db.insert_into_file(
-                        FileData(file_name=file_id, parent_directory=directory.unique_name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, modality=modality, tags=tags_string))
+                        FileData(file_name=file_id, parent_directory=directory.unique_name, timestamp_creation=timestamp, timestamp_last_updated=timestamp, format=format, size=size, modality=modality, tags=tags_string))
 
                 # Upload file to file store
                 file_store_file_object = self._file_store_project.insert_file_into_project(
@@ -423,11 +424,14 @@ class Project:
                                             f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
                                         continue
 
+                                    print(file_path)
+
                                     # Create a FileData object
                                     file_data = FileData(
                                         file_name=file_name,
                                         parent_directory=current_dir.unique_name,
                                         format=self.file_format[Path(file_name).suffix],
+                                        size=Path(os.path.join(root, file_name)).stat().st_size,
                                         tags=tags_string,
                                         modality=modality,
                                         timestamp_creation=timestamp,
