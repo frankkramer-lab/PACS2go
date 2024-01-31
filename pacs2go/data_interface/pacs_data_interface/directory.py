@@ -40,7 +40,7 @@ class Directory:
         except:
             msg = f"Failed to create Directory '{name}' at initialization."
             logger.exception(msg)
-            raise UnsuccessfulGetException(f"Directory '{name}'")
+            raise UnsuccessfulCreationException(f"'{name}'")
 
         if not self._file_store_directory:
             # Get file store object

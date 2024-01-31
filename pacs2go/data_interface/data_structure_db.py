@@ -182,6 +182,11 @@ class PACS_DB():
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (data.unique_name, data.dir_name, data.parent_project, data.parent_directory, data.timestamp_creation, data.parameters, data.timestamp_last_updated))
             self.conn.commit()
+        except psycopg2.IntegrityError as e: ## TODO: take care of duplicate directory names in a more user-friendly manner (similarly to files perhabs)
+            self.conn.rollback()
+            msg = f"Error inserting {data.dir_name} into Directory table due to duplicate directory name. Make sure to rename your top-level directory before uploading."
+            logger.exception(msg)
+            raise Exception(msg)
         except Exception as err:
             self.conn.rollback()
             msg = f"Error inserting {data.dir_name} into Directory table"
@@ -691,6 +696,7 @@ class PACS_DB():
             file_name=new_file_name,
             parent_directory=original_data.parent_directory,
             format=original_data.format,
+            size=original_data.size,
             tags=original_data.tags,
             modality=original_data.modality,
             timestamp_creation=original_data.timestamp_creation,
