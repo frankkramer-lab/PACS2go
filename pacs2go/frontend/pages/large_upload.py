@@ -128,7 +128,7 @@ def uploader(passed_project: Optional[str]):
                 dbc.Button("Complete Upload Process", id="click-upload",
                         size="lg", color="success", disabled=True),
                 # Placeholder for successful upload message + Spinner to symbolize loading
-                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'])])]
+                dcc.Loading(html.Div(id='output-uploader', className="mt-3"), color=colors['sage'], className="pb-5")])]
         ), className="custom-card mb-3")
     ])
 
