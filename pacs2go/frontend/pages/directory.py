@@ -487,7 +487,7 @@ def cb_filter_files_table(btn, filter, active_page, directory):
                 active_page = 1
             if not filter:
                 filter = ''
-            return get_files_table(directory=directory, filter=filter, active_page=1)
+            return get_files_table(directory=directory, filter=filter, active_page=active_page)
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
     else:
