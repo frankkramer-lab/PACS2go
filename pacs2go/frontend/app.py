@@ -10,6 +10,7 @@ from flask import Flask, redirect, request, session
 from flask_login import LoginManager, current_user, login_user
 from werkzeug.middleware.profiler import ProfilerMiddleware
 
+
 from pacs2go.frontend.auth import XNATAuthBackend
 from pacs2go.frontend.helpers import colors
 
@@ -22,7 +23,6 @@ server = Flask(__name__)
 
 # Updating the Flask Server configuration with Secret Key to encrypt the user session cookie
 server.config.update(SECRET_KEY=os.getenv("SECRET_KEY"))
-server.config['REMEMBER_COOKIE_DURATION'] = timedelta(minutes=10)
 
 # Dash App
 app = Dash(name="xnat2go", pages_folder="pacs2go/frontend/pages", use_pages=True, server=server,
@@ -43,6 +43,17 @@ server.config["AUTH_TYPE"] = "XNAT"
 # TODO: production: https://flask-login.readthedocs.io/en/latest/#session-protection set to "strong"
 login_manager.session_protection = 'strong'
 login_manager.auth_backend = XNATAuthBackend()
+
+# Session Cookie settings
+server.config["SESSION_COOKIE_SAMESITE"] = "strict"
+server.config["SESSION_COOKIE_SECURE"] = True
+server.config["SESSION_COOKIE_HTTPONLY"] = True
+
+# Remember Me cookie settings
+server.config["REMEMBER_COOKIE_SAMESITE"] = "strict"
+server.config["REMEMBER_COOKIE_SECURE"] = True
+server.config["REMEMBER_COOKIE_DURATION"] = timedelta(minutes=60)
+
 
 
 @server.before_request

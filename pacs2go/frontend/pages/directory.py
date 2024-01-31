@@ -70,7 +70,11 @@ def get_single_file_preview(directory: Directory):
 
 def format_file_details(file: dict, index: int):
     tags = file['tags'] if file['tags'] else ''
-    formatted_size = f"{round(file['size']/1024, 2)} KB ({file['size']} Bytes)"
+    file_size_kb = round(file['size']/1024, 2)
+    if file_size_kb < 1024:
+        formatted_size = f"{file_size_kb} KB ({file['size']} Bytes)"
+    else:
+        formatted_size = f"{round(file['size']/1024/1024, 2)} MB ({file['size']} Bytes)"
     formatted_timestamp = file['upload']
     return [html.Td(index + 1),
             html.Td(dcc.Link(file['name'], href=f"/viewer/{file['associated_project']}/{file['associated_directory']}/{file['name']}", className="text-decoration-none", style={'color': colors['links']})),
@@ -483,7 +487,7 @@ def cb_filter_files_table(btn, filter, active_page, directory):
                 active_page = 1
             if not filter:
                 filter = ''
-            return get_files_table(directory=directory, filter=filter, active_page=int(active_page))
+            return get_files_table(directory=directory, filter=filter, active_page=1)
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
     else:
@@ -598,7 +602,7 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
                     file.delete_file()
                     # Close Modal and show message
                     return is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(20, (active_page-1) * 20)
+                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
 
@@ -661,7 +665,7 @@ def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_
                     if tags:
                         file.set_tags(tags)
                     return False, dbc.Alert(
-                        [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(20, (active_page-1) * 20)
+                        [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
                 except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                     return False, dbc.Alert(str(err), color="danger"), no_update
             else:

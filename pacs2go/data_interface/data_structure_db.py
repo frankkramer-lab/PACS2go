@@ -129,6 +129,7 @@ class PACS_DB():
                     file_name VARCHAR(256),
                     parent_directory VARCHAR(256) REFERENCES {self.DIRECTORY_TABLE}(unique_name) ON DELETE CASCADE,
                     format VARCHAR(256),
+                    size DECIMAL,
                     tags VARCHAR(256),
                     modality VARCHAR(256),
                     timestamp_creation TIMESTAMP,
@@ -203,9 +204,9 @@ class PACS_DB():
     def insert_into_file(self, data: 'FileData') -> 'FileData':
         try:
             self.cursor.execute(f"""
-                INSERT INTO {self.FILE_TABLE} (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (data.file_name, data.parent_directory, data.format, data.tags, data.modality, data.timestamp_creation, data.timestamp_last_updated))
+                INSERT INTO {self.FILE_TABLE} (file_name, parent_directory, format, size, tags, modality, timestamp_creation, timestamp_last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (data.file_name, data.parent_directory, data.format, data.size, data.tags, data.modality, data.timestamp_creation, data.timestamp_last_updated))
             self.conn.commit()
             return data
         except psycopg2.IntegrityError as e:
@@ -236,7 +237,7 @@ class PACS_DB():
             file_values = [(file.file_name, file.parent_directory, file.format, file.tags,
                             file.modality, file.timestamp_creation, file.timestamp_last_updated) for file in files]
             query = f"""
-                INSERT INTO {self.FILE_TABLE} (file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated)
+                INSERT INTO {self.FILE_TABLE} (file_name, parent_directory, format, size, tags, modality, timestamp_creation, timestamp_last_updated)
                 VALUES %s
             """
             execute_values(self.cursor, query, file_values)
@@ -325,7 +326,7 @@ class PACS_DB():
     def get_directory_files_slice(self, directory_name:str, filter:str = '', quantity:int = None, offset:int = 0) -> List['FileData']:
             # quantity defines the number of retrievd files, offset defines how many rows are skipped before the retrieved files
             query = f"""
-                SELECT file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated FROM {self.FILE_TABLE}
+                SELECT file_name, parent_directory, format, size, tags, modality, timestamp_creation, timestamp_last_updated FROM {self.FILE_TABLE}
                 WHERE parent_directory = %s AND (tags ILIKE %s OR file_name ILIKE %s)
                 ORDER BY file_name 
                 OFFSET %s ROWS
@@ -406,7 +407,7 @@ class PACS_DB():
     def get_file_by_name_and_directory(self, file_name: str, parent_directory: str) -> 'FileData':
         try:
             query = f"""
-                SELECT file_name, parent_directory, format, tags, modality, timestamp_creation, timestamp_last_updated
+                SELECT file_name, parent_directory, format, size, tags, modality, timestamp_creation, timestamp_last_updated
                 FROM {self.FILE_TABLE}
                 WHERE file_name = %s AND parent_directory = %s
             """
@@ -728,6 +729,7 @@ class FileData(NamedTuple):
     file_name: str
     parent_directory: str
     format: str
+    size: float
     tags: str
     modality: str
     timestamp_creation: str
