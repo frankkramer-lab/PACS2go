@@ -37,7 +37,7 @@ def get_details(project: dict):
         parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
         detail_data.append(html.H6(parameters))
 
-    time = html.B("Created on: "), project['timestamp_creation'], html.B(" | Last updated on: "), project['last_updated']
+    time = html.B("Created on: "), project['timestamp_creation'], html.Br(), html.B("Last updated on: "), project['last_updated']
     detail_data.append(html.H6(time))
     detail_data.append(html.Br())
     owners = html.B("Owners: "), ', '.join(project['owners'])
@@ -46,6 +46,8 @@ def get_details(project: dict):
     detail_data.append(html.H6(members))
     collaborators = html.B("Collaborators: "), ', '.join(project['collaborators'] if project['collaborators'] else '-')
     detail_data.append(html.H6(collaborators))
+    req = html.B("Requestees: "), ', '.join(project['requestees'] if project['requestees'] else '-')
+    detail_data.append(html.H6(req))
 
     user_role = "You're part of the '", html.B(
         project['your_user_role'].capitalize()), "' user group."
@@ -79,7 +81,7 @@ def get_directories_table(directories:dict , filter: str = ''):
 
     # Put together directory table
     table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+                      striped=True, bordered=True, hover=True, responsive=True)
     return table
 
 
@@ -115,7 +117,7 @@ def get_citations(project: dict):
     table_body = [html.Tbody(rows)]
 
     table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+                      striped=True, bordered=True, hover=True, responsive=True)
 
     return table
 
@@ -227,7 +229,8 @@ def modal_edit_project(project: Project):
             ),
         ])
     
-def modal_add_user_to_project(project: Project, users):
+def modal_add_user_to_project(project: Project, users:list):
+    requestees = project.get_requests()
     if project.your_user_role == 'Owners':
         # Modal view for project editing
         return html.Div([
@@ -244,7 +247,7 @@ def modal_add_user_to_project(project: Project, users):
                         dbc.Label(
                             "Please enter the username of the user to whom you would like to grant rights.", class_name="mt-2"),
                         # Input Text Field for project name
-                        dcc.Dropdown(options=users,id="add_user_project_username"),
+                        dcc.Dropdown(options=[{'label': u, 'value': u} if u not in requestees else {'label': u + " - requested access", 'value': u}  for u in users],id="add_user_project_username"),
                         dbc.Label(
                             "Kindly select the user group to which you wish to add them. Please be aware that adding them to the Owners user group will grant them complete rights, including the ability to delete and reduce the rights of other Owners.", class_name="mt-2"),
                         dcc.Dropdown(options=["Owners","Members", "Collaborators"],id="add_user_project_group",
@@ -255,6 +258,8 @@ def modal_add_user_to_project(project: Project, users):
                         # Button which triggers the update of a project
                         dbc.Button("Apply",
                                    id="add_user_and_close", color="success"),
+                        # Remove user from project
+                        dbc.Button("Remove chosen user from project.", id="remove_user_and_close", color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button("Close", id="close_modal_add_user")
                     ]),
@@ -479,14 +484,15 @@ def modal_edit_project_callback(open, close, edit_and_close, is_open, project_na
     Output('details_card', 'children', allow_duplicate=True)],
     [Input('add_user_project', 'n_clicks'),
      Input('close_modal_add_user', 'n_clicks'),
-     Input('add_user_and_close', 'n_clicks')],
+     Input('add_user_and_close', 'n_clicks'),
+     Input('remove_user_and_close', 'n_clicks')],
     State('modal_edit_project', 'is_open'),
     State('add_user_project_username', 'value'),
     State('add_user_project_group', 'value'),
     State('project_name', 'data'),
     prevent_initial_call=True
     )
-def modal_add_user_project_callback(open, close, add_and_close, is_open, username, level, project_name):
+def modal_add_user_project_callback(open, close, add_and_close, remove_and_close, is_open, username, level, project_name):
     # Open/close modal via button click
     if ctx.triggered_id == "add_user_project":
         return not is_open, no_update, no_update
@@ -500,6 +506,21 @@ def modal_add_user_project_callback(open, close, add_and_close, is_open, usernam
             project = connection.get_project(project_name)
             if username and level:
                 project.grant_rights_to_user(username, level)
+            
+            # Get new version of project details
+            project = connection.get_project(project_name)
+            project_json = json.dumps(project.to_dict())
+            return False, no_update, get_details(project_json)
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulAttributeUpdateException) as err:
+            return True, dbc.Alert(str(err), color="danger"), no_update
+    
+    elif ctx.triggered_id == "remove_user_and_close" and username:
+        try:
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            if username:
+                project.revoke_rights_from_user(username)
+            # Get new version of project details
             project = connection.get_project(project_name)
             project_json = json.dumps(project.to_dict())
             return False, no_update, get_details(project_json)
@@ -660,6 +681,30 @@ def download_project(n_clicks, project_name):
         raise PreventUpdate
 
 
+@callback(
+    Output("btn_request_project_access", "children"),
+    Input("btn_request_project_access", "n_clicks"),
+    State("project_name", "data"),
+    prevent_initial_call=True
+)
+def request_access_to_project(n_clicks, project_name):
+    if ctx.triggered_id == 'btn_request_project_access' and n_clicks is not None:
+        try:
+            connection = get_connection()
+            project = connection.get_project(project_name)
+            if current_user.id not in project.get_requests():
+                project.add_request(current_user.id)
+                return [html.I(className=f"bi bi-bookmark-check-fill")]
+            else:
+                return ["You have already submitted a request."]
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
+            return dbc.Alert(str(err), color="danger")
+
+    else:
+        raise PreventUpdate
+
+
+
 #################
 #  Page Layout  #
 #################
@@ -684,8 +729,7 @@ def layout(project_name: Optional[str] = None):
             return html.Div([
                 dcc.Store(id='project_store', data=initial_project_data),
                 dcc.Store(id='dirlist_store', data=initial_directory_list_data),
-                dcc.Store(id='project_name', data=project.name),
-
+                dcc.Store(id='project_name', data=project_name),
                 # Breadcrumbs
                 html.Div(
                     [
@@ -718,7 +762,7 @@ def layout(project_name: Optional[str] = None):
                             html.H4("Details"),
                             html.Div([
                                 modal_edit_project(project),
-                                modal_add_user_to_project(project,connection.all_users)], className="d-grid gap-2 d-md-flex justify-content-md-end")
+                                modal_add_user_to_project(project,connection.all_users)], className="d-grid gap-2 d-md-flex justify-content-md-end align-content-end")
                            ],
                         className="d-flex justify-content-between align-items-center"),
                     dcc.Loading(dbc.CardBody(get_details(initial_project_data), id="details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
@@ -755,6 +799,9 @@ def layout(project_name: Optional[str] = None):
                     modal_delete_data(project)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end")),
             ])
         else:
-            return dbc.Alert(f"Security warning: no access rights. If you wish to access this data, please contact: {', '.join(str(i) for i in project.owners )}.", color="warning")
+            return dbc.Alert([
+                dcc.Store(id='project_name', data=project_name),
+                html.B("Security warning: "),"No access rights. If you wish to access this data, ", 
+                dbc.Button("Request Access", id="btn_request_project_access", size="md", color="success"), f" or directly contact: {', '.join(str(i) for i in project.owners )}."], color="warning")
     else:
         return dbc.Alert("No Project found.", color="danger")

@@ -312,6 +312,17 @@ class XNATProject():
             msg = f"Something went wrong trying to add {user} to this project. " + str(response.status_code)
             logger.error(msg)
             raise HTTPException(msg)
+        
+    def revoke_rights_from_user(self, user: str) -> None:
+        response = requests.delete(
+            self.connection.server + f"/data/projects/{self.name}/users/Members/{user}", cookies=self.connection.cookies)
+        response_2 = requests.delete(
+            self.connection.server + f"/data/projects/{self.name}/users/Collaborators/{user}", cookies=self.connection.cookies)
+        if not (response.status_code == 200 or response_2.status_code == 200):
+            # Attention: the status code is 200 even if the user does not exist, bc originally the server then sends an invite to the stated email.
+            msg = f"Something went wrong trying to remove {user} from this project. " + str(response.status_code)
+            logger.error(msg)
+            raise HTTPException(msg)
 
 
     def exists(self) -> bool:

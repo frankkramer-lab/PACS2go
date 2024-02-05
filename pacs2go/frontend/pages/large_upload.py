@@ -86,34 +86,34 @@ def uploader(passed_project: Optional[str]):
         passed_project = ''
     # Upload drag and drop area
     return html.Div([
-        dbc.Card(dbc.CardBody([       dbc.Row(html.H5([html.B("1."), " Specify the project's name and metadata"])),
+        dbc.Card(dbc.CardBody([       dbc.Row(html.H5([html.B("1. Specify the project's name and metadata")])),
         dbc.Row([
             dbc.Col(
                 # Input field value equals project name, if user navigates to upload via a specific project
-                [dbc.Label("Project"),
+                [dbc.Label(html.B("Project")),
                  #html.Datalist(children=get_project_names(),id='project_names'),
                  dcc.Dropdown(options=get_project_names(),id="project_name", placeholder="Project Name...",
                           value=passed_project),
                  dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects',style={"color":colors['sage']}), "."])], className="mb-3"),
             dbc.Col(
-                [dbc.Label("Directory"),
+                [dbc.Label(html.B("Directory"),),
                  dcc.Dropdown(options=[],id="directory_name", placeholder="Directory Name... (optional)",
                           value=None),
                  dbc.FormText("Select a directory from the dropdown if desired. For single file uploads, a new directory with the current timestamp will be created if none is selected.")], className="mb-3")
         ]),
         dbc.Row(dbc.Col(
-                [dbc.Label("Tags - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."),
+                [dbc.Label([html.B("Tags")," - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."]),
                  dbc.Input(id="upload_file_tags",
                            placeholder="File tags like \'Control group, Dermatology,...\' (optional)"),
                  dbc.FormText("Tags will be added to every file.")], className="mb-3")),
         dbc.Row(dbc.Col(
-                [dbc.Label("Modality - In case that the modality is consistent for all files."),
+                [dbc.Label([html.B("Modality")," - In case that the modality is consistent for all files."]),
                  dbc.Input(id="upload_file_modality",
                            placeholder="CT, MRI,... (optional)"),
                  dbc.FormText("Modality will be added to every file.")], className="mb-3")),]), className="custom-card mb-3"),
 
         dbc.Card(dbc.CardBody([
-            dbc.Row(html.H5([html.B("2."), ' Please select a zip folder or a single file to upload.', html.Br(),
+            dbc.Row(html.H5([html.B("2. Please select a zip folder or a single file to upload."), html.Br(),
                          'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV, TXT and JSON.', html.Br(), html.Br(), 'Please make sure that all files have a valid file extension.'])),
             dbc.Row(
                 [
@@ -124,7 +124,7 @@ def uploader(passed_project: Optional[str]):
         html.Div(id='du-callback-output'),
         dbc.Card(dbc.CardBody([
                 html.Div([
-                html.H5([html.B("3. "), 'Finish Upload and Assemble Metadata']),
+                html.H5([html.B("3. Finish Upload and Assemble Metadata")]),
                 dbc.Button("Complete Upload Process", id="click-upload",
                         size="lg", color="success", disabled=True),
                 # Placeholder for successful upload message + Spinner to symbolize loading
