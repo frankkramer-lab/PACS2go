@@ -489,6 +489,7 @@ def cb_filter_files_table(btn, filter, active_page, directory):
             return get_files_table(directory=directory, filter=filter, active_page=1), 1
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger"), 1
+    else:
         raise PreventUpdate
 
 
@@ -499,8 +500,8 @@ def cb_filter_files_table(btn, filter, active_page, directory):
     State("project_name", "data"),
     prevent_initial_call=True,
 )
-# Callback for the download (directory) feature
-def cb_download(n_clicks, directory_name, project_name):
+# Callback for the favoriting (directory) feature
+def cb_favorite(n_clicks, directory_name, project_name):
     # Download button is triggered
     if ctx.triggered_id == 'btn_fav_dir':
         try:
@@ -553,7 +554,7 @@ def cb_download(n_clicks, directory_name, project_name):
 def cb_download_single_file(n_clicks, directory_name, project_name):
     if isinstance(ctx.triggered_id, dict):
         # Download button in the files table is triggered
-        if ctx.triggered_id['type'] == 'btn_download_file' and any(n_clicks):
+        if ctx.triggered_id['type'] == 'btn_download_file' and any(item is not None for item in n_clicks):
             with TemporaryDirectory() as tempdir:
                 try:
                     connection = get_connection()
@@ -567,6 +568,7 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
             raise PreventUpdate
     else:
         raise PreventUpdate
+    
 
 @callback(
     [Output('modal_delete_file', 'is_open'),
@@ -584,34 +586,34 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
 )
 # Callback for the file deletion modal view and the actual file deletion
 def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name, active_page):
-    if any(item is not None for item in open):
-        if isinstance(ctx.triggered_id, dict):
-            # Delete Button in File list - open/close Modal View
-            if ctx.triggered_id['type'] == "delete_file":
-                return not is_open, dbc.Label(
-                    f"Are you sure you want to delete this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
-            # Delete Button in the Modal View
-            if ctx.triggered_id['type'] == 'delete_file_and_close':
-                try:
-                    connection = get_connection()
-                    directory = connection.get_directory(project_name, directory_name)
-                    file = directory.get_file(file_name)
-                    # Delete File
-                    file.delete_file()
-                    # Close Modal and show message
-                    return is_open, dbc.Alert(
-                        [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
-                except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-                    return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
-
-        elif isinstance(ctx.triggered_id, str):
-            if ctx.triggered_id == "close_modal_delete_file":
-                # Close Modal View
-                return not is_open, no_update, no_update, no_update
+    if isinstance(ctx.triggered_id, dict):
+        # Delete Button in File list - open/close Modal View
+        if ctx.triggered_id['type'] == "delete_file" and any(item is not None for item in open):
+            return not is_open, dbc.Label(
+                f"Are you sure you want to delete this file '{ctx.triggered_id['index']}'?"), ctx.triggered_id['index'], no_update
+        # Delete Button in the Modal View
+        elif ctx.triggered_id['type'] == 'delete_file_and_close' and any(item is not None for item in delete_and_close):
+            try:
+                connection = get_connection()
+                directory = connection.get_directory(project_name, directory_name)
+                file = directory.get_file(file_name)
+                # Delete File
+                file.delete_file()
+                # Close Modal and show message
+                return is_open, dbc.Alert(
+                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
+            except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+                return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
         else:
             raise PreventUpdate
+        
+    elif isinstance(ctx.triggered_id, str):
+        if ctx.triggered_id == "close_modal_delete_file" and close is not None:
+            # Close Modal View
+            return not is_open, no_update, no_update, no_update
     else:
         raise PreventUpdate
+
 
 @callback(
     [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
@@ -626,19 +628,23 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
 def cb_open_edit_file_modal(is_open, directory_name, project_name):
     if isinstance(ctx.triggered_id, dict):
         # Edit Button in File list - open/close Modal View
-        if ctx.triggered_id['type'] == "edit_file_in_list":
+        if ctx.triggered_id['type'] == "edit_file_in_list" and any(item is not None for item in is_open):
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             file = directory.get_file(ctx.triggered_id['index'])
             return True, file.modality, file.tags, ctx.triggered_id['index']
+        else:
+            raise PreventUpdate
+    else:
+        raise PreventUpdate
+
 
 
 @callback(
     [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
      Output('edit_file_in_list_content', 'children'), 
      Output('file-store', 'data', allow_duplicate=True),], 
-    [Input({'type': 'edit_file_in_list', 'index': ALL}, 'n_clicks'),
-     Input('close_modal_edit_file_in_list', 'n_clicks'),
+    [Input('close_modal_edit_file_in_list', 'n_clicks'),
      Input({'type': 'edit_file_in_list_and_close', 'index': ALL}, 'n_clicks')],
     [State("directory_name", 'data'),
      State("project_name", 'data'),
@@ -649,36 +655,33 @@ def cb_open_edit_file_modal(is_open, directory_name, project_name):
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def cb_modal_and_file_edit(open, close, edit_and_close, directory_name, project_name, file_name, modality, tags, active_page):
-    if any(item is not None for item in open):
-        if isinstance(ctx.triggered_id, dict):
-            # Edit Button in the Modal View
-            if ctx.triggered_id['type'] == 'edit_file_in_list_and_close':
-                try:
-                    connection = get_connection()
-                    directory = connection.get_directory(project_name, directory_name)
-                    file = directory.get_file(file_name)
-                    if modality:
-                        file.set_modality(modality)
-                    if tags:
-                        file.set_tags(tags)
-                    return False, dbc.Alert(
-                        [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
-                except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
-                    return False, dbc.Alert(str(err), color="danger"), no_update
-            else:
-                raise PreventUpdate
-
-        elif isinstance(ctx.triggered_id, str):
-            if ctx.triggered_id == "close_modal_edit_file_in_list":
-                # Close Modal View
-                return False, no_update, no_update
-            else:
-                raise PreventUpdate
-        
+def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, file_name, modality, tags, active_page):
+    if isinstance(ctx.triggered_id, dict):
+        # Edit Button in the Modal View
+        if ctx.triggered_id['type'] == 'edit_file_in_list_and_close' and any(item is not None for item in edit_and_close):
+            try:
+                connection = get_connection()
+                directory = connection.get_directory(project_name, directory_name)
+                file = directory.get_file(file_name)
+                if modality:
+                    file.set_modality(modality)
+                if tags:
+                    file.set_tags(tags)
+                return False, dbc.Alert(
+                    [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
+            except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+                return False, dbc.Alert(str(err), color="danger"), no_update
         else:
             raise PreventUpdate
 
+
+    elif isinstance(ctx.triggered_id, str):
+        if ctx.triggered_id == "close_modal_edit_file_in_list" and close is not None:
+            # Close Modal View
+            return False, no_update, no_update
+        else:
+            raise PreventUpdate
+    
     else:
         raise PreventUpdate
 
