@@ -112,7 +112,7 @@ def get_files_table(directory: dict, files: dict = None, filter: str = '', activ
     table_body = [html.Tbody(rows)]
 
     # Put together file table
-    table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True)
+    table = dbc.Table(table_header + table_body, striped=True, bordered=True, hover=True, responsive=True)
 
     
     # Warning message if the data is not consistent
@@ -147,7 +147,7 @@ def get_subdirectories_table(subdirectories: dict, filter: str = ''):
 
     # Put together directory table
     table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+                      striped=True, bordered=True, hover=True, responsive=True)
     return table
 
 
@@ -228,7 +228,7 @@ def modal_delete_file(file: dict):
             dcc.Store('file', data=file['name']),
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-trash")],
-                       id={'type': 'delete_file', 'index': file['name']}, size="md", color="danger"),
+                       id={'type': 'delete_file', 'index': file['name']}, size="md", color="danger", class_name="me-1"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -290,7 +290,7 @@ def modal_edit_file(file:dict):
         return html.Div([
             dcc.Store('file_for_edit', data=file['name']),
             # Button which triggers modal activation
-            dbc.Button([html.I(className="bi bi-pencil")], id={'type': 'edit_file_in_list', 'index': file['name']}, size="md", color="success"),
+            dbc.Button([html.I(className="bi bi-pencil")], id={'type': 'edit_file_in_list', 'index': file['name']}, size="md", color="success",class_name="me-1"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -790,10 +790,10 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             html.Div([
                                 # Button to access the File Viewer (viewer.py)
                                 dbc.Button([html.I(className="bi bi-play me-2"),
-                                            "Viewer"], color="success", size="md",
+                                            "Viewer"], color="success", size="md", class_name="mb-1",
                                            href=f"/viewer/{project_name}/{directory.unique_name}/none"),
                                 dbc.Button([html.I(className=f"bi {heart_icon}")], 
-                                            id="btn_fav_dir", size="md", color="light", outline=False, style={'color': colors['favorite']}, title="Add to Favorites",class_name="mx-2"),
+                                            id="btn_fav_dir", size="md", color="light", outline=False, style={'color': colors['favorite']}, title="Add to Favorites",class_name="mx-2 mb-1"),
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
                                             "Download"], id="btn_download_dir", size="md", class_name="me-2"),

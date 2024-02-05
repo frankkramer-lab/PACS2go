@@ -37,7 +37,7 @@ def get_details(project: dict):
         parameters = [html.B("Parameters: "), html.Br()] + formatted_parameters
         detail_data.append(html.H6(parameters))
 
-    time = html.B("Created on: "), project['timestamp_creation'], html.B(" | Last updated on: "), project['last_updated']
+    time = html.B("Created on: "), project['timestamp_creation'], html.Br(), html.B("Last updated on: "), project['last_updated']
     detail_data.append(html.H6(time))
     detail_data.append(html.Br())
     owners = html.B("Owners: "), ', '.join(project['owners'])
@@ -46,8 +46,8 @@ def get_details(project: dict):
     detail_data.append(html.H6(members))
     collaborators = html.B("Collaborators: "), ', '.join(project['collaborators'] if project['collaborators'] else '-')
     detail_data.append(html.H6(collaborators))
-    collaborators = html.B("Requestees: "), ', '.join(project['requestees'] if project['requestees'] else '-')
-    detail_data.append(html.H6(collaborators))
+    req = html.B("Requestees: "), ', '.join(project['requestees'] if project['requestees'] else '-')
+    detail_data.append(html.H6(req))
 
     user_role = "You're part of the '", html.B(
         project['your_user_role'].capitalize()), "' user group."
@@ -81,7 +81,7 @@ def get_directories_table(directories:dict , filter: str = ''):
 
     # Put together directory table
     table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+                      striped=True, bordered=True, hover=True, responsive=True)
     return table
 
 
@@ -117,7 +117,7 @@ def get_citations(project: dict):
     table_body = [html.Tbody(rows)]
 
     table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+                      striped=True, bordered=True, hover=True, responsive=True)
 
     return table
 
@@ -762,7 +762,7 @@ def layout(project_name: Optional[str] = None):
                             html.H4("Details"),
                             html.Div([
                                 modal_edit_project(project),
-                                modal_add_user_to_project(project,connection.all_users)], className="d-grid gap-2 d-md-flex justify-content-md-end")
+                                modal_add_user_to_project(project,connection.all_users)], className="d-grid gap-2 d-md-flex justify-content-md-end align-content-end")
                            ],
                         className="d-flex justify-content-between align-items-center"),
                     dcc.Loading(dbc.CardBody(get_details(initial_project_data), id="details_card"), color=colors['sage'])], class_name="custom-card mb-3"),
