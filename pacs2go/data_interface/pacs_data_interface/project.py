@@ -219,10 +219,50 @@ class Project:
     def grant_rights_to_user(self, user: str, level: str) -> None:
         try:
             self._file_store_project.grant_rights_to_user(user, level)
-        except:
+            self.remove_request(user)
+        except Exception as err:
             msg = f"Failed to add user {user} to Project '{self.name}'."
             logger.exception(msg)
-            raise UnsuccessfulAttributeUpdateException("New user")
+            raise UnsuccessfulAttributeUpdateException("new user" + str(err))
+        
+    def revoke_rights_from_user(self, user: str) -> None:
+        try:
+            self._file_store_project.revoke_rights_from_user(user)
+            self.remove_request(user)
+        except Exception as err:
+            msg = f"Failed to remove user {user} from Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException("Removing user" + str(err))
+        
+    def add_request(self, user:str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.insert_request_to_project(self.name, user)
+                
+        except:
+            msg = f"Failed to add request for user {user} and Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException("New request")
+    
+    def remove_request(self, user:str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.delete_request(self.name, user)
+                
+        except:
+            msg = f"Failed to remove request for user {user} and Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException("Removing request")
+    
+    def get_requests(self) -> list:
+        try:
+            with PACS_DB() as db:
+                return db.get_requests_to_project(self.name)
+
+        except:
+            msg = f"Failed to get requests for Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException("Project requests")
 
     @property
     def citations(self) -> List['CitationData']:
@@ -491,4 +531,5 @@ class Project:
             'owners': self.owners,   
             'members': self.members,   
             'collaborators': self.collaborators,   
+            'requestees': self.get_requests()
         }

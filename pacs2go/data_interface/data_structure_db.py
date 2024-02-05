@@ -20,6 +20,7 @@ class PACS_DB():
     CITATION_TABLE = "Citation"
     FILE_TABLE = "File"
     FAVORITE_TABLE = "FavoriteDirectories"
+    PROJECT_ACCESS_REQUEST_TABLE = "RequestProjectAccess"
 
     def __init__(self, host: str = "data-structure-db", port: int = 5432) -> None:
         try:
@@ -65,6 +66,7 @@ class PACS_DB():
         self.create_table_citation()
         self.create_table_file()
         self.create_table_favorite_directories()
+        self.create_table_project_access_request()
 
     def create_table_project(self):
         try:
@@ -157,6 +159,22 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = "FavoriteDirectories table could not be created."
+            logger.exception(msg)
+            raise Exception(msg)
+        
+    def create_table_project_access_request(self):
+        try:
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.PROJECT_ACCESS_REQUEST_TABLE} (
+                    req_id SERIAL PRIMARY KEY,
+                    project VARCHAR(256) REFERENCES {self.PROJECT_TABLE}(name) ON DELETE CASCADE,
+                    username VARCHAR(128)
+                )
+            """)
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            msg = f"{self.PROJECT_ACCESS_REQUEST_TABLE} table could not be created."
             logger.exception(msg)
             raise Exception(msg)
             
@@ -263,6 +281,19 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = f"Error inserting into {self.FAVORITE_TABLE} table"
+            logger.exception(msg)
+            raise Exception(msg)
+        
+    def insert_request_to_project(self, project, username) -> None:
+        try:
+            self.cursor.execute(f"""
+                INSERT INTO {self.PROJECT_ACCESS_REQUEST_TABLE} (project, username)
+                VALUES (%s, %s)
+            """, (project, username))
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            msg = f"Error inserting into {self.PROJECT_ACCESS_REQUEST_TABLE} table"
             logger.exception(msg)
             raise Exception(msg)
 
@@ -573,6 +604,26 @@ class PACS_DB():
             msg = f"Error retrieving favorite directories for this user {username}"
             logger.exception(msg)
             raise Exception(msg)
+        
+    def get_requests_to_project(self, project: str) -> list:
+        try:
+            query = f"""
+                SELECT username
+                FROM {self.PROJECT_ACCESS_REQUEST_TABLE}
+                WHERE project = %s
+            """
+            self.cursor.execute(query, (project,))
+            results = self.cursor.fetchall()
+     
+            user_list = []
+            for row in results:
+                user_list.append(*row)
+
+            return user_list
+        except Exception as err:
+            msg = f"Error retrieving requests to Project {project}"
+            logger.exception(msg)
+            raise Exception(msg)
     
 
     # --------- Update Tables -------- #
@@ -667,6 +718,19 @@ class PACS_DB():
             msg = f"Error removing {directory} as a favorite for {username}."
             logger.exception(msg)
             raise Exception(msg)
+        
+    def delete_request(self, project:str, username:str) -> None:
+        try:
+            query = f"""
+                DELETE FROM {self.PROJECT_ACCESS_REQUEST_TABLE} WHERE project = %s AND username = %s
+            """
+            self.cursor.execute(query, (project, username))
+            self.conn.commit()
+        except Exception as err:
+            msg = f"Error removing {username} 's request for Project {project}."
+            logger.exception(msg)
+            raise Exception(msg)
+
 
     # -------- Helpers ------- #
 
