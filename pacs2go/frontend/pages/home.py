@@ -43,7 +43,7 @@ def card_view_projects():
                 dbc.Button("Go to Project Overview",
                            href="/projects/", outline=False, color='success'),
             ]
-        ), className="custom-card")
+        ), className="custom-card mb-3")
 
     return card
 
@@ -72,7 +72,7 @@ def card_view_favorites():
                                 class_name="my-3"
                                 ),
                 ]
-            ), className="custom-card mt-3")
+            ), className="custom-card")
     else:
         card = dbc.Card(
             dbc.CardBody(
@@ -81,7 +81,7 @@ def card_view_favorites():
                     html.P(f"You have not favorited any directories or subdirectories yet. To do so, navigate to a directory and press the heart in the top right hand corner. This allows for faster access.",
                        className="card-subtitle"),
                 ]
-            ), className="custom-card mt-3")
+            ), className="custom-card")
 
     return card
 
@@ -96,7 +96,7 @@ def card_view_upload():
                 dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
                            href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
             ]
-        ), className="custom-card")
+        ), className="custom-card mb-3")
 
     return card
 

@@ -39,7 +39,7 @@ def get_projects_table(projects_json_data: dict, filter: str = ''):
 
     # Put together project table
     table = dbc.Table(table_header + table_body,
-                      striped=True, bordered=True, hover=True)
+                      striped=True, bordered=True, hover=True, responsive=True)
     return table
 
 
