@@ -390,7 +390,7 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException("Directories")
 
-    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '') -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '', unpack_directly:bool = False) -> Union['Directory', 'File']:
         try:
             timestamp = datetime.now(self.this_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -429,6 +429,7 @@ class Project:
                     with zipfile.ZipFile(file_path, 'r') as zip_ref:
                         zip_ref.extractall(temp_dir)
 
+
                     # Use the first directory inside the zip as the root directory
                     first_level_dirs = [d for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d))]
                     if len(first_level_dirs) != 1:
@@ -436,23 +437,29 @@ class Project:
 
                     root_dir_name = first_level_dirs[0]
                     
-                    # If directory was choosen, create directory there else directly under project (parent_dir=none)
+                    # If directory was choosen, work there else directly under project (parent_dir=none)
                     parent_dir = None if directory_name=='' or directory_name.count('::') < 1 else self.get_directory(directory_name)
-                    directory = Directory(self, root_dir_name, parent_dir=parent_dir)
-                    root_dir = directory
+                    if parent_dir is not None and unpack_directly:
+                        # For direct unpack do not create extra directory
+                        root_dir = parent_dir
+                    else:
+                        # NO direct unpack, so create new directory for zipped folder (top level folder)
+                        directory = Directory(self, root_dir_name, parent_dir=parent_dir)
+                        root_dir = directory
 
                     # Walk through the unzipped directory
-                    for root, dirs, files in os.walk(temp_dir):
+                    for root, dirs, files in os.walk(temp_dir):  
                         try:
                             if root == temp_dir:
-                                # Skip tempdir name
+                                # Skip tempdir name and skip top level folder for direct unpack
                                 continue
-                            if os.path.basename(root) == root_dir.display_name:
-                                # First level directory is already created
+                            if os.path.basename(root) == root_dir.display_name or (unpack_directly and os.path.basename(root)==root_dir_name):
+                                # First level directory is already created or unpacking is directory to chosen directory
                                 current_dir = root_dir
                             else:
                                 # Create sub-directory according to zipfile
                                 current_dir = Directory(self, os.path.basename(root), parent_dir=directory)
+                                
                             
                             if len(files) > 0:
                                 # Handle files of current directory
@@ -486,11 +493,12 @@ class Project:
                                     # Upload to file store
                                     self._file_store_project.insert_file_into_project(
                                         file_path=os.path.join(root, file_name), file_id=updated_file_data.file_name, directory_name=current_dir.unique_name, tags_string=tags_string)
+                           
                         except Exception as e:
                             logger.exception(f"An error occurred while processing files: {e}")
                             continue
                         directory = current_dir
-
+  
                     self.set_last_updated(datetime.now(self.this_timezone))
                     logger.info(
                         f"User {self.connection.user} inserted a zip file into Directory '{directory.unique_name}' in Project '{self.name}'.")
