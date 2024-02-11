@@ -734,7 +734,7 @@ class PACS_DB():
 
     # -------- Helpers ------- #
 
-    def get_next_available_filename(self, original_filename):
+    def get_next_available_filename(self, original_filename, directory_name):
         # Extract the base name without extension
         base_name, extension = os.path.splitext(original_filename)
         # Initialize a counter
@@ -743,19 +743,19 @@ class PACS_DB():
             # Construct the new file name
             new_filename = f"{base_name}({counter}){extension}"
             # Check if this filename exists in the database
-            if not self.filename_exists(new_filename):
+            if not self.filename_exists(new_filename, directory_name):
                 return new_filename
             counter += 1
 
-    def filename_exists(self, filename):
+    def filename_exists(self, filename, directory_name):
         # Check if the given filename already exists in the database
-        self.cursor.execute(f"SELECT COUNT(*) FROM {self.FILE_TABLE} WHERE file_name = %s", (filename,))
+        self.cursor.execute(f"SELECT COUNT(*) FROM {self.FILE_TABLE} WHERE file_name = %s AND parent_directory= %s", (filename, directory_name))
         count = self.cursor.fetchone()[0]
         return count > 0
 
     def get_next_available_file_data(self, original_data):
         # Create a new instance of FileData with an updated file_name
-        new_file_name = self.get_next_available_filename(original_data.file_name)
+        new_file_name = self.get_next_available_filename(original_data.file_name, original_data.parent_directory)
         return FileData(
             file_name=new_file_name,
             parent_directory=original_data.parent_directory,
