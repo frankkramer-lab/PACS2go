@@ -11,10 +11,10 @@ services:
     environment: # env-variables
       XNAT_USER: ${XNAT_USER}
       XNAT_PASS: ${XNAT_PASS}
-      PACS2GO_VERSION: 2.0.4
+      PACS2GO_VERSION: 2.0.5
       PYTHONUNBUFFERED: 1
-    command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload --timeout 300
-    # command: python pacs2go/frontend/app.py
+    # command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload --timeout 300
+    command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
       - data-structure-db
