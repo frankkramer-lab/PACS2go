@@ -525,7 +525,7 @@ class PACS_DB():
     def get_numberoffiles_under_directory(self, unique_name: str) -> int:
         try:
             query = f"""
-                SELECT count(distinct file_name)
+                SELECT count(*)
                 FROM {self.FILE_TABLE}
                 WHERE parent_directory = %s OR parent_directory LIKE %s
             """

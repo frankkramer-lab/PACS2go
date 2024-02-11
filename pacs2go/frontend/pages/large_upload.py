@@ -185,7 +185,6 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
                 unpack = False
             else:
                 unpack = True
-            print(unpack)
 
             try:
                 connection = get_connection()
