@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from typing import List, NamedTuple
 
@@ -657,7 +657,7 @@ class PACS_DB():
                 WHERE username = %s AND directory = %s
             """, (username, directory))
             result = self.cursor.fetchone()
-            last_checked = result[0] if result else "2000-01-01"
+            last_checked = result[0] if result else (datetime.min + timedelta(minutes=10))
 
             # Next, retrieve files that are new or updated since last_checked (minus 10 minutes to visualize new files for 10 minutes)
             self.cursor.execute(f"""

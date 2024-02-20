@@ -280,6 +280,7 @@ class Directory:
             'tags': f.tags,
             'size': float(f.size) if f.size else 0,
             'upload': f.timestamp_creation.strftime("%d.%B %Y, %H:%M:%S"),
+            'last_updated': f.timestamp_last_updated.strftime("%d.%B %Y, %H:%M:%S"),
             'associated_directory': f.parent_directory,
             'associated_project': self.project.name,
             'user_rights': self.project.your_user_role
