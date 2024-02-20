@@ -1,9 +1,11 @@
+from datetime import datetime
 import os
 from typing import List, NamedTuple
 
 import psycopg2
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
+from pytz import timezone
 
 from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, FailedDisconnectException)
@@ -21,6 +23,7 @@ class PACS_DB():
     FILE_TABLE = "File"
     FAVORITE_TABLE = "FavoriteDirectories"
     PROJECT_ACCESS_REQUEST_TABLE = "RequestProjectAccess"
+    USER_ACTIVITY_TABLE = "UserActivity"
 
     def __init__(self, host: str = "data-structure-db", port: int = 5432) -> None:
         try:
@@ -67,6 +70,7 @@ class PACS_DB():
         self.create_table_file()
         self.create_table_favorite_directories()
         self.create_table_project_access_request()
+        self.create_table_user_activity()
 
     def create_table_project(self):
         try:
@@ -175,6 +179,24 @@ class PACS_DB():
         except Exception as err:
             self.conn.rollback()
             msg = f"{self.PROJECT_ACCESS_REQUEST_TABLE} table could not be created."
+            logger.exception(msg)
+            raise Exception(msg)
+        
+    def create_table_user_activity(self):
+        try:
+            self.cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.USER_ACTIVITY_TABLE} (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(128) NOT NULL,
+                    directory VARCHAR(256) REFERENCES {self.DIRECTORY_TABLE}(unique_name) ON DELETE CASCADE,
+                    last_checked_timestamp TIMESTAMP NOT NULL,
+                    UNIQUE(username, directory)
+                )
+            """)
+            self.conn.commit()
+        except Exception as err:
+            self.conn.rollback()
+            msg = f"{self.USER_ACTIVITY_TABLE} table could not be created."
             logger.exception(msg)
             raise Exception(msg)
             
@@ -296,6 +318,7 @@ class PACS_DB():
             msg = f"Error inserting into {self.PROJECT_ACCESS_REQUEST_TABLE} table"
             logger.exception(msg)
             raise Exception(msg)
+        
 
     # -------- Select From Tables ------- #
 
@@ -624,7 +647,32 @@ class PACS_DB():
             msg = f"Error retrieving requests to Project {project}"
             logger.exception(msg)
             raise Exception(msg)
-    
+        
+    def get_new_files_for_user(self, username: str, directory: str) -> List[str]:
+        try:
+            # First, retrieve the last_checked_timestamp for the user and directory
+            self.cursor.execute(f"""
+                SELECT last_checked_timestamp
+                FROM {self.USER_ACTIVITY_TABLE}
+                WHERE username = %s AND directory = %s
+            """, (username, directory))
+            result = self.cursor.fetchone()
+            last_checked = result[0] if result else "2000-01-01"
+
+            # Next, retrieve files that are new or updated since last_checked (minus 10 minutes to visualize new files for 10 minutes)
+            self.cursor.execute(f"""
+                SELECT file_name
+                FROM {self.FILE_TABLE}
+                WHERE parent_directory = %s AND 
+                (timestamp_creation > (%s - interval '10 minute') OR timestamp_last_updated > (%s - interval '10 minute'))
+            """, (directory, last_checked, last_checked))
+            files = self.cursor.fetchall()
+
+            return [file[0] for file in files] if files else []
+        except Exception as err:
+            msg = f"Error retrieving new files for {directory} and {username}" + str(err)
+            logger.exception(msg)
+            raise Exception(msg)      
 
     # --------- Update Tables -------- #
     def update_attribute(self, table_name: str, attribute_name: str, new_value: str, condition_column: str = None, condition_value: str = None, second_condition_column: str = None, second_condition_value: str = None) -> None:
@@ -656,6 +704,24 @@ class PACS_DB():
             msg = f"Error updating {attribute_name} in {table_name}"
             logger.exception(msg)
             raise Exception(msg)
+
+            
+    def update_user_activity(self, username: str, directory: str):
+        current_time = datetime.now(timezone("Europe/Berlin"))
+        try:
+            self.cursor.execute(f"""
+                INSERT INTO {self.USER_ACTIVITY_TABLE} (username, directory, last_checked_timestamp)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (username, directory)
+                DO UPDATE SET last_checked_timestamp = EXCLUDED.last_checked_timestamp
+            """, (username, directory, current_time))
+            self.conn.commit()
+        except Exception as err:
+            print(err)
+            self.conn.rollback()
+            logger.exception("Error updating user activity in DB.")
+            raise
+
 
     # -------- Delete From Tables ------- #
 

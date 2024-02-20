@@ -158,6 +158,16 @@ class Directory:
 
     def exists(self) -> bool:
         return self._file_store_directory.exists()
+    
+    def update_user_activity(self, username: str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.update_user_activity(username, self.unique_name)
+        except:
+            msg = f"Failed to update user activity for Directory '{self.unique_name}' and user '{username}'"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(
+                "the 'user's last activity' status for this directory")    
 
     def delete_directory(self) -> None:
         try:
@@ -279,6 +289,17 @@ class Directory:
             msg = f"Failed to get all files for directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("Files")
+
+    def get_new_files_for_user(self, username:str) -> list:
+        try:
+            # Only get files from a specific range (quantity and offset)
+            with PACS_DB() as db:
+                file_names = db.get_new_files_for_user(username, self.unique_name)
+            return file_names
+        except:
+            msg = f"Failed to get new files for directory '{self.unique_name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException("New files")
 
     def favorite_directory(self, username:str) -> None:
         try:
