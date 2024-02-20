@@ -707,7 +707,8 @@ class PACS_DB():
 
             
     def update_user_activity(self, username: str, directory: str):
-        current_time = datetime.now(timezone("Europe/Berlin"))
+        current_time = datetime.now(timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+
         try:
             self.cursor.execute(f"""
                 INSERT INTO {self.USER_ACTIVITY_TABLE} (username, directory, last_checked_timestamp)
