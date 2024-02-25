@@ -68,7 +68,8 @@ def get_single_file_preview(directory: Directory):
             dbc.CardBody(content, className="w-25 h-25")], className="custom-card")
 
 
-def format_file_details(file: dict, index: int):
+def format_file_details(file: dict, index: int, new:list):
+    is_new = "*" if file['name'] in new else ""
     tags = file['tags'] if file['tags'] else ''
     file_size_kb = round(file['size']/1024, 2)
     if file_size_kb < 1024:
@@ -77,15 +78,17 @@ def format_file_details(file: dict, index: int):
         formatted_size = f"{round(file['size']/1024/1024, 2)} MB ({file['size']} Bytes)"
     formatted_timestamp = file['upload']
     return [html.Td(index + 1),
-            html.Td(dcc.Link(file['name'], href=f"/viewer/{file['associated_project']}/{file['associated_directory']}/{file['name']}", className="text-decoration-none", style={'color': colors['links']})),
+            html.Td([dcc.Link(file['name'], href=f"/viewer/{file['associated_project']}/{file['associated_directory']}/{file['name']}", className="text-decoration-none", 
+                              style={'color': colors['links']}),        
+                    html.B(is_new,title="This file has changed since you last logged in.",style={'color': 'red'})]),
             html.Td(file['format']),
             html.Td(file['modality']),
             html.Td(formatted_size),
-            html.Td(formatted_timestamp),
+            html.Td(formatted_timestamp, title=f"Last Updated On: {file['last_updated']}"),
             html.Td(tags),
             html.Td([modal_delete_file(file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file['name']})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
 
-def get_files_table(directory: dict, files: dict = None, filter: str = '', active_page: int = 1, quantity:int = 20):
+def get_files_table(directory: dict, files: dict = None, filter: str = '', active_page: int = 1, quantity:int = 20, new:list = []):
     rows = []
     directory = json.loads(directory)
 
@@ -100,7 +103,7 @@ def get_files_table(directory: dict, files: dict = None, filter: str = '', activ
     # Get file information as rows for table
     for index, file_info in enumerate(file_data):
         index = index + (active_page-1)*quantity
-        rows.append(html.Tr(format_file_details(file_info, index)))
+        rows.append(html.Tr(format_file_details(file_info, index, new)))
 
     # Table header
     table_header = [
@@ -690,16 +693,17 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
     Input('file-store', 'data'),
     Input('pagination-files', 'active_page'),
     State("directory", 'data'),
+    State("new_file_store", 'data'),
     State('filter_file_tags', 'value'),
     prevent_initial_call=True)
 # Callback to update file table if files change
-def cb_reload_files_table(files, active_page, directory, filter):
+def cb_reload_files_table(files, active_page, directory, new, filter):
     try:
         if not active_page:
             active_page = 1
         if not filter:
             filter = ''
-        return get_files_table(directory=directory, files=files, filter=filter, active_page=int(active_page))
+        return get_files_table(directory=directory, files=files, filter=filter, active_page=int(active_page), new=new)
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
@@ -718,6 +722,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             connection = get_connection()
             project = connection.get_project(project_name)
             directory = project.get_directory(directory_name)
+            new_files = directory.get_new_files_for_user(current_user.id)
+            directory.update_user_activity(current_user.id)
 
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
@@ -758,6 +764,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             dcc.Store(id='directory', data=initial_directory_data),
             dcc.Store(id='subdirectories_store', data=initial_subdir_data),
             dcc.Store(id='file-store'),
+            dcc.Store(id='new_file_store', data=new_files),
 
             # Breadcrumbs
             html.Div(
@@ -841,7 +848,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
                     # Display a table of the directory's files
                     dcc.Loading(html.Div(get_files_table(
-                        directory=initial_directory_data, quantity=items_per_page), id='files_table'), color=colors['sage']),
+                        directory=initial_directory_data, quantity=items_per_page, new=new_files), id='files_table'), color=colors['sage']),
                     dbc.Pagination(id="pagination-files", max_value=math.ceil(
                         int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False)
                 ])], class_name="custom-card mb-3"),

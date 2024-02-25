@@ -71,7 +71,7 @@ def get_upload_component(id: str):
     # dash-uploader Upload component
     return du.Upload(
         id=id,
-        max_file_size=1024,  # 1GB
+        max_file_size=51200,  # 50GB
         filetypes=['zip', 'jpeg', 'jpg', 'dcm',
                    'json', 'nii', 'png', 'tiff', 'csv'],
         upload_id=uuid.uuid1(),  # Unique session id
