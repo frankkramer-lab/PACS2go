@@ -334,6 +334,25 @@ def modal_edit_file(file:dict):
             ),
         ])
 
+def modal_delete_selected_files(rights):
+    if rights == 'Owners':
+        return html.Div([    
+            dbc.Button(html.I(className="bi bi-trash"), title="Delete Selected", id="delete_selected_btn", className="me-2", color="danger"),
+            dbc.Modal(
+                [
+                    dbc.ModalBody("Are you sure you want to delete the selected files?"),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button("Cancel", id="cancel_delete_multiple_files", className="ms-auto", n_clicks=0),
+                            dbc.Button("Confirm Delete", id="confirm_delete_multiple_files", className="ms-auto", color="danger", n_clicks=0),
+                        ]
+                    ),
+                ],
+                id="confirmation_delete_multiple_files_modal",
+                is_open=False,  # Start with the modal not showing
+        )])
+
+
 
 #################
 #   Callbacks   #
@@ -739,6 +758,42 @@ def handle_multiple_file_actions_download(n_clicks, selected_files_values, direc
 
 
 @callback(
+    Output('confirmation_delete_multiple_files_modal', 'is_open'),
+    [Input('delete_selected_btn', 'n_clicks'), 
+     Input('cancel_delete_multiple_files', 'n_clicks'), 
+     Input('confirm_delete_multiple_files', 'n_clicks')],
+    [State('confirmation_delete_multiple_files_modal', 'is_open')],
+    prevent_initial_call=True
+)
+def toggle_confirmation_modal(delete_n_clicks, cancel_n_clicks, confirm_n_clicks, is_open):
+    if ctx.triggered_id == "delete_selected_btn":
+        return True  # Open the modal if the Delete Selected button is clicked
+    return not is_open  # Close the modal for either Cancel or Confirm actions
+
+
+@callback(
+    Output('action_feedback', 'children'),
+    Input('confirm_delete_multiple_files', 'n_clicks'),
+    State({'type': 'file_selection', 'index': ALL}, 'value'),
+    State("directory_name", 'data'),
+    State("project_name", 'data'),
+    prevent_initial_call=True
+)
+def confirm_deletion(n_clicks, selected_files_values, directory_name, project_name):
+    if ctx.triggered_id == "confirm_delete_multiple_files" and n_clicks > 0:
+        # Flatten the list of lists into a single list of selected file names
+        selected_files = [file for sublist in selected_files_values for file in sublist]
+        if selected_files:
+            # Perform the deletion logic for each selected file
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            directory.delete_multiple_files(selected_files)
+            return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning")
+        else:
+            return dbc.Alert("No files selected.", color="warning")
+
+
+@callback(
     Output('files_table', 'children', allow_duplicate=True),
     Output('pagination_files', 'max_value'),
     Input('file-store', 'data'),
@@ -820,7 +875,6 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             dcc.Store(id='subdirectories_store', data=initial_subdir_data),
             dcc.Store(id='file-store'),
             dcc.Store(id='new_file_store', data=new_files),
-            html.Div(id="action_feedback"),
 
             # Breadcrumbs
             html.Div(
@@ -895,13 +949,14 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                 dbc.CardHeader(html.H4('Files')),
                 dbc.CardBody([
                     # Filter file tags
+                    dbc.Row(html.Div(id="action_feedback"),),
                     dbc.Row([
                         dbc.Col(dbc.Input(id="filter_file_tags",
                             placeholder="Search file tags.. (e.g. 'CT')")),
                         dbc.Col(dbc.Button(
                             "Filter", id="filter_file_tags_btn")),
                         dbc.Col([html.Div([
-                            dbc.Button(html.I(className="bi bi-trash"), title="Delete Selected", id="delete_selected_btn", className="me-2", color="danger"),
+                            modal_delete_selected_files(rights=project.your_user_role),
                             dbc.Button(html.I(className="bi bi-pencil"), title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
                             dbc.Button(html.I(className="bi bi-download"), title="Download Selected", id="download_selected_btn",  color="primary"),
                         ], className="d-flex justify-content-end")]),

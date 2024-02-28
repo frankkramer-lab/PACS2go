@@ -301,6 +301,20 @@ class Directory:
             msg = f"Failed to get new files for directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("New files")
+        
+    def delete_multiple_files(self, file_names:list) -> None:
+        try:
+            # Only get files from a specific range (quantity and offset)
+            with PACS_DB() as db:
+                db.delete_multiple_files_by_name(file_names=file_names)
+            # Update the parents last updated
+            self.set_last_updated(datetime.now(self.this_timezone))
+            logger.info(
+                f"User {self.project.connection.user} deleted multiple filese in directory '{self.unique_name}': {file_names}.")
+        except:
+            msg = f"Failed to get new files for directory '{self.unique_name}'."
+            logger.exception(msg)
+            raise UnsuccessfulDeletionException(f"Multiple files in {self.name}")
 
     def favorite_directory(self, username:str) -> None:
         try:

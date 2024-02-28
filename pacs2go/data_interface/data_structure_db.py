@@ -761,6 +761,19 @@ class PACS_DB():
             msg = "Error deleting file by name"
             logger.exception(msg)
             raise Exception(msg)
+        
+    def delete_multiple_files_by_name(self, file_names: list) -> None:
+        try:
+            placeholders = ', '.join(['%s'] * len(file_names))
+            query = f"""
+                DELETE FROM {self.FILE_TABLE} WHERE file_name IN ({placeholders})
+            """
+            self.cursor.execute(query, tuple(file_names))
+            self.conn.commit()
+        except Exception as err:
+            msg = "Error deleting file by name"
+            logger.exception(msg)
+            raise Exception(msg)
 
     def delete_citation(self, cit_id: int) -> None:
         try:
