@@ -657,7 +657,7 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
                 file.delete_file()
                 # Close Modal and show message
                 return is_open, dbc.Alert(
-                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=num_files_per_page_select, offset=(active_page-1) * num_files_per_page_select)
+                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
             except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                 return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
         else:
@@ -725,7 +725,7 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
                 if tags:
                     file.set_tags(tags)
                 return False, dbc.Alert(
-                    [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=num_files_per_page_select, offset=(active_page-1) * num_files_per_page_select)
+                    [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
             except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                 return False, dbc.Alert(str(err), color="danger"), no_update
         else:
@@ -796,14 +796,16 @@ def toggle_confirmation_modal_delete_selected_files(delete_n_clicks, cancel_n_cl
 
 
 @callback(
-    Output('action_feedback', 'children'),
+    Output('action_feedback', 'children'), Output('file-store', 'data', allow_duplicate=True),
     Input('confirm_delete_multiple_files', 'n_clicks'),
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
     State("project_name", 'data'),
+    State('pagination_files', 'active_page'),
+    State('num_files_per_page_select', 'value'),
     prevent_initial_call=True
 )
-def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_name, project_name):
+def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_name, project_name, active_page, num_files_per_page_select):
     if ctx.triggered_id == "confirm_delete_multiple_files" and n_clicks > 0:
         # Flatten the list of lists into a single list of selected file names
         selected_files = [file for sublist in selected_files_values for file in sublist]
@@ -811,9 +813,9 @@ def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_n
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             directory.delete_multiple_files(selected_files)
-            return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning")
+            return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning"), directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
         else:
-            return dbc.Alert("No files selected.", color="warning")
+            return dbc.Alert("No files selected.", color="warning"), no_update
         
 
 @callback(
@@ -831,16 +833,18 @@ def toggle_confirmation_modal_edit_selected_files(edit_n_clicks, cancel_n_clicks
 
 
 @callback(
-    Output('action_feedback', 'children', allow_duplicate=True),
+    Output('action_feedback', 'children', allow_duplicate=True),Output('file-store', 'data', allow_duplicate=True),
     Input('confirm_edit_multiple_files', 'n_clicks'),
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
     State("project_name", 'data'),
     State('edit_multiple_files_modality', 'value'),
     State('edit_multiple_files_tags', 'value'),
+    State('pagination_files', 'active_page'),
+    State('num_files_per_page_select', 'value'),
     prevent_initial_call=True
 )
-def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name, project_name, modality, tags):
+def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name, project_name, modality, tags, active_page, num_files_per_page_select):
     if ctx.triggered_id == "confirm_edit_multiple_files" and n_clicks > 0:
         # Flatten the list of lists into a single list of selected file names
         selected_files = [file for sublist in selected_files_values for file in sublist]
@@ -848,7 +852,7 @@ def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name,
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             directory.update_multiple_files(selected_files, modality, tags)
-            return dbc.Alert(f"Updated {len(selected_files)} file(s).", color="warning")
+            return dbc.Alert(f"Updated {len(selected_files)} file(s).", color="warning"), directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
         else:
             return dbc.Alert("No files selected.", color="warning")
 
