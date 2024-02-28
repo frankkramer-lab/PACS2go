@@ -705,7 +705,21 @@ class PACS_DB():
             logger.exception(msg)
             raise Exception(msg)
 
-            
+    def update_multiple_files(self, file_names:list, modality:str, tags:str) -> None:
+        try:
+            time = datetime.now(timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+            placeholders = ', '.join(['%s'] * len(file_names))
+
+            query = f"""
+                UPDATE {self.FILE_TABLE} SET modality=%s, tags=%s, timestamp_last_updated=%s WHERE file_name IN ({placeholders})
+            """
+            self.cursor.execute(query, (modality, tags, time) + tuple(file_names))
+            self.conn.commit()
+        except Exception as err:
+            msg = "Error deleting file by name"
+            logger.exception(msg)
+            raise Exception(msg)
+    
     def update_user_activity(self, username: str, directory: str):
         current_time = datetime.now(timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
 

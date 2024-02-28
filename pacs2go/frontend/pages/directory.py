@@ -180,21 +180,17 @@ def modal_create_new_subdirectory(directory):
                         html.Div(id='create-subdirectory-content'),
                         dbc.Label(
                             "Please enter a unique name. (Don't use ä,ö,ü or ß)"),
-                        # Input Text Field for project name
                         dbc.Input(id="new_subdir_name",
                                   placeholder="Directory unique name...", required=True),
                         dbc.Label(
-                            "Please enter desired parameters.", class_name="mt-2"),
-                        # Input Text Field for project parameters
+                            "Please enter desired parameters.", class_name="mt-2"),                       
                         dbc.Textarea(id="new_subdir_parameters",
                                   placeholder="..."),
                     ]),
                     dbc.ModalFooter([
-                        # Button which triggers the creation of a project (see modal_and_project_creation)
+                        dbc.Button("Close", id="close_modal_create_subdir"),
                         dbc.Button("Create Directory",
                                    id="create_subdir_and_close", color="success"),
-                        # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_create_subdir")
                     ]),
                 ],
                 id="modal_create_new_subdirectory",
@@ -252,12 +248,11 @@ def modal_delete_file(file: dict):
                             id='delete-file-content'),
                     ]),
                     dbc.ModalFooter([
-                        # Button which triggers the deletion of the file
-                        dbc.Button("Delete File",
-                                   id={'type': 'delete_file_and_close', 'index': file['name']}, color="danger"),
-                        # Button which causes modal to close/disappear
                         dbc.Button(
                             "Close", id='close_modal_delete_file'),
+                        dbc.Button("Delete File",
+                                   id={'type': 'delete_file_and_close', 'index': file['name']}, color="danger"),
+                        
                     ]),
                 ],
                 id='modal_delete_file',
@@ -312,21 +307,17 @@ def modal_edit_file(file:dict):
                         html.Div(id='edit_file_in_list_content'),
                         dbc.Label(
                             "Please enter desired modality.", class_name="mt-2"),
-                        # Input Text Field for project parameters
                         dbc.Input(id="edit_file_in_list_modality",
-                                placeholder="e.g.: CT, MRI", value=''),
+                                placeholder="e.g.: CT, MRI", value=' '),
                         dbc.Label(
                             "Please enter desired tags.", class_name="mt-2"),
-                        # Input Text Field for project parameters
                         dbc.Input(id="edit_file_in_list_tags",
-                                placeholder="e.g.: Dermatology, control group", value=''),
+                                placeholder="e.g.: Dermatology, control group", value=' '),
                     ]),
                     dbc.ModalFooter([
-                        # Button which triggers the creation of a project (see modal_and_project_creation)
-                        dbc.Button("Update Directory Metadata",
+                        dbc.Button("Close", id="close_modal_edit_file_in_list"),
+                        dbc.Button("Update File",
                                 id={'type': 'edit_file_in_list_and_close', 'index': file['name']}, color="success"),
-                        # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_edit_file_in_list")
                     ]),
                 ],
                 id="modal_edit_file_in_list",
@@ -343,15 +334,46 @@ def modal_delete_selected_files(rights):
                     dbc.ModalBody("Are you sure you want to delete the selected files?"),
                     dbc.ModalFooter(
                         [
-                            dbc.Button("Cancel", id="cancel_delete_multiple_files", className="ms-auto", n_clicks=0),
-                            dbc.Button("Confirm Delete", id="confirm_delete_multiple_files", className="ms-auto", color="danger", n_clicks=0),
+                            dbc.Button("Cancel", id="cancel_delete_multiple_files", n_clicks=0),
+                            dbc.Button("Confirm Delete", id="confirm_delete_multiple_files", color="danger", n_clicks=0),
                         ]
                     ),
                 ],
                 id="confirmation_delete_multiple_files_modal",
-                is_open=False,  # Start with the modal not showing
+                is_open=False
         )])
 
+def modal_edit_selected_files(rights):
+    # Modal view for project creation
+    if rights == 'Owners' or rights == 'Members':
+        return html.Div([
+            # Button which triggers modal activation
+            dbc.Button(html.I(className="bi bi-pencil"), title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
+            # Actual modal view
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(f"Edit Files")),
+                    dbc.ModalBody([
+                        html.Div(id='edit_multiple_files_content'),
+                        dbc.Label(
+                            "Please enter desired modality.", class_name="mt-2"),
+                        dbc.Input(id="edit_multiple_files_modality",
+                                placeholder="e.g.: CT, MRI", value=''),
+                        dbc.Label(
+                            "Please enter desired tags.", class_name="mt-2"),
+                        dbc.Input(id="edit_multiple_files_tags",
+                                placeholder="e.g.: Dermatology, control group", value=''),
+                    ]),
+                    dbc.ModalFooter([
+                        dbc.Button("Cancel", id="cancel_edit_multiple_files"),
+                        dbc.Button("Update the selected files", color="success", id="confirm_edit_multiple_files"),
+                        
+                    ]),
+                ],
+                id="confirmation_edit_multiple_files_modal",
+                is_open=False,
+            ),
+        ])
 
 
 #################
@@ -614,11 +636,12 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
      State("directory_name", 'data'),
      State("project_name", 'data'),
      State('file', 'data'),
-     State('pagination_files', 'active_page'),],
+     State('pagination_files', 'active_page'),
+     State('num_files_per_page_select', 'value'),],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name, active_page):
+def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory_name, project_name, file_name, active_page,num_files_per_page_select):
     if isinstance(ctx.triggered_id, dict):
         # Delete Button in File list - open/close Modal View
         if ctx.triggered_id['type'] == "delete_file" and any(item is not None for item in open):
@@ -634,7 +657,7 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
                 file.delete_file()
                 # Close Modal and show message
                 return is_open, dbc.Alert(
-                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
+                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=num_files_per_page_select, offset=(active_page-1) * num_files_per_page_select)
             except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                 return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
         else:
@@ -684,11 +707,12 @@ def cb_open_edit_file_modal(is_open, directory_name, project_name):
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
      State('edit_file_in_list_tags', 'value'),
-     State('pagination_files', 'active_page'),],
+     State('pagination_files', 'active_page'),
+     State('num_files_per_page_select', 'value'),],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
-def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, file_name, modality, tags, active_page):
+def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, file_name, modality, tags, active_page,num_files_per_page_select):
     if isinstance(ctx.triggered_id, dict):
         # Edit Button in the Modal View
         if ctx.triggered_id['type'] == 'edit_file_in_list_and_close' and any(item is not None for item in edit_and_close):
@@ -701,7 +725,7 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
                 if tags:
                     file.set_tags(tags)
                 return False, dbc.Alert(
-                    [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=20, offset=(active_page-1) * 20)
+                    [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=num_files_per_page_select, offset=(active_page-1) * num_files_per_page_select)
             except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                 return False, dbc.Alert(str(err), color="danger"), no_update
         else:
@@ -765,7 +789,7 @@ def handle_multiple_file_actions_download(n_clicks, selected_files_values, direc
     [State('confirmation_delete_multiple_files_modal', 'is_open')],
     prevent_initial_call=True
 )
-def toggle_confirmation_modal(delete_n_clicks, cancel_n_clicks, confirm_n_clicks, is_open):
+def toggle_confirmation_modal_delete_selected_files(delete_n_clicks, cancel_n_clicks, confirm_n_clicks, is_open):
     if ctx.triggered_id == "delete_selected_btn":
         return True  # Open the modal if the Delete Selected button is clicked
     return not is_open  # Close the modal for either Cancel or Confirm actions
@@ -779,16 +803,52 @@ def toggle_confirmation_modal(delete_n_clicks, cancel_n_clicks, confirm_n_clicks
     State("project_name", 'data'),
     prevent_initial_call=True
 )
-def confirm_deletion(n_clicks, selected_files_values, directory_name, project_name):
+def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_name, project_name):
     if ctx.triggered_id == "confirm_delete_multiple_files" and n_clicks > 0:
         # Flatten the list of lists into a single list of selected file names
         selected_files = [file for sublist in selected_files_values for file in sublist]
         if selected_files:
-            # Perform the deletion logic for each selected file
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             directory.delete_multiple_files(selected_files)
             return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning")
+        else:
+            return dbc.Alert("No files selected.", color="warning")
+        
+
+@callback(
+    Output('confirmation_edit_multiple_files_modal', 'is_open'),
+    [Input('edit_selected_btn', 'n_clicks'), 
+     Input('cancel_edit_multiple_files', 'n_clicks'), 
+     Input('confirm_edit_multiple_files', 'n_clicks')],
+    [State('confirmation_edit_multiple_files_modal', 'is_open')],
+    prevent_initial_call=True
+)
+def toggle_confirmation_modal_edit_selected_files(edit_n_clicks, cancel_n_clicks, confirm_n_clicks, is_open):
+    if ctx.triggered_id == "edit_selected_btn":
+        return True 
+    return not is_open 
+
+
+@callback(
+    Output('action_feedback', 'children', allow_duplicate=True),
+    Input('confirm_edit_multiple_files', 'n_clicks'),
+    State({'type': 'file_selection', 'index': ALL}, 'value'),
+    State("directory_name", 'data'),
+    State("project_name", 'data'),
+    State('edit_multiple_files_modality', 'value'),
+    State('edit_multiple_files_tags', 'value'),
+    prevent_initial_call=True
+)
+def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name, project_name, modality, tags):
+    if ctx.triggered_id == "confirm_edit_multiple_files" and n_clicks > 0:
+        # Flatten the list of lists into a single list of selected file names
+        selected_files = [file for sublist in selected_files_values for file in sublist]
+        if selected_files:
+            connection = get_connection()
+            directory = connection.get_directory(project_name, directory_name)
+            directory.update_multiple_files(selected_files, modality, tags)
+            return dbc.Alert(f"Updated {len(selected_files)} file(s).", color="warning")
         else:
             return dbc.Alert("No files selected.", color="warning")
 
@@ -957,7 +1017,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             "Filter", id="filter_file_tags_btn")),
                         dbc.Col([html.Div([
                             modal_delete_selected_files(rights=project.your_user_role),
-                            dbc.Button(html.I(className="bi bi-pencil"), title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
+                            modal_edit_selected_files(rights=project.your_user_role),
                             dbc.Button(html.I(className="bi bi-download"), title="Download Selected", id="download_selected_btn",  color="primary"),
                         ], className="d-flex justify-content-end")]),
 
