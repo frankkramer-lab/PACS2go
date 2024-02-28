@@ -476,20 +476,21 @@ def cb_filter_directory_table(btn, filter, subdirectories):
 
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
-    Output('pagination-files', 'active_page'),
+    Output('pagination_files', 'active_page'),
     Input('filter_file_tags_btn', 'n_clicks'),
     Input('filter_file_tags', 'value'),
-    State('pagination-files', 'active_page'),
+    State('pagination_files', 'active_page'),
+    State('num_files_per_page_select', 'value'),
     State('directory', 'data'),
     prevent_initial_call=True)
 # Callback for the file tag filter feature
-def cb_filter_files_table(btn, filter, active_page, directory):
+def cb_filter_files_table(btn, filter, active_page, quantity, directory):
     # Filter button is clicked or the input field registers a user input
     if ctx.triggered_id == 'filter_file_tags_btn' or filter or active_page:
         try:
             if not filter:
                 filter = ''
-            return get_files_table(directory=directory, filter=filter, active_page=1), 1
+            return get_files_table(directory=directory, filter=filter, active_page=1, quantity=int(quantity)), 1
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger"), 1
     else:
@@ -584,7 +585,7 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
      State("directory_name", 'data'),
      State("project_name", 'data'),
      State('file', 'data'),
-     State('pagination-files', 'active_page'),],
+     State('pagination_files', 'active_page'),],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
@@ -654,7 +655,7 @@ def cb_open_edit_file_modal(is_open, directory_name, project_name):
      State('file_for_edit', 'data'),
      State('edit_file_in_list_modality', 'value'),
      State('edit_file_in_list_tags', 'value'),
-     State('pagination-files', 'active_page'),],
+     State('pagination_files', 'active_page'),],
     prevent_initial_call=True
 )
 # Callback for the file deletion modal view and the actual file deletion
@@ -690,20 +691,25 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
 
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
+    Output('pagination_files', 'max_value'),
     Input('file-store', 'data'),
-    Input('pagination-files', 'active_page'),
+    Input('pagination_files', 'active_page'),
+    Input('num_files_per_page_select', 'value'),
     State("directory", 'data'),
     State("new_file_store", 'data'),
     State('filter_file_tags', 'value'),
     prevent_initial_call=True)
 # Callback to update file table if files change
-def cb_reload_files_table(files, active_page, directory, new, filter):
+def cb_reload_files_table(files, active_page, quantity, directory, new, filter):
+    pagination_max_value = json.loads(directory)['number_of_files_on_this_level']/int(quantity)
+    if pagination_max_value < 1:
+        pagination_max_value = 1
     try:
         if not active_page:
             active_page = 1
         if not filter:
             filter = ''
-        return get_files_table(directory=directory, files=files, filter=filter, active_page=int(active_page), new=new)
+        return get_files_table(directory=directory, files=files, filter=filter, active_page=int(active_page), quantity=int(quantity), new=new), pagination_max_value
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
@@ -843,14 +849,35 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         dbc.Col(dbc.Input(id="filter_file_tags",
                             placeholder="Search file tags.. (e.g. 'CT')")),
                         dbc.Col(dbc.Button(
-                            "Filter", id="filter_file_tags_btn"))
+                            "Filter", id="filter_file_tags_btn")),
                     ], class_name="mb-3"),
+
 
                     # Display a table of the directory's files
                     dcc.Loading(html.Div(get_files_table(
                         directory=initial_directory_data, quantity=items_per_page, new=new_files), id='files_table'), color=colors['sage']),
-                    dbc.Pagination(id="pagination-files", max_value=math.ceil(
-                        int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False)
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Pagination(id="pagination_files", max_value=math.ceil(
+                                int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False),
+                        ]),
+                        dbc.Col([
+                            html.Div(
+                                dbc.Select(
+                                    id="num_files_per_page_select",
+                                    options=[
+                                        {"label": "10", "value": 10},
+                                        {"label": "20", "value": 20},
+                                        {"label": "50", "value": 50},
+                                        {"label": "100", "value": 100},
+                                        {"label": "200", "value": 200},
+                                    ],
+                                    value=20,  # Default value
+                                    style={"width":"auto"},
+                                ),
+                            )
+                        ], class_name="d-inline-flex justify-content-end"), 
+                    ]),
                 ])], class_name="custom-card mb-3"),
 
             # Display a preview of the first file's content

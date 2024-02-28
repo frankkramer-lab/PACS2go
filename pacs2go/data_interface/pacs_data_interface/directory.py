@@ -368,6 +368,7 @@ class Directory:
             'is_consistent': self.is_consistent,   
             'parameters': self.parameters,
             'number_of_files': self.number_of_files,  
+            'number_of_files_on_this_level': self.number_of_files_on_this_level,
             'associated_directory': self.parent_directory.unique_name if self.parent_directory else None,
             'associated_project': self.project.name,
             'user_rights': self.project.your_user_role,  
