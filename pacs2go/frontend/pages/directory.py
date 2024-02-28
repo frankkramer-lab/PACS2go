@@ -2,6 +2,8 @@ import base64
 import io
 import json
 import math
+import os
+import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional
 
@@ -59,7 +61,7 @@ def get_single_file_preview(directory: Directory):
             csv_str = file.data.decode("utf-8")
             df = pd.read_csv(io.StringIO(csv_str))
             content = dash_table.DataTable(df.to_dict(
-                'records'), [{"name": i, "id": i} for i in df.columns])
+                'records'), [{"name": i, "id": i} for i in df.columns], page_size=25)
         else:
             return html.Div()
 
@@ -77,7 +79,15 @@ def format_file_details(file: dict, index: int, new:list):
     else:
         formatted_size = f"{round(file['size']/1024/1024, 2)} MB ({file['size']} Bytes)"
     formatted_timestamp = file['upload']
+    checkbox = dcc.Checklist(
+        id={'type': 'file_selection', 'index': index},
+        options=[{"label": "", "value": file['name']}],
+        value=[],
+        inline=True,
+        style={"margin": "auto"},
+    )
     return [html.Td(index + 1),
+            html.Td(checkbox),
             html.Td([dcc.Link(file['name'], href=f"/viewer/{file['associated_project']}/{file['associated_directory']}/{file['name']}", className="text-decoration-none", 
                               style={'color': colors['links']}),        
                     html.B(is_new,title="This file has changed since you last logged in.",style={'color': 'red'})]),
@@ -108,7 +118,7 @@ def get_files_table(directory: dict, files: dict = None, filter: str = '', activ
     # Table header
     table_header = [
         html.Thead(
-            html.Tr([html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
+            html.Tr([html.Th(" "), html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
     ]
 
     # Only show quantity (20) rows at a time - pagination
@@ -525,7 +535,7 @@ def cb_favorite(n_clicks, directory_name, project_name):
 
 
 @callback(
-    Output("download_directory", "data"),
+    Output("download_directory", "data", allow_duplicate=True),
     Input("btn_download_dir", "n_clicks"),
     State("directory_name", "data"),
     State("project_name", "data"),
@@ -678,7 +688,6 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
         else:
             raise PreventUpdate
 
-
     elif isinstance(ctx.triggered_id, str):
         if ctx.triggered_id == "close_modal_edit_file_in_list" and close is not None:
             # Close Modal View
@@ -688,6 +697,46 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
     
     else:
         raise PreventUpdate
+
+
+@callback(
+    Output('download_directory', 'data', allow_duplicate=True),  # Assume an element to display action feedback
+    Input('download_selected_btn', 'n_clicks'),
+    State({'type': 'file_selection', 'index': ALL}, 'value'),
+    State("directory_name", 'data'),
+    State("project_name", 'data'),
+    prevent_initial_call=True
+)
+def handle_multiple_file_actions_download(n_clicks, selected_files_values, directory_name, project_name):
+    # Flatten the list of lists into a single list of selected file names
+    selected_files = [file for sublist in selected_files_values for file in sublist]
+    
+    if selected_files:
+        with TemporaryDirectory() as tempdir:
+            # Create a directory named after directory_name inside the temp directory
+            dir_path = os.path.join(tempdir, directory_name)
+            os.makedirs(dir_path, exist_ok=True)
+            try:
+                connection = get_connection()
+                for file_name in selected_files:
+                    file = connection.get_file(project_name, directory_name, file_name)
+                    # Save file to the newly created directory
+                    file_path = os.path.join(dir_path, file_name)
+                    with open(file_path, 'wb') as f:
+                        f.write(file.data)  # Assuming file.data contains the file bytes
+
+                # Path for the zip file
+                zip_path = os.path.join(tempdir, f"{directory_name}.zip")
+                # Create a zip file of the directory
+                shutil.make_archive(zip_path[:-4], 'zip', dir_path)  # Exclude the .zip extension in zip_path
+                
+                return dcc.send_file(zip_path)
+                
+            except (FailedConnectionException, UnsuccessfulGetException) as err:
+                dbc.Alert(str(err), color='warning')
+    else:
+        raise PreventUpdate
+
 
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
@@ -771,6 +820,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             dcc.Store(id='subdirectories_store', data=initial_subdir_data),
             dcc.Store(id='file-store'),
             dcc.Store(id='new_file_store', data=new_files),
+            html.Div(id="action_feedback"),
 
             # Breadcrumbs
             html.Div(
@@ -850,6 +900,12 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             placeholder="Search file tags.. (e.g. 'CT')")),
                         dbc.Col(dbc.Button(
                             "Filter", id="filter_file_tags_btn")),
+                        dbc.Col([html.Div([
+                            dbc.Button(html.I(className="bi bi-trash"), title="Delete Selected", id="delete_selected_btn", className="me-2", color="danger"),
+                            dbc.Button(html.I(className="bi bi-pencil"), title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
+                            dbc.Button(html.I(className="bi bi-download"), title="Download Selected", id="download_selected_btn",  color="primary"),
+                        ], className="d-flex justify-content-end")]),
+
                     ], class_name="mb-3"),
 
 
