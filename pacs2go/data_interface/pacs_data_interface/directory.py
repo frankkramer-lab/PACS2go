@@ -267,7 +267,9 @@ class Directory:
             logger.exception(msg)
             raise UnsuccessfulGetException("Files")
 
-    def get_all_files_sliced_and_as_json(self,  filter:str= '', quantity:int = 20, offset:int = 0) -> dict:
+    def get_all_files_sliced_and_as_json(self,  filter:str= '', quantity:int = None, offset:int = 0) -> dict:
+        if quantity is None:
+            quantity = self.number_of_files_on_this_level
         try:
             # Only get files from a specific range (quantity and offset)
             with PACS_DB() as db:

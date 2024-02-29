@@ -711,7 +711,7 @@ class PACS_DB():
             placeholders = ', '.join(['%s'] * len(file_names))
 
             query = f"""
-                UPDATE {self.FILE_TABLE} SET modality=%s, tags=%s, timestamp_last_updated=%s WHERE parent_directory=%s file_name IN ({placeholders})
+                UPDATE {self.FILE_TABLE} SET modality=%s, tags=%s, timestamp_last_updated=%s WHERE parent_directory=%s AND file_name IN ({placeholders})
             """
             self.cursor.execute(query, (modality, tags, time, directory_name) + tuple(file_names))
             self.conn.commit()
@@ -780,7 +780,7 @@ class PACS_DB():
         try:
             placeholders = ', '.join(['%s'] * len(file_names))
             query = f"""
-                DELETE FROM {self.FILE_TABLE} WHERE parent_directory=%s file_name IN ({placeholders})
+                DELETE FROM {self.FILE_TABLE} WHERE parent_directory=%s AND file_name IN ({placeholders})
             """
             self.cursor.execute(query, (directory_name,) + tuple(file_names))
             self.conn.commit()

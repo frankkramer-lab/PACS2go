@@ -79,12 +79,12 @@ def format_file_details(file: dict, index: int, new:list):
     else:
         formatted_size = f"{round(file['size']/1024/1024, 2)} MB ({file['size']} Bytes)"
     formatted_timestamp = file['upload']
-    checkbox = dcc.Checklist(
+    checkbox = dbc.Checklist(
         id={'type': 'file_selection', 'index': index},
         options=[{"label": "", "value": file['name']}],
         value=[],
         inline=True,
-        style={"margin": "auto"},
+        style={"maxWidth":"10px","margin-right":"0px"},
     )
     return [html.Td(index + 1),
             html.Td(checkbox),
@@ -115,10 +115,16 @@ def get_files_table(directory: dict, files: dict = None, filter: str = '', activ
         index = index + (active_page-1)*quantity
         rows.append(html.Tr(format_file_details(file_info, index, new)))
 
+    checkbox = dbc.Checkbox(
+        id="check_all_files",
+        label="",
+        style={"maxWidth":"10px","margin-right":"0px"},
+    )
+
     # Table header
     table_header = [
         html.Thead(
-            html.Tr([html.Th(" "), html.Th(" "), html.Th("File Name"), html.Th("Format"), html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
+            html.Tr([html.Th(" "), html.Th(checkbox, title="Select all files"), html.Th("File Name"), html.Th("Format"), html.Th("Modality"), html.Th("File Size"), html.Th("Uploaded on"), html.Th("Tags"), html.Th("Actions")]))
     ]
 
     # Only show quantity (20) rows at a time - pagination
@@ -599,7 +605,7 @@ def cb_download(n_clicks, directory_name, project_name):
 
 
 @callback(
-    Output("download_single_file", "data"),
+    Output("download_directory", "data"),
     Input({'type': 'btn_download_file', 'index': ALL}, 'n_clicks'),
     State("directory_name", "data"),
     State("project_name", "data"),
@@ -747,20 +753,30 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
     State("project_name", 'data'),
+    State("check_all_files", "value"),
     prevent_initial_call=True
 )
-def handle_multiple_file_actions_download(n_clicks, selected_files_values, directory_name, project_name):
+def handle_multiple_file_actions_download(n_clicks, selected_files_values, directory_name, project_name, use_all_files):
     # Flatten the list of lists into a single list of selected file names
-    selected_files = [file for sublist in selected_files_values for file in sublist]
-    
-    if selected_files:
+    if use_all_files:
+        try:
+            directory = get_connection().get_directory(project_name, directory_name)
+            files = [file['name'] for file in json.loads(directory.get_all_files_sliced_and_as_json())] 
+        except (FailedConnectionException, UnsuccessfulGetException) as err:
+            dbc.Alert(str(err), color='warning') 
+    elif selected_files_values:
+        files = [file for sublist in selected_files_values for file in sublist]
+    else:
+        raise PreventUpdate
+        
+    if files:
         with TemporaryDirectory() as tempdir:
             # Create a directory named after directory_name inside the temp directory
             dir_path = os.path.join(tempdir, directory_name)
             os.makedirs(dir_path, exist_ok=True)
             try:
                 connection = get_connection()
-                for file_name in selected_files:
+                for file_name in files:
                     file = connection.get_file(project_name, directory_name, file_name)
                     # Save file to the newly created directory
                     file_path = os.path.join(dir_path, file_name)
@@ -800,21 +816,31 @@ def toggle_confirmation_modal_delete_selected_files(delete_n_clicks, cancel_n_cl
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
     State("project_name", 'data'),
-    State('pagination_files', 'active_page'),
-    State('num_files_per_page_select', 'value'),
+    State("check_all_files", "value"),
     prevent_initial_call=True
 )
-def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_name, project_name, active_page, num_files_per_page_select):
+def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_name, project_name, use_all_files):
     if ctx.triggered_id == "confirm_delete_multiple_files" and n_clicks > 0:
         # Flatten the list of lists into a single list of selected file names
-        selected_files = [file for sublist in selected_files_values for file in sublist]
-        if selected_files:
-            connection = get_connection()
-            directory = connection.get_directory(project_name, directory_name)
-            directory.delete_multiple_files(selected_files)
-            return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning"), 1
-        else:
-            return dbc.Alert("No files selected.", color="warning"), no_update
+        try:
+            directory = get_connection().get_directory(project_name, directory_name)
+            if use_all_files:
+                files = [file['name'] for file in json.loads(directory.get_all_files_sliced_and_as_json())] 
+            elif selected_files_values:
+                files = [file for sublist in selected_files_values for file in sublist]
+            else:
+                raise PreventUpdate
+            
+            if files:
+                directory.delete_multiple_files(files)
+                return dbc.Alert(f"Deleted {len(files)} file(s).", color="warning"), 1
+            else:
+                return dbc.Alert("No files selected.", color="warning"), no_update
+            
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+            return dbc.Alert(str(err), color="danger"), no_update
+    else:
+        raise PreventUpdate
         
 
 @callback(
@@ -839,21 +865,30 @@ def toggle_confirmation_modal_edit_selected_files(edit_n_clicks, cancel_n_clicks
     State("project_name", 'data'),
     State('edit_multiple_files_modality', 'value'),
     State('edit_multiple_files_tags', 'value'),
-    State('pagination_files', 'active_page'),
-    State('num_files_per_page_select', 'value'),
+    State("check_all_files", "value"),
     prevent_initial_call=True
 )
-def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name, project_name, modality, tags, active_page, num_files_per_page_select):
+def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name, project_name, modality, tags, use_all_files):
     if ctx.triggered_id == "confirm_edit_multiple_files" and n_clicks > 0:
-        # Flatten the list of lists into a single list of selected file names
-        selected_files = [file for sublist in selected_files_values for file in sublist]
-        if selected_files:
-            connection = get_connection()
-            directory = connection.get_directory(project_name, directory_name)
-            directory.update_multiple_files(selected_files, modality, tags)
-            return dbc.Alert(f"Updated {len(selected_files)} file(s).", color="warning"), 1
-        else:
-            return dbc.Alert("No files selected.", color="warning")
+        try:
+            directory = get_connection().get_directory(project_name, directory_name)
+            if use_all_files:
+                files = [file['name'] for file in json.loads(directory.get_all_files_sliced_and_as_json())] 
+            elif selected_files_values:
+                files = [file for sublist in selected_files_values for file in sublist]
+            else:
+                raise PreventUpdate
+            
+            if files:
+                directory.update_multiple_files(files, modality, tags)
+                return dbc.Alert(f"Updated {len(files)} file(s).", color="warning"), 1
+            else:
+                return dbc.Alert("No files selected.", color="warning"), no_update
+            
+        except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
+            return dbc.Alert(str(err), color="danger"), no_update
+    else:
+        raise PreventUpdate
 
 
 @callback(
@@ -962,9 +997,9 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
             # Header + Buttons
             dbc.Row([
-                    dbc.Col(
+                    dbc.Col([
                         html.H1(f"Directory {directory.display_name}", style={
-                                'textAlign': 'left', })),
+                                'textAlign': 'left', }),]),
                     dbc.Col(
                         [
                             html.Div([
@@ -977,8 +1012,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
                                             "Download"], id="btn_download_dir", size="md", class_name="me-2", n_clicks=0),
-                                # dcc download components for downloading directories and files
-                                dcc.Download(id="download_directory"), dcc.Download(id="download_single_file")])
+                                ])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
             # Directory Details
@@ -1018,10 +1052,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             placeholder="Search file tags.. (e.g. 'CT')")),
                         dbc.Col(dbc.Button(
                             "Filter", id="filter_file_tags_btn")),
+                        dbc.Col(
+                            # dcc download components for downloading directories and files
+                            ),
                         dbc.Col([html.Div([
                             modal_delete_selected_files(rights=project.your_user_role),
                             modal_edit_selected_files(rights=project.your_user_role),
-                            dbc.Button(html.I(className="bi bi-download"), title="Download Selected", id="download_selected_btn",  color="primary"),
+                            dbc.Button([html.I(className="bi bi-download"), dcc.Loading(dcc.Download(id="download_directory"), color=colors['sage'])], title="Download Selected", id="download_selected_btn",  color="primary",)
                         ], className="d-flex justify-content-end")]),
 
                     ], class_name="mb-3"),
