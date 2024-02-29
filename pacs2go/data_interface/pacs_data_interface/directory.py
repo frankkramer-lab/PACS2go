@@ -305,7 +305,7 @@ class Directory:
     def update_multiple_files(self, file_names:list, modality:str, tags:str) -> None:
         try:
             with PACS_DB() as db:
-                db.update_multiple_files(file_names, modality, tags)
+                db.update_multiple_files(file_names, modality, tags, self.unique_name)
             logger.info(
                 f"User {self.project.connection.user} updated multiple filese in directory '{self.unique_name}': {file_names}.")
         except:
@@ -316,7 +316,7 @@ class Directory:
     def delete_multiple_files(self, file_names:list) -> None:
         try:
             with PACS_DB() as db:
-                db.delete_multiple_files_by_name(file_names=file_names)
+                db.delete_multiple_files_by_name(file_names=file_names, directory_name=self.unique_name)
             self.set_last_updated(datetime.now(self.this_timezone))
             logger.info(
                 f"User {self.project.connection.user} deleted multiple filese in directory '{self.unique_name}': {file_names}.")
