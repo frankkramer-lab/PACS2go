@@ -170,7 +170,7 @@ def modal_create_new_subdirectory(directory):
         return html.Div([
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-plus me-2"),
-                        "Create Sub-Directory"], id="create_new_subdirectory_btn", color="success"),
+                        "Create Sub-Directory"], id="create_new_subdirectory_btn", n_clicks=0, color="success"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -205,7 +205,7 @@ def modal_delete(directory: Directory):
         return html.Div([
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-trash me-2"),
-                        "Delete Directory"], id="delete_directory", size="md", color="danger"),
+                        "Delete Directory"], id="delete_directory", n_clicks=0, size="md", color="danger"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -266,7 +266,7 @@ def modal_edit_directory(project: Project, directory: Directory):
         return html.Div([
             # Button which triggers modal activation
             dbc.Button([html.I(className="bi bi-pencil me-2"),
-                        "Edit Directory"], id="edit_directory_metadata", size="md", color="success"),
+                        "Edit Directory"], n_clicks=0, id="edit_directory_metadata", size="md", color="success"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -328,7 +328,7 @@ def modal_edit_file(file:dict):
 def modal_delete_selected_files(rights):
     if rights == 'Owners':
         return html.Div([    
-            dbc.Button(html.I(className="bi bi-trash"), title="Delete Selected", id="delete_selected_btn", className="me-2", color="danger"),
+            dbc.Button(html.I(className="bi bi-trash"), n_clicks=0, title="Delete Selected", id="delete_selected_btn", className="me-2", color="danger"),
             dbc.Modal(
                 [
                     dbc.ModalBody("Are you sure you want to delete the selected files?"),
@@ -348,7 +348,7 @@ def modal_edit_selected_files(rights):
     if rights == 'Owners' or rights == 'Members':
         return html.Div([
             # Button which triggers modal activation
-            dbc.Button(html.I(className="bi bi-pencil"), title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
+            dbc.Button(html.I(className="bi bi-pencil"), n_clicks=0, title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -628,7 +628,7 @@ def cb_download_single_file(n_clicks, directory_name, project_name):
 @callback(
     [Output('modal_delete_file', 'is_open'),
      Output('delete-file-content', 'children'), Output('file', 'data'),
-     Output('file-store', 'data', allow_duplicate=True),],
+     Output('file-change', 'data', allow_duplicate=True),],
     [Input({'type': 'delete_file', 'index': ALL}, 'n_clicks'),
      Input('close_modal_delete_file', 'n_clicks'),
      Input({'type': 'delete_file_and_close', 'index': ALL}, 'n_clicks')],
@@ -657,7 +657,7 @@ def cb_modal_and_file_deletion(open, close, delete_and_close, is_open, directory
                 file.delete_file()
                 # Close Modal and show message
                 return is_open, dbc.Alert(
-                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
+                    [f"The file {file.name} has been successfully deleted! "], color="success"), no_update, 1
             except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                 return not is_open, dbc.Alert(str(err), color="danger"), no_update, no_update
         else:
@@ -695,11 +695,10 @@ def cb_open_edit_file_modal(is_open, directory_name, project_name):
         raise PreventUpdate
 
 
-
 @callback(
     [Output('modal_edit_file_in_list', 'is_open', allow_duplicate=True),
      Output('edit_file_in_list_content', 'children'), 
-     Output('file-store', 'data', allow_duplicate=True),], 
+     Output('file-change', 'data', allow_duplicate=True),], 
     [Input('close_modal_edit_file_in_list', 'n_clicks'),
      Input({'type': 'edit_file_in_list_and_close', 'index': ALL}, 'n_clicks')],
     [State("directory_name", 'data'),
@@ -725,7 +724,7 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
                 if tags:
                     file.set_tags(tags)
                 return False, dbc.Alert(
-                    [f"The file {file.name} has been successfully edited! "], color="success"), directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
+                    [f"The file {file.name} has been successfully edited! "], color="success"), 1
             except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
                 return False, dbc.Alert(str(err), color="danger"), no_update
         else:
@@ -796,7 +795,7 @@ def toggle_confirmation_modal_delete_selected_files(delete_n_clicks, cancel_n_cl
 
 
 @callback(
-    Output('action_feedback', 'children'), Output('file-store', 'data', allow_duplicate=True),
+    Output('action_feedback', 'children'), Output('file-change', 'data', allow_duplicate=True),
     Input('confirm_delete_multiple_files', 'n_clicks'),
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
@@ -813,7 +812,7 @@ def confirm_deletion_selected_files(n_clicks, selected_files_values, directory_n
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             directory.delete_multiple_files(selected_files)
-            return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning"), directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
+            return dbc.Alert(f"Deleted {len(selected_files)} file(s).", color="warning"), 1
         else:
             return dbc.Alert("No files selected.", color="warning"), no_update
         
@@ -833,7 +832,7 @@ def toggle_confirmation_modal_edit_selected_files(edit_n_clicks, cancel_n_clicks
 
 
 @callback(
-    Output('action_feedback', 'children', allow_duplicate=True),Output('file-store', 'data', allow_duplicate=True),
+    Output('action_feedback', 'children', allow_duplicate=True),Output('file-change', 'data', allow_duplicate=True),
     Input('confirm_edit_multiple_files', 'n_clicks'),
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
@@ -852,7 +851,7 @@ def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name,
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             directory.update_multiple_files(selected_files, modality, tags)
-            return dbc.Alert(f"Updated {len(selected_files)} file(s).", color="warning"), directory.get_all_files_sliced_and_as_json(quantity=int(num_files_per_page_select), offset=(active_page-1) * int(num_files_per_page_select))
+            return dbc.Alert(f"Updated {len(selected_files)} file(s).", color="warning"), 1
         else:
             return dbc.Alert("No files selected.", color="warning")
 
@@ -860,7 +859,7 @@ def confirm_edit_selected_files(n_clicks, selected_files_values, directory_name,
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
     Output('pagination_files', 'max_value'),
-    Input('file-store', 'data'),
+    Input('file-change', 'data'),
     Input('pagination_files', 'active_page'),
     Input('num_files_per_page_select', 'value'),
     State("directory", 'data'),
@@ -877,7 +876,7 @@ def cb_reload_files_table(files, active_page, quantity, directory, new, filter):
             active_page = 1
         if not filter:
             filter = ''
-        return get_files_table(directory=directory, files=files, filter=filter, active_page=int(active_page), quantity=int(quantity), new=new), pagination_max_value
+        return get_files_table(directory=directory, filter=filter, active_page=int(active_page), quantity=int(quantity), new=new), pagination_max_value
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
 
@@ -937,7 +936,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             dcc.Store(id='project_name', data=project_name),
             dcc.Store(id='directory', data=initial_directory_data),
             dcc.Store(id='subdirectories_store', data=initial_subdir_data),
-            dcc.Store(id='file-store'),
+            dcc.Store(id='file-change'),
             dcc.Store(id='new_file_store', data=new_files),
 
             # Breadcrumbs
@@ -974,10 +973,10 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                             "Viewer"], color="success", size="md", class_name="mb-1",
                                            href=f"/viewer/{project_name}/{directory.unique_name}/none"),
                                 dbc.Button([html.I(className=f"bi {heart_icon}")], 
-                                            id="btn_fav_dir", size="md", color="light", outline=False, style={'color': colors['favorite']}, title="Add to Favorites",class_name="mx-2 mb-1"),
+                                            id="btn_fav_dir",  n_clicks=0,size="md", color="light", outline=False, style={'color': colors['favorite']}, title="Add to Favorites",class_name="mx-2 mb-1"),
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
-                                            "Download"], id="btn_download_dir", size="md", class_name="me-2"),
+                                            "Download"], id="btn_download_dir", size="md", class_name="me-2", n_clicks=0),
                                 # dcc download components for downloading directories and files
                                 dcc.Download(id="download_directory"), dcc.Download(id="download_single_file")])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
