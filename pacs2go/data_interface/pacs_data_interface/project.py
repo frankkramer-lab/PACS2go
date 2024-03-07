@@ -24,8 +24,10 @@ from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
 
 class Project:
     # File format metadata
-    file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
+    file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI', '.gz' : 'compressed (NIFTI)',
+                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT', '.gif':'GIF',
+                '.json': 'JSON', '.pdf': 'PDF', '.md':'Markdown', '.py':'Python File', '.ipynb': 'Interactive Python Notebook', 
+                '.svg':'Scalable Vector Graphics'}
 
     this_timezone = timezone("Europe/Berlin")
 
