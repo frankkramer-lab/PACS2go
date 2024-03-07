@@ -91,7 +91,7 @@ def card_view_upload():
         dbc.CardBody(
             [
                 html.H4("Upload", className="card-title"),
-                html.P("Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
+                html.P("Upload Medical Files. PACS2go supports a broad array of file formats including DICOM, NIFTI, JPEG, PNG, TIFF, CSV, JSON and many more.",
                        className="card-subtitle"),
                 dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
                            href=f"/upload/none", class_name="mt-3", outline=False, color='success'),
