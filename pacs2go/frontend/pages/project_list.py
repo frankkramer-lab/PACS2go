@@ -56,7 +56,7 @@ def modal_create():
                 dbc.ModalBody([
                     html.Div(id='create-project-content'),
                     dbc.Label(
-                        "Please enter a unique name for your project. (Don't use ä,ö,ü or ß)"),
+                        "Please enter a unique name for your project. (Avoid ä,ö,ü and ß)"),
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
@@ -81,7 +81,7 @@ def modal_create():
                     dbc.Button("Create Project",
                                id="create_and_close", color="success"),
                     # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_create")
+                    dbc.Button("Close", id="close_modal_create", outline=True, color="success",)
                 ]),
             ],
             id="modal_create",
@@ -218,7 +218,7 @@ def layout():
                             dbc.Col(dbc.Input(id="filter_project_keywords",
                                             placeholder="Search keywords.. (e.g. 'CT')")),
                             dbc.Col(dbc.Button(
-                                "Filter", id="filter_project_keywords_btn"))
+                                "Filter", id="filter_project_keywords_btn", outline=True, color="secondary"))
                         ], class_name="mb-3"),
 
                         dcc.Loading(

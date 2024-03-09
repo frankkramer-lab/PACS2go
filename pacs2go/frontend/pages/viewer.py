@@ -123,7 +123,7 @@ def show_file(file: File):
                 html.H6([html.B("Uploaded on: "), f"{file.timestamp_creation.strftime('%d.%m.%Y, %H:%M:%S')}"]), 
                 html.H6([html.B("Last updated on: "), f"{file.last_updated.strftime('%d.%m.%Y, %H:%M:%S')}"]), 
                 html.Div([content]),
-                html.Div([dbc.Button("Download File", id="btn_download"), 
+                html.Div([dbc.Button("Download File", id="btn_download", outline=True, color="success"), 
                           dcc.Download(id="download-file"), 
                           dcc.Store(data=file.name, id='file_name'), 
                           modal_edit_file(file), modal_delete_file(file)], className="mt-3 d-grid gap-2 d-md-flex justify-content-md-end")
@@ -178,7 +178,7 @@ def modal_delete_file(file: File):
                         dbc.Button("Delete File",'delete_file_and_close_viewer', color="danger"),
                         # Button which causes modal to close/disappear
                         dbc.Button(
-                            "Close", id='close_modal_delete_file_viewer'),
+                            "Close", id='close_modal_delete_file_viewer', outline=True, color="success"),
                     ]),
                 ],
                 id='modal_delete_file_viewer',
@@ -216,7 +216,7 @@ def modal_edit_file(file:File):
                         dbc.Button("Update Directory Metadata",
                                 id="edit_file_and_close", color="success"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_edit_file")
+                        dbc.Button("Close", id="close_modal_edit_file", outline=True, color="success")
                     ]),
                 ],
                 id="modal_edit_file_metadata",
