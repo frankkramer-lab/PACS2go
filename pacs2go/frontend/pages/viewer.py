@@ -1,12 +1,15 @@
 import base64
+import gzip
 import io
 import json
 from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 import dash_bootstrap_components as dbc
+import nibabel
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import pydicom
 from dash import (Input, Output, State, callback, ctx, dash_table, dcc, html,
                   no_update, register_page)
@@ -18,14 +21,9 @@ from pacs2go.data_interface.exceptions.exceptions import (
     DownloadException, FailedConnectionException,
     UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
     UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface.directory import Directory
 from pacs2go.data_interface.pacs_data_interface.file import File
-from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface, pil_to_b64)
-
-# from dash_slicer import VolumeSlicer
-# from nilearn import image
 
 
 register_page(__name__, title='Viewer - PACS2go',
@@ -66,19 +64,28 @@ def show_file(file: File):
         content = dash_table.DataTable(df.to_dict(
             'records'), [{"name": i, "id": i} for i in df.columns])
 
-    elif file.format == 'NIFTI':
-        # TODO: implement dash-slicer --> check if dash version is compatible (CURRENT PROBLEM: graph is empty)
-        # img = image.load_img(file.data)
-        # mat = img.affine
-        # img = img.get_data()
-        # img = np.copy(np.moveaxis(img, -1, 0))[:, ::-1]
-        # img = np.copy(np.rot90(img, 3, axes=(1, 2)))
-        # spacing = abs(mat[2, 2]), abs(mat[1, 1]), abs(mat[0, 0])
-        # slicer1 = VolumeSlicer(get_app(), volume=img,
-        #                         axis=0, spacing=spacing)
-        # content = html.Div([slicer1.graph, slicer1.slider, *slicer1.stores, html.H5(str())])
-        content = dbc.Alert(
-            "At this current version NIFTI files can not be displayed.", color="danger")
+    elif file.format == 'NIFTI' or file.format == 'compressed (NIFTI)':
+        if file.name.endswith('.nii'):
+            nifti = nibabel.Nifti1Image.from_bytes(file.data)
+            # Get the data array
+            volume_data = nifti.get_fdata()
+        
+        if file.name.endswith('.nii.gz'):
+            nifti_gz_bytes_io = gzip.decompress(file.data) 
+            nifti = nibabel.Nifti1Image.from_bytes(nifti_gz_bytes_io)
+            volume_data = nifti.get_fdata()
+        
+        content = html.Div([
+            dcc.Graph(id='nifti-slice-viewer',style={'height': '80vw'}),
+            dcc.Slider(
+                id='slice-slider',
+                min=0,
+                max=volume_data.shape[2] - 1,
+                value=volume_data.shape[2] // 2,
+                tooltip={"always_visible": True},
+                step=1,
+            )
+        ])
 
     elif file.format == 'DICOM':
         # Display of DICOM file
@@ -122,7 +129,7 @@ def show_file(file: File):
                          f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.H6([html.B("Uploaded on: "), f"{file.timestamp_creation.strftime('%d.%m.%Y, %H:%M:%S')}"]), 
                 html.H6([html.B("Last updated on: "), f"{file.last_updated.strftime('%d.%m.%Y, %H:%M:%S')}"]), 
-                html.Div([content]),
+                html.Div([dcc.Loading(content, color=colors['sage'])]),
                 html.Div([dbc.Button("Download File", id="btn_download", outline=True, color="success"), 
                           dcc.Download(id="download-file"), 
                           dcc.Store(data=file.name, id='file_name'), 
@@ -150,12 +157,8 @@ def files_dropdown(files: List[File],  file_name: Optional[str] = None):
 
 def file_card_view():
     return html.Div([
-        dbc.Row([
-            # dbc.Col(dbc.Button(html.I(className="bi bi-arrow-left"), id="previous", class_name="align-text-end"),),
-            dbc.Col(dcc.Loading(html.Div(id="current_image"), color=colors['sage'])),
-            # dbc.Col(dbc.Button(html.I(className="bi bi-arrow-right"), id="next")),
-        ])
-    ], className="d-flex justify-content-center")
+            dbc.Col(html.Div(id="current_image")),
+    ])
 
 
 def modal_delete_file(file: File):
@@ -323,6 +326,45 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         # Show nothing if file does not exist.
         return [dbc.Alert(str(err), color='warning')]
+    
+
+@callback(
+    Output('nifti-slice-viewer', 'figure'),
+    [Input('slice-slider', 'value')],
+    State('image-dropdown', 'value'),
+    State('directory', 'data'),
+    State('project', 'data')
+)
+def update_nifti_figure(selected_slice, chosen_file_name: str, directory_name: str, project_name: str):
+    try:
+        connection = get_connection()
+        # Get file
+        file = connection.get_file(
+            project_name, directory_name, chosen_file_name)
+        if file.format in ['NIFTI', 'compressed (NIFTI)']:
+            
+            if file.name.endswith('nii'):
+                nifti = nibabel.Nifti1Image.from_bytes(file.data)
+                # Get the data array
+                volume_data = nifti.get_fdata()
+            elif file.name.endswith('.nii.gz'):
+                nifti_gz_bytes_io = gzip.decompress(file.data) 
+                nifti = nibabel.Nifti1Image.from_bytes(nifti_gz_bytes_io)
+                volume_data = nifti.get_fdata()
+
+            # Extract the selected slice
+            slice_data = volume_data[:, :, selected_slice]
+            # Create figure using Plotly Express
+            fig = px.imshow(np.fliplr(slice_data.T), color_continuous_scale='gray', origin='lower')
+            fig.update_layout(coloraxis_showscale=False)
+            fig.update_xaxes(showticklabels=False)
+            fig.update_yaxes(showticklabels=False)
+            return fig
+
+    except (FailedConnectionException, UnsuccessfulGetException) as err:
+        # Show nothing if file does not exist.
+        return [dbc.Alert(str(err), color='warning')]
+    
 
 
 @callback(
