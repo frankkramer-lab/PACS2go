@@ -155,7 +155,21 @@ def filter_projects_table(btn, filter, projects):
         return get_projects_table(projects, filter)
     else:
         raise PreventUpdate
+    
+@callback(
+    Output("dymanic_search_projects", "options"),
+    Input("dymanic_search_projects", "search_value"),
+    State("no_access_project_names_store","data"),
+)
+def update_project_search_options(search_value, projects_json):
 
+    if not search_value:
+        raise PreventUpdate
+    
+    projects = json.loads(projects_json)
+    return [{'label': dcc.Link(project['name'] + ", Owner(s) of this project: " + ', '.join(project['owners']), href=f"/project/{project['name']}",
+                                className="text-decoration-none",style={'color': colors['links']}),'value': project['name']} 
+                                for project in projects if search_value.lower() in project['name'].lower()]
 
 #################
 #  Page Layout  #
@@ -166,11 +180,16 @@ def layout():
         return login_required_interface()
     else:
         connection = get_connection()
-        initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects()])
-        
+        # Retrieve all projects to which the user has any rights
+        initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects() if p.your_user_role != ''])
+
+        # Retrieve all projects to which the user has no rights
+        no_access_projects = json.dumps([p.to_dict() for p in connection.get_all_projects() if p.your_user_role == ''])
+
         return html.Div(
             children=[
                 dcc.Store(id='projects_list_store', data=initial_projects_data),
+                dcc.Store(id='no_access_project_names_store', data=no_access_projects),
                 # Breadcrumbs
                 html.Div(
                     [
@@ -201,5 +220,10 @@ def layout():
                         dcc.Loading(
                             html.Div(get_projects_table(initial_projects_data), id='projects_table'), color=colors['sage']),
                     ])], class_name="custom-card mb-3"),
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H5("Discover New Projects"),
+                        dcc.Dropdown(id="dymanic_search_projects", placeholder="Type to search available projects..."),
+                ])], class_name="custom-card mb-3"),
 
             ])

@@ -20,15 +20,19 @@ def card_view_projects():
         return dbc.Alert(str(err))
 
     project_list = []
+    
     # Only show 8 projects on landing page
     limit = 8
-    for index, p in enumerate(projects):
-        project_list.append(dbc.ListGroupItem([dcc.Link(
-            p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
-            dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}",
-                     style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+    i = 0
+    for p in projects:
+        if p.your_user_role != '':
+            project_list.append(dbc.ListGroupItem([dcc.Link(
+                p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
+                dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}",
+                        style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+            i = i+1
 
-        if index == limit:
+        if i == limit:
             break
 
     card = dbc.Card(
