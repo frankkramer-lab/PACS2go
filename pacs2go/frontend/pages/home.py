@@ -13,7 +13,7 @@ register_page(__name__, title='PACS2go 2.0', path='/')
 def card_view_projects():
     connection = get_connection()
     try:
-        projects = connection.get_all_projects()
+        projects = connection.get_all_projects(only_accessible=True)
         number_of_projects = len(projects)
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
@@ -25,12 +25,11 @@ def card_view_projects():
     limit = 8
     i = 0
     for p in projects:
-        if p.your_user_role != '':
-            project_list.append(dbc.ListGroupItem([dcc.Link(
-                p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
-                dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}",
-                        style={'color': colors['links']})], class_name="d-flex justify-content-between"))
-            i = i+1
+        project_list.append(dbc.ListGroupItem([dcc.Link(
+            p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
+            dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}",
+                    style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+        i = i+1
 
         if i == limit:
             break
@@ -39,7 +38,7 @@ def card_view_projects():
         dbc.CardBody(
             [
                 html.H4("Projects", className="card-title"),
-                html.P(f"Your PACS2Go currently contains {number_of_projects} projects.",
+                html.P(f"You currently have access to {number_of_projects} project(s).",
                        className="card-subtitle"),
                 dbc.ListGroup(project_list,
                               class_name="my-3"

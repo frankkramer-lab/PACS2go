@@ -129,7 +129,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             # Try to create project
             project = connection.create_project(
                 name=project_name, description=description, keywords=keywords, parameters=parameters)
-            projects = json.dumps([p.to_dict() for p in connection.get_all_projects()])
+            projects = json.dumps([p.to_dict() for p in connection.get_all_projects(only_accessible=True)])
             return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new project {project.name}.",
                                                           href=f"/project/{project.name}",
@@ -181,7 +181,11 @@ def layout():
     else:
         connection = get_connection()
         # Retrieve all projects to which the user has any rights
-        initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects() if p.your_user_role != ''])
+        if current_user.id != 'admin':
+            initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects(only_accessible=True)])
+        else:
+            initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects()])
+        
 
         # Retrieve all projects to which the user has no rights
         no_access_projects = json.dumps([p.to_dict() for p in connection.get_all_projects() if p.your_user_role == ''])
