@@ -62,7 +62,8 @@ def show_file(file: File):
         csv_str = file.data.decode("utf-8")
         df = pd.read_csv(io.StringIO(csv_str))
         content = dash_table.DataTable(df.to_dict(
-            'records'), [{"name": i, "id": i} for i in df.columns])
+            'records'), [{"name": i, "id": i} for i in df.columns], 
+                                       style_table={'overflowY': 'scroll'})
         
     elif file.format == 'Markdown':
         markdown_text = file.data.decode('utf-8')
