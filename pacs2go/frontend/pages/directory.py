@@ -96,7 +96,11 @@ def format_file_details(file: dict, index: int, new:list):
             html.Td(formatted_size),
             html.Td(formatted_timestamp, title=f"Last Updated On: {file['last_updated']}"),
             html.Td(tags),
-            html.Td([modal_delete_file(file), modal_edit_file(file), dbc.Button([html.I(className="bi bi-download")], id={'type': 'btn_download_file', 'index': file['name']})], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'})]
+            html.Td(html.Div([modal_edit_file(file), 
+                     dbc.Button([html.I(className="bi bi-download")], class_name="me-1", outline=True, color="success", id={'type': 'btn_download_file', 'index': file['name']}),
+                     modal_delete_file(file), 
+                     ], style={'display': 'flex', 'justifyContent': 'space-evenly', 'alignItems': 'center'}))
+            ]
 
 def get_files_table(directory: dict, files: dict = None, filter: str = '', active_page: int = 1, quantity:int = 20, new:list = []):
     rows = []
@@ -194,9 +198,9 @@ def modal_create_new_subdirectory(directory):
                                   placeholder="..."),
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button("Close", id="close_modal_create_subdir"),
                         dbc.Button("Create Directory",
                                    id="create_subdir_and_close", color="success"),
+                        dbc.Button("Close", id="close_modal_create_subdir", outline=True, color="success",),
                     ]),
                 ],
                 id="modal_create_new_subdirectory",
@@ -227,7 +231,7 @@ def modal_delete(directory: Directory):
                         dbc.Button("Delete Directory",
                                    id="delete_directory_and_close", color="danger"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_delete_directory"),
+                        dbc.Button("Close", id="close_modal_delete_directory", outline=True, color="success",),
                     ]),
                 ],
                 id="modal_delete_directory",
@@ -254,11 +258,10 @@ def modal_delete_file(file: dict):
                             id='delete-file-content'),
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button(
-                            "Close", id='close_modal_delete_file'),
                         dbc.Button("Delete File",
                                    id={'type': 'delete_file_and_close', 'index': file['name']}, color="danger"),
-                        
+                        dbc.Button(
+                            "Close", id='close_modal_delete_file', outline=True, color="success",),
                     ]),
                 ],
                 id='modal_delete_file',
@@ -290,7 +293,7 @@ def modal_edit_directory(project: Project, directory: Directory):
                         dbc.Button("Update Directory Metadata",
                                 id="edit_dir_and_close", color="success"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_edit_dir")
+                        dbc.Button("Close", id="close_modal_edit_dir", outline=True, color="success",)
                     ]),
                 ],
                 id="modal_edit_directory_metadata",
@@ -321,9 +324,9 @@ def modal_edit_file(file:dict):
                                 placeholder="e.g.: Dermatology, control group", value=' '),
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button("Close", id="close_modal_edit_file_in_list"),
                         dbc.Button("Update File",
                                 id={'type': 'edit_file_in_list_and_close', 'index': file['name']}, color="success"),
+                        dbc.Button("Close", id="close_modal_edit_file_in_list", outline=True, color="success",),
                     ]),
                 ],
                 id="modal_edit_file_in_list",
@@ -340,8 +343,8 @@ def modal_delete_selected_files(rights):
                     dbc.ModalBody("Are you sure you want to delete the selected files?"),
                     dbc.ModalFooter(
                         [
-                            dbc.Button("Cancel", id="cancel_delete_multiple_files", n_clicks=0),
                             dbc.Button("Confirm Delete", id="confirm_delete_multiple_files", color="danger", n_clicks=0),
+                            dbc.Button("Cancel", id="cancel_delete_multiple_files", n_clicks=0, outline=True, color="success",),
                         ]
                     ),
                 ],
@@ -354,7 +357,7 @@ def modal_edit_selected_files(rights):
     if rights == 'Owners' or rights == 'Members':
         return html.Div([
             # Button which triggers modal activation
-            dbc.Button(html.I(className="bi bi-pencil"), n_clicks=0, title="Edit Selected",id="edit_selected_btn", className="me-2", color="success"),
+            dbc.Button(html.I(className="bi bi-pencil"), n_clicks=0, title="Edit Selected",id="edit_selected_btn", className="me-1", color="success"),
             # Actual modal view
             dbc.Modal(
                 [
@@ -371,9 +374,8 @@ def modal_edit_selected_files(rights):
                                 placeholder="e.g.: Dermatology, control group", value=''),
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button("Cancel", id="cancel_edit_multiple_files"),
                         dbc.Button("Update the selected files", color="success", id="confirm_edit_multiple_files"),
-                        
+                        dbc.Button("Cancel", id="cancel_edit_multiple_files", outline=True, color="success",),
                     ]),
                 ],
                 id="confirmation_edit_multiple_files_modal",
@@ -1005,13 +1007,13 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             html.Div([
                                 # Button to access the File Viewer (viewer.py)
                                 dbc.Button([html.I(className="bi bi-play me-2"),
-                                            "Viewer"], color="success", size="md", class_name="mb-1",
+                                            "Viewer"], color="success", size="md",
                                            href=f"/viewer/{project_name}/{directory.unique_name}/none"),
                                 dbc.Button([html.I(className=f"bi {heart_icon}")], 
-                                            id="btn_fav_dir",  n_clicks=0,size="md", color="light", outline=False, style={'color': colors['favorite']}, title="Add to Favorites",class_name="mx-2 mb-1"),
+                                            id="btn_fav_dir",  n_clicks=0,size="md", outline=True, style={'color': colors['favorite'], 'border-color':colors['favorite']}, title="Add to Favorites",class_name="mx-2"),
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
-                                            "Download"], id="btn_download_dir", size="md", class_name="me-2", n_clicks=0),
+                                            "Download"], id="btn_download_dir", size="md", class_name="me-2", n_clicks=0, outline=True, color="success"),
                                 ])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
@@ -1034,7 +1036,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         dbc.Col(dbc.Input(id="filter_subdirectory_tags",
                             placeholder="Search subdirectories...")),
                         dbc.Col(dbc.Button(
-                            "Filter", id="filter_subdirectory_tags_btn")),
+                            "Filter", id="filter_subdirectory_tags_btn", outline=True, color="success")),
                     ], class_name="mb-3"),
                     # Directories Table
                     dcc.Loading(html.Div(get_subdirectories_table(
@@ -1051,14 +1053,14 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                         dbc.Col(dbc.Input(id="filter_file_tags",
                             placeholder="Search file tags.. (e.g. 'CT')")),
                         dbc.Col(dbc.Button(
-                            "Filter", id="filter_file_tags_btn")),
+                            "Filter", id="filter_file_tags_btn", outline=True, color="success")),
                         dbc.Col(
                             # dcc download components for downloading directories and files
                             ),
                         dbc.Col([html.Div([
-                            modal_delete_selected_files(rights=project.your_user_role),
                             modal_edit_selected_files(rights=project.your_user_role),
-                            dbc.Button([html.I(className="bi bi-download"), dcc.Loading(dcc.Download(id="download_directory"), color=colors['sage'])], title="Download Selected", id="download_selected_btn",  color="primary",)
+                            dbc.Button([html.I(className="bi bi-download"), dcc.Loading(dcc.Download(id="download_directory"))], class_name="me-1",outline=True, color="success",title="Download Selected", id="download_selected_btn"),
+                            modal_delete_selected_files(rights=project.your_user_role)
                         ], className="d-flex justify-content-end")]),
 
                     ], class_name="mb-3"),
@@ -1070,7 +1072,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     dbc.Row([
                         dbc.Col([
                             dbc.Pagination(id="pagination_files", max_value=math.ceil(
-                                int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False),
+                                int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False,),
                         ]),
                         dbc.Col([
                             html.Div(

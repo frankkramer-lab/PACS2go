@@ -32,7 +32,7 @@ def get_project_names() -> List[str]:
         project_list = []
 
         for p in connection.get_all_projects():
-            if p.your_user_role != 'Collaborators':
+            if p.your_user_role in ['Owners', 'Members']:
                 project_list.append(p.name)
 
         return project_list

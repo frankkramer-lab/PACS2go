@@ -327,6 +327,7 @@ class PACS_DB():
             query = f"""
                 SELECT name, keywords, description, parameters, timestamp_creation, timestamp_last_updated
                 FROM {self.PROJECT_TABLE}
+                ORDER BY timestamp_last_updated DESC
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
@@ -347,6 +348,7 @@ class PACS_DB():
             query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM {self.DIRECTORY_TABLE}
+                ORDER BY timestamp_last_updated DESC
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()

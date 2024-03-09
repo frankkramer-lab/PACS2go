@@ -144,7 +144,7 @@ def modal_delete(project: Project):
                         dbc.Button("Delete Project",
                                    id="delete_and_close", color="danger"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_delete"),
+                        dbc.Button("Close", id="close_modal_delete", outline=True, color="success",),
                     ]),
                 ],
                 id="modal_delete",
@@ -177,7 +177,7 @@ def modal_delete_data(project: Project):
                         dbc.Button("Delete All Directories",
                                    id="delete_data_and_close", color="danger"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_delete_data"),
+                        dbc.Button("Close", id="close_modal_delete_data", outline=True, color="success",),
                     ]),
                 ],
                 id="modal_delete_data",
@@ -221,7 +221,7 @@ def modal_edit_project(project: Project):
                         dbc.Button("Save changes",
                                    id="edit_and_close", color="success"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_edit")
+                        dbc.Button("Close", id="close_modal_edit", outline=True, color="success",)
                     ]),
                 ],
                 id="modal_edit_project",
@@ -261,7 +261,7 @@ def modal_add_user_to_project(project: Project, users:list):
                         # Remove user from project
                         dbc.Button("Remove chosen user from project.", id="remove_user_and_close", color="danger"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_add_user")
+                        dbc.Button("Close", id="close_modal_add_user", outline=True, color="success",)
                     ]),
                 ],
                 id="modal_add_user_project",
@@ -299,7 +299,7 @@ def modal_create_new_directory(project: Project):
                         dbc.Button("Create Directory",
                                    id="create_dir_and_close", color="success"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_create_dir")
+                        dbc.Button("Close", id="close_modal_create_dir", outline=True, color="success",)
                     ]),
                 ],
                 id="modal_create_new_directory",
@@ -336,7 +336,7 @@ def modal_add_citation(project: Project):
                         dbc.Button("Add",
                                    id="add_cit_and_close", color="success"),
                         # Button which causes modal to close/disappear
-                        dbc.Button("Close", id="close_modal_add_cit")
+                        dbc.Button("Close", id="close_modal_add_cit", outline=True, color="success",)
                     ]),
                 ],
                 id="modal_create_add_citation",
@@ -355,8 +355,8 @@ def insert_data(project: Project):
 def download_project_data():
     return html.Div([
         dbc.Button([
-            html.I(className="bi bi-download me-2"), "Download"], id="btn_download_project", size="md"),
-        dcc.Loading(dcc.Download(id="download_project"), color=colors['sage'])])
+            html.I(className="bi bi-download me-2"), "Download"], outline=True, color="success", id="btn_download_project", size="md"),
+        dcc.Loading(dcc.Download(id="download_project"))])
 
 
 #################
@@ -749,10 +749,10 @@ def layout(project_name: Optional[str] = None):
                 dbc.Row([
                     dbc.Col(html.H1(f"Project {project.name}", style={
                             'textAlign': 'left', })),
-                    dbc.Col(
-                        [insert_data(project),
-                            download_project_data(),
-                            ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
+                    dbc.Col([
+                        download_project_data(),
+                        insert_data(project),    
+                    ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                 ], className="mb-3"),
 
                 # Project Information (owners,..)
@@ -777,7 +777,7 @@ def layout(project_name: Optional[str] = None):
                             dbc.Col(dbc.Input(id="filter_directory_tags",
                                 placeholder="Search directory... ")),
                             dbc.Col(dbc.Button(
-                                "Filter", id="filter_directory_tags_btn"))
+                                "Filter", id="filter_directory_tags_btn", outline=True, color="success"))
                         ], class_name="mb-3"),
                         # Directories Table
                         dcc.Loading(html.Div(get_directories_table(

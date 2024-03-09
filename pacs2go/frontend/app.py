@@ -40,7 +40,6 @@ login_manager.init_app(server)
 login_manager.login_view = "/login"
 
 server.config["AUTH_TYPE"] = "XNAT"
-# TODO: production: https://flask-login.readthedocs.io/en/latest/#session-protection set to "strong"
 login_manager.session_protection = 'strong'
 login_manager.auth_backend = XNATAuthBackend()
 
@@ -130,8 +129,8 @@ app.layout = html.Div(
                             style={"width": "25px"},  # Adjust the width and height as needed
                         ),
             html.Small(f" University of Augsburg |  Version {os.getenv('PACS2GO_VERSION')}")],
-            style={
-                "margin-top":"1em",
+            style={"marginRight": "1%",
+                "marginTop":"1%",
                 "text-align": "right",
             },
         ),
