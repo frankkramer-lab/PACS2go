@@ -366,13 +366,16 @@ class XNATProject():
         
     def create_directory(self, name) -> 'XNATDirectory':
         # To create an empty directory in XNAT, it is necessary to temporarily insert a file.
-        file_path = 'empty_dir.txt'
+        file_path = 'empty_directory_initialization_file.txt'
         with open(file_path, 'w') as f:
             f.write('No content')
         
         file = self.insert(file_path=file_path,directory_name=name)
         dir = file.directory
-        file.delete_file()
+        
+        if self.your_user_role == 'Owners':
+            file.delete_file()
+
         os.remove(file_path)
         return dir
 
