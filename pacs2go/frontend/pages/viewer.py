@@ -84,6 +84,7 @@ def show_file(file: File):
         initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
         
         content = html.Div([
+            html.Hr(),
             dcc.Loading(dcc.Graph(id='nifti-slice-viewer-z',style={'height': '60vh'}), color=colors['sage']),
             daq.Slider(
                 id='slice-slider-z',
@@ -94,6 +95,7 @@ def show_file(file: File):
                 marks={0: 'I',volume_data.shape[2] - 1: 'S'},
                 step=1,
                 color=colors['sage'],
+                className="mt-3 mb-4 d-flex justify-content-center",
             ),
             dbc.Row([
                 dbc.Col([
@@ -107,7 +109,9 @@ def show_file(file: File):
                         marks={0: 'L',volume_data.shape[0] - 1: 'R'},
                         step=1,
                         color=colors['sage'],
-                    ),]),
+                        className="d-flex justify-content-center",
+                    ),
+                ], class_name="mt-3 mb-4"),
                 dbc.Col([                
                     dcc.Loading(dcc.Graph(id='nifti-slice-viewer-y'), color=colors['sage']),
                     daq.Slider(
@@ -119,10 +123,11 @@ def show_file(file: File):
                         marks={0: 'P',volume_data.shape[1] - 1: 'A'},
                         step=1,
                         color=colors['sage'],
+                        className="d-flex justify-content-center",
                     ),
-                ]),
-            ], class_name="mt-3 mb-3"),
-            html.P(f"Note: The volume data has undergone adjustment to conform to the Right-Anterior-Superior (RAS) orientation from its original {initial_orientation} configuration, as determined via nibabel. However, please verify this orientation against recognized anatomical landmarks to ensure its accuracy."),
+                ], class_name="mt-3 mb-4"),
+            ]),
+            dbc.FormText(f"Note: The volume data has undergone adjustment to conform to the Right-Anterior-Superior (RAS) orientation from its original {initial_orientation} configuration, as determined via nibabel. However, please verify this orientation against recognized anatomical landmarks to ensure its accuracy."),
         ])
 
     elif file.format == 'DICOM':
@@ -424,6 +429,9 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
             figz.update_layout(coloraxis_showscale=False)
             figz.update_xaxes(showticklabels=False)
             figz.update_yaxes(showticklabels=False)
+            figz.update_layout(
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
             
             # Extract the selected slice
             slice_data = volume_data[:, selected_slice_y, :]
@@ -435,6 +443,9 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
             figy.update_layout(coloraxis_showscale=False)
             figy.update_xaxes(showticklabels=False)
             figy.update_yaxes(showticklabels=False)
+            figy.update_layout(
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
             
             # Extract the selected slice
             slice_data = volume_data[selected_slice_x, :, :]
@@ -447,6 +458,10 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
             figx.update_layout(coloraxis_showscale=False)
             figx.update_xaxes(showticklabels=False)
             figx.update_yaxes(showticklabels=False)
+            figx.update_layout(
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
+
             
             return figz, figy ,figx
 
@@ -484,6 +499,8 @@ def download_file(n_clicks, file_name, dir, project):
 
 
 def layout(project_name: Optional[str] = None, directory_name:  Optional[str] = None, file_name:  Optional[str] = None):
+    # Replace whitespace (JavaScript function encodes space as %20)
+    file_name = file_name.replace('%20', ' ')
     if not current_user.is_authenticated:
         return login_required_interface()
 
