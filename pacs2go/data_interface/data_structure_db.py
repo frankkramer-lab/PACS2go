@@ -429,6 +429,7 @@ class PACS_DB():
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM {self.DIRECTORY_TABLE}
                 WHERE parent_project = %s
+                ORDER BY timestamp_last_updated DESC
             """
             self.cursor.execute(query, (project_name,))
             results = self.cursor.fetchall()
