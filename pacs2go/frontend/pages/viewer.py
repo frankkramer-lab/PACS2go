@@ -76,11 +76,14 @@ def show_file(file: File):
             # Get the data array
             volume_data = nifti.get_fdata()
         
-        if file.name.endswith('.nii.gz'):
+        elif file.name.endswith('.nii.gz'):
             nifti_gz_bytes_io = gzip.decompress(file.data) 
             nifti = nibabel.Nifti1Image.from_bytes(nifti_gz_bytes_io)
             volume_data = nifti.get_fdata()
             
+        else:
+            content = dbc.Alert("This file format can not be displayed yet.", color="danger")
+                        
         initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
         
         content = html.Div([
@@ -402,7 +405,10 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
                 if len(volume_data.shape) == 4:
                     # 4D Nifti
                     volume_data = volume_data[:,:,:,0]
+            else:
+                raise PreventUpdate
                     
+            # Transfrom to RAS orientation (see nibabel orientations documentation)
             initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
             
             if initial_orientation[0] != 'R':
@@ -419,7 +425,6 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
 
             
             # Extract the selected slice
-            #slice_data = np.rot90(np.rot90(volume_data[:, :, index_z]))
             slice_data = volume_data[:, :, selected_slice_z]
             # Create figure using Plotly Express
             figz = px.imshow(slice_data.T, color_continuous_scale='gray', origin='lower', title= "Z-axis Slice Viewer")
@@ -461,9 +466,10 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
             figx.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),
             )
-
             
             return figz, figy ,figx
+        else:
+            raise PreventUpdate
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         # Show nothing if file does not exist.
