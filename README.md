@@ -13,10 +13,7 @@ PACS2go is a portable **Picture Archiving and Communication System** tailored fo
 
 ## Architecture
 
-![[Bildschirmfoto 2024-03-10 um 18.05.26.png]]
-
-
-  
+![[docs/Bildschirmfoto 2024-03-10 um 18.05.26.png]]
 
 ## Getting Started in Just 3 Steps
 
@@ -24,23 +21,14 @@ To kick off with PACS2go, ensure Docker is installed on your system ([Docker Ins
   
 
 ```bash
-
 # 1 - Clone this repository
-
 $ git clone https://git.rz.uni-augsburg.de/misit-bachelor/pacs2go.git
 
-  
-
 # 2 - Go into the repository
-
 $ cd pacs2go
 
-  
-
 # 3 - Start services via docker-compose
-
 $ docker-compose up
-
 ```
   
 🎉  The PACS2go is now live and ready! 🎉 
@@ -51,13 +39,15 @@ $ docker-compose up
 
 
 ## User Interface Preview
-
-🛬 Landing page ![[Capture-2024-03-10-183446.png]]
+🛬 Landing page 
+![[Capture-2024-03-10-183446.png]]
 
 💽 Upload interface
 ![[Capture-2024-03-10-183619.png]]
+
 🗂️ Inside a directory
 ![[Capture-2024-03-10-183701.png]]
+
 🧠 NIfTI viewer
 ![[Capture-2024-03-10-183822.png]]
   
