@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 import dash_bootstrap_components as dbc
+import dash_daq as daq
 import nibabel
 import numpy as np
 import pandas as pd
@@ -79,17 +80,49 @@ def show_file(file: File):
             nifti_gz_bytes_io = gzip.decompress(file.data) 
             nifti = nibabel.Nifti1Image.from_bytes(nifti_gz_bytes_io)
             volume_data = nifti.get_fdata()
+            
+        initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
         
         content = html.Div([
-            dcc.Graph(id='nifti-slice-viewer',style={'height': '80vw'}),
-            dcc.Slider(
-                id='slice-slider',
+            dcc.Loading(dcc.Graph(id='nifti-slice-viewer-z',style={'height': '60vh'}), color=colors['sage']),
+            daq.Slider(
+                id='slice-slider-z',
                 min=0,
                 max=volume_data.shape[2] - 1,
                 value=volume_data.shape[2] // 2,
-                tooltip={"always_visible": True},
+                handleLabel={"showCurrentValue": True,"label": " "},
+                marks={0: 'I',volume_data.shape[2] - 1: 'S'},
                 step=1,
-            )
+                color=colors['sage'],
+            ),
+            dbc.Row([
+                dbc.Col([
+                    dcc.Loading(dcc.Graph(id='nifti-slice-viewer-x'), color=colors['sage']),
+                    daq.Slider(
+                        id='slice-slider-x',
+                        min=0,
+                        max=volume_data.shape[0] - 1,
+                        value=volume_data.shape[0] // 2,
+                        handleLabel={"showCurrentValue": True,"label": " "},
+                        marks={0: 'L',volume_data.shape[0] - 1: 'R'},
+                        step=1,
+                        color=colors['sage'],
+                    ),]),
+                dbc.Col([                
+                    dcc.Loading(dcc.Graph(id='nifti-slice-viewer-y'), color=colors['sage']),
+                    daq.Slider(
+                        id='slice-slider-y',
+                        min=0,
+                        max=volume_data.shape[1] - 1,
+                        value=volume_data.shape[1] // 2,
+                        handleLabel={"showCurrentValue": True,"label": " "},
+                        marks={0: 'P',volume_data.shape[1] - 1: 'A'},
+                        step=1,
+                        color=colors['sage'],
+                    ),
+                ]),
+            ], class_name="mt-3 mb-3"),
+            html.P(f"Note: The volume data has undergone adjustment to conform to the Right-Anterior-Superior (RAS) orientation from its original {initial_orientation} configuration, as determined via nibabel. However, please verify this orientation against recognized anatomical landmarks to ensure its accuracy."),
         ])
 
     elif file.format == 'DICOM':
@@ -134,7 +167,7 @@ def show_file(file: File):
                          f"{round(file.size/1024,2)} KB ({file.size} Bytes)"]),
                 html.H6([html.B("Uploaded on: "), f"{file.timestamp_creation.strftime('%d.%m.%Y, %H:%M:%S')}"]), 
                 html.H6([html.B("Last updated on: "), f"{file.last_updated.strftime('%d.%m.%Y, %H:%M:%S')}"]), 
-                html.Div([dcc.Loading(content, color=colors['sage'])]),
+                html.Div([content]),
                 html.Div([dbc.Button("Download File", id="btn_download", outline=True, color="success"), 
                           dcc.Download(id="download-file"), 
                           dcc.Store(data=file.name, id='file_name'), 
@@ -334,13 +367,17 @@ def show_chosen_file(chosen_file_name: str, directory_name: str, project_name: s
     
 
 @callback(
-    Output('nifti-slice-viewer', 'figure'),
-    [Input('slice-slider', 'value')],
+    [Output('nifti-slice-viewer-z', 'figure'),
+     Output('nifti-slice-viewer-y', 'figure'),
+     Output('nifti-slice-viewer-x', 'figure'),],
+    [Input('slice-slider-z', 'value'),
+     Input('slice-slider-x', 'value'),
+     Input('slice-slider-y', 'value')],
     State('image-dropdown', 'value'),
     State('directory', 'data'),
     State('project', 'data')
 )
-def update_nifti_figure(selected_slice, chosen_file_name: str, directory_name: str, project_name: str):
+def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, chosen_file_name: str, directory_name: str, project_name: str):
     try:
         connection = get_connection()
         # Get file
@@ -352,19 +389,66 @@ def update_nifti_figure(selected_slice, chosen_file_name: str, directory_name: s
                 nifti = nibabel.Nifti1Image.from_bytes(file.data)
                 # Get the data array
                 volume_data = nifti.get_fdata()
+                
             elif file.name.endswith('.nii.gz'):
                 nifti_gz_bytes_io = gzip.decompress(file.data) 
                 nifti = nibabel.Nifti1Image.from_bytes(nifti_gz_bytes_io)
                 volume_data = nifti.get_fdata()
+                if len(volume_data.shape) == 4:
+                    # 4D Nifti
+                    volume_data = volume_data[:,:,:,0]
+                    
+            initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
+            
+            if initial_orientation[0] != 'R':
+                #index_x = volume_data.shape[0] - 1 - selected_slice_x
+                volume_data = np.flip(volume_data, axis=0)
 
+            if initial_orientation[1] != 'A':
+                #index_y = volume_data.shape[1] - 1 - selected_slice_y
+                volume_data = np.flip(volume_data, axis=1)
+
+            if initial_orientation[2] != 'S':
+                #index_z = volume_data.shape[0] - 1 - selected_slice_z
+                volume_data = np.flip(volume_data, axis=2)
+
+            
             # Extract the selected slice
-            slice_data = volume_data[:, :, selected_slice]
+            #slice_data = np.rot90(np.rot90(volume_data[:, :, index_z]))
+            slice_data = volume_data[:, :, selected_slice_z]
             # Create figure using Plotly Express
-            fig = px.imshow(np.fliplr(slice_data.T), color_continuous_scale='gray', origin='lower')
-            fig.update_layout(coloraxis_showscale=False)
-            fig.update_xaxes(showticklabels=False)
-            fig.update_yaxes(showticklabels=False)
-            return fig
+            figz = px.imshow(slice_data.T, color_continuous_scale='gray', origin='lower', title= "Z-axis Slice Viewer")
+            figz.add_shape(type="line", x0=selected_slice_x, y0=0, x1=selected_slice_x, y1=volume_data.shape[1]-1, line=dict(color="Red", width=2),)
+            figz.add_shape(type="line", x0=0, y0=selected_slice_y, x1=volume_data.shape[0]-1, y1=selected_slice_y, line=dict(color="Blue", width=2),)
+
+            figz.update_layout(coloraxis_showscale=False)
+            figz.update_xaxes(showticklabels=False)
+            figz.update_yaxes(showticklabels=False)
+            
+            # Extract the selected slice
+            slice_data = volume_data[:, selected_slice_y, :]
+            # Create figure using Plotly Express
+            figy = px.imshow(slice_data.T, color_continuous_scale='gray', origin='lower', title= "Y-axis Slice Viewer")
+            figy.add_shape(type="line", x0=selected_slice_x, y0=0, x1=selected_slice_x, y1=volume_data.shape[2]-1, line=dict(color="Red", width=2),)
+            figy.add_shape(type="line", x0=0, y0=selected_slice_z, x1=volume_data.shape[0]-1, y1=selected_slice_z, line=dict(color="Green", width=2),)
+            
+            figy.update_layout(coloraxis_showscale=False)
+            figy.update_xaxes(showticklabels=False)
+            figy.update_yaxes(showticklabels=False)
+            
+            # Extract the selected slice
+            slice_data = volume_data[selected_slice_x, :, :]
+ 
+            # Create figure using Plotly Express
+            figx = px.imshow(slice_data.T, color_continuous_scale='gray', origin='lower', title= "X-axis Slice Viewer")
+            figx.add_shape(type="line", x0=selected_slice_y, y0=0, x1=selected_slice_y, y1=volume_data.shape[2]-1, line=dict(color="Blue", width=2),)
+            figx.add_shape(type="line", x0=0, y0=selected_slice_z, x1=volume_data.shape[1]-1, y1=selected_slice_z, line=dict(color="Green", width=2),)
+            
+            figx.update_layout(coloraxis_showscale=False)
+            figx.update_xaxes(showticklabels=False)
+            figx.update_yaxes(showticklabels=False)
+            
+            return figz, figy ,figx
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         # Show nothing if file does not exist.

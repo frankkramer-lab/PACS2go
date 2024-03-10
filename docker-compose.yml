@@ -11,7 +11,7 @@ services:
     environment: # env-variables
       XNAT_USER: ${XNAT_USER}
       XNAT_PASS: ${XNAT_PASS}
-      PACS2GO_VERSION: 2.0.8
+      PACS2GO_VERSION: 2.1.0
       PYTHONUNBUFFERED: 1
     command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload --timeout 1800
     # command: python pacs2go/frontend/app.py
