@@ -52,7 +52,7 @@ def login_required_interface():
             },  # Center align the container div in the middle of the screen
             children=[
                 html.H4(
-                    style={'text-align': 'center'},  # Center align the text
+                    style={'textAlign': 'center'},  # Center align the text
                     children=[
                         "Please ",
                         dcc.Link(

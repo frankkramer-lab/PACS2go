@@ -267,7 +267,9 @@ class Directory:
             logger.exception(msg)
             raise UnsuccessfulGetException("Files")
 
-    def get_all_files_sliced_and_as_json(self,  filter:str= '', quantity:int = 20, offset:int = 0) -> dict:
+    def get_all_files_sliced_and_as_json(self,  filter:str= '', quantity:int = None, offset:int = 0) -> dict:
+        if quantity is None:
+            quantity = self.number_of_files_on_this_level
         try:
             # Only get files from a specific range (quantity and offset)
             with PACS_DB() as db:
@@ -301,6 +303,29 @@ class Directory:
             msg = f"Failed to get new files for directory '{self.unique_name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("New files")
+        
+    def update_multiple_files(self, file_names:list, modality:str, tags:str) -> None:
+        try:
+            with PACS_DB() as db:
+                db.update_multiple_files(file_names, modality, tags, self.unique_name)
+            logger.info(
+                f"User {self.project.connection.user} updated multiple filese in directory '{self.unique_name}': {file_names}.")
+        except:
+            msg = f"Failed to update files for directory '{self.unique_name}': {file_names}"
+            logger.exception(msg)
+            raise UnsuccessfulAttributeUpdateException(f"Multiple files in {self.unique_name}")
+        
+    def delete_multiple_files(self, file_names:list) -> None:
+        try:
+            with PACS_DB() as db:
+                db.delete_multiple_files_by_name(file_names=file_names, directory_name=self.unique_name)
+            self.set_last_updated(datetime.now(self.this_timezone))
+            logger.info(
+                f"User {self.project.connection.user} deleted multiple filese in directory '{self.unique_name}': {file_names}.")
+        except:
+            msg = f"Failed to delete files for directory '{self.unique_name}': {file_names}"
+            logger.exception(msg)
+            raise UnsuccessfulDeletionException(f"Multiple files in {self.unique_name}")
 
     def favorite_directory(self, username:str) -> None:
         try:
@@ -368,6 +393,7 @@ class Directory:
             'is_consistent': self.is_consistent,   
             'parameters': self.parameters,
             'number_of_files': self.number_of_files,  
+            'number_of_files_on_this_level': self.number_of_files_on_this_level,
             'associated_directory': self.parent_directory.unique_name if self.parent_directory else None,
             'associated_project': self.project.name,
             'user_rights': self.project.your_user_role,  

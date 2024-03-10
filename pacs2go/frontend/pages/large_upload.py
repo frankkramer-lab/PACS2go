@@ -32,7 +32,7 @@ def get_project_names() -> List[str]:
         project_list = []
 
         for p in connection.get_all_projects():
-            if p.your_user_role != 'Collaborators':
+            if p.your_user_role in ['Owners', 'Members']:
                 project_list.append(p.name)
 
         return project_list
@@ -73,7 +73,10 @@ def get_upload_component(id: str):
         id=id,
         max_file_size=51200,  # 50GB
         filetypes=['zip', 'jpeg', 'jpg', 'dcm',
-                   'json', 'nii', 'png', 'tiff', 'csv'],
+                   'json', 'nii', 'png', 'tiff', 
+                   'csv', 'gz', 'pdf', 'json',
+                   'md', 'py', 'ipynb', 'gif',
+                   'svg'],
         upload_id=uuid.uuid1(),  # Unique session id
         text='Drag and Drop your file right here! Or click here to select a file!',
         text_completed='Ready for XNAT Upload: ',
@@ -127,7 +130,7 @@ def uploader(passed_project: Optional[str]):
 
         dbc.Card(dbc.CardBody([
             dbc.Row(html.H5([html.B("2. Please select a zip folder or a single file to upload."), html.Br(),
-                         'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV, TXT and JSON.', html.Br(), html.Br(), 'Please make sure that all files have a valid file extension.'])),
+                         'Accepted formats include DICOM, NIFTI, JPEG, PNG, TIFF, CSV, TXT, JSON and many more.', html.Br(), html.Br(), 'Please make sure that all files have a valid file extension.'])),
             dbc.Row(
                 [
                     get_upload_component(id='dash-uploader'),

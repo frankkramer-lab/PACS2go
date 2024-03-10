@@ -15,13 +15,15 @@ from pacs2go.data_interface.logs.config_logging import logger
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (
-    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json', '.txt')
+    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json', '.txt', '.pdf', '.gz', '.json', '.gif', '.md', '.py', '.ipynb', '.svg')
 image_file_suffixes = (
-    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff')
+    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.gif', '.gz' '.svg')
 
 # File format metadata
-file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
+file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI', '.gz' : 'compressed NIFTI',
+               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT', '.gif':'GIF',
+               '.json': 'JSON', '.pdf': 'PDF', '.md':'Markdown', '.py':'Python File', '.ipynb': 'Interactive Python Notebook',
+               '.svg':'Scalable Vector Graphics'}
 
 
 class XNAT():
@@ -514,7 +516,7 @@ class XNATProject():
 
                 cookies = self.connection.cookies
 
-                ##### Dirty Workaround to create legit cookies for Member user role (see issue #35) ####
+                ##### (Dirty) Workaround to create legit cookies for Member user role (see issue #35) ####
                 if self.your_user_role == 'Members':
                     data = {"username": os.getenv('XNAT_USER'), "password": os.getenv('XNAT_PASS')}
                     headers = {"Content-Type": "application/x-www-form-urlencoded"}

@@ -13,29 +13,32 @@ register_page(__name__, title='PACS2go 2.0', path='/')
 def card_view_projects():
     connection = get_connection()
     try:
-        projects = connection.get_all_projects()
+        projects = connection.get_all_projects(only_accessible=True)
         number_of_projects = len(projects)
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err))
 
     project_list = []
+    
     # Only show 8 projects on landing page
     limit = 8
-    for index, p in enumerate(projects):
+    i = 0
+    for p in projects:
         project_list.append(dbc.ListGroupItem([dcc.Link(
             p.name, href=f"/project/{p.name}", className="text-decoration-none", style={'color': colors['links']}),
             dcc.Link(html.I(className="bi bi-cloud-upload me-2"), href=f"/upload/{p.name}",
-                     style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+                    style={'color': colors['links']})], class_name="d-flex justify-content-between"))
+        i = i+1
 
-        if index == limit:
+        if i == limit:
             break
 
     card = dbc.Card(
         dbc.CardBody(
             [
                 html.H4("Projects", className="card-title"),
-                html.P(f"Your PACS2Go currently contains {number_of_projects} projects.",
+                html.P(f"You currently have access to {number_of_projects} project(s).",
                        className="card-subtitle"),
                 dbc.ListGroup(project_list,
                               class_name="my-3"
@@ -91,7 +94,7 @@ def card_view_upload():
         dbc.CardBody(
             [
                 html.H4("Upload", className="card-title"),
-                html.P("Upload Medical Files. Currently we support DICOM, NIFTI, JPEG, PNG, TIFF, CSV and JSON.",
+                html.P("Upload Medical Files. PACS2go supports a broad array of file formats including DICOM, NIFTI, JPEG, PNG, TIFF, CSV, JSON and many more.",
                        className="card-subtitle"),
                 dbc.Button([html.I(className="bi bi-cloud-upload me-2"), " Upload to PACS2go"],
                            href=f"/upload/none", class_name="mt-3", outline=False, color='success'),

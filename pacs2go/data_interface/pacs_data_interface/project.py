@@ -24,8 +24,10 @@ from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
 
 class Project:
     # File format metadata
-    file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI',
-                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT'}
+    file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI', '.gz' : 'compressed (NIFTI)',
+                '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT', '.gif':'GIF',
+                '.json': 'JSON', '.pdf': 'PDF', '.md':'Markdown', '.py':'Python File', '.ipynb': 'Interactive Python Notebook', 
+                '.svg':'Scalable Vector Graphics'}
 
     this_timezone = timezone("Europe/Berlin")
 
@@ -406,7 +408,7 @@ class Project:
            
                 with PACS_DB() as db:
                     # Get the file's suffix
-                    format = self.file_format[Path(file_path).suffix]
+                    format = self.file_format[Path(file_path).suffix.lower()]
                     size = Path(file_path).stat().st_size
                     file_id = file_path.split("/")[-1]
                     # Insert file into DB
@@ -475,7 +477,7 @@ class Project:
                                     file_data = FileData(
                                         file_name=file_name,
                                         parent_directory=current_dir.unique_name,
-                                        format=self.file_format[Path(file_name).suffix],
+                                        format=self.file_format[Path(file_name).suffix.lower()],
                                         size=Path(os.path.join(root, file_name)).stat().st_size,
                                         tags=tags_string,
                                         modality=modality,

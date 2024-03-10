@@ -26,19 +26,19 @@ class File:
                 if self._db_file is None:
                     raise FileNotFoundError
         except:
-            msg = f"Failed to get DB-File '{name}' in directory '{self.directory.unique_name}'."
+            msg = f"Failed to get DB-File '{self.name}' in directory '{self.directory.unique_name}'."
             logger.exception(msg)
-            raise UnsuccessfulGetException(f"DB-File '{name}'")
+            raise UnsuccessfulGetException(f"DB-File '{self.name}'")
 
         if _file_filestorage_object:
             self._file_store_file = _file_filestorage_object
         elif self.directory.project.connection._kind == "XNAT":
             try:
-                self._file_store_file = XNATFile(directory._file_store_directory, name)
+                self._file_store_file = XNATFile(directory._file_store_directory, self.name)
             except:
-                msg = f"Failed to get File '{name}' in directory '{self.directory.unique_name}'."
+                msg = f"Failed to get File '{self.name}' in directory '{self.directory.unique_name}'."
                 logger.exception(msg)
-                raise UnsuccessfulGetException(f"File '{name}'")
+                raise UnsuccessfulGetException(f"File '{self.name}'")
         else:
             # FailedConnectionException because only these connection types are supported atm
             raise FailedConnectionException

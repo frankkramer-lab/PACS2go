@@ -125,12 +125,28 @@ class Connection:
             msg = f"Failed to get Project '{name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Project '{name}'")
+        
+    #p.your_user_role != '' or current_user.id=='admin'
 
-    def get_all_projects(self) -> List['Project']:
+    def get_all_projects(self, only_accessible:bool = False) -> List['Project']:    
+        """Retrieves a list of all projects from DB
+        
+        Args:
+            only_accessible (boolean): if set to True then only projects which the user has rights to are retrieved
+
+        Raises:
+            UnsuccessfulGetException
+
+        Returns:
+            List['Project']: List of Project objects
+        """
+
         try:
             with PACS_DB() as db:
                 pjs = db.get_all_projects()
-            projects = [self.get_project(project.name) for project in pjs]
+                projects = [self.get_project(project.name) for project in pjs]
+                if only_accessible:
+                    projects = [p for p in projects if p.your_user_role != '']
             logger.debug(f"User {self.user} retrieved information about project list.")
             return projects
         except Exception:

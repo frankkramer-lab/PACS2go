@@ -40,7 +40,6 @@ login_manager.init_app(server)
 login_manager.login_view = "/login"
 
 server.config["AUTH_TYPE"] = "XNAT"
-# TODO: production: https://flask-login.readthedocs.io/en/latest/#session-protection set to "strong"
 login_manager.session_protection = 'strong'
 login_manager.auth_backend = XNATAuthBackend()
 
@@ -123,16 +122,16 @@ app.layout = html.Div(
             style={'paddingRight': '1%'}
         ),
         # placeholder for each registered page (see pages folder)
-        html.Div([page_container], style={'padding': '1% 10%', "min-height": "85vh"}),
+        html.Div([page_container], style={'padding': '1% 10%', "minHeight": "85vh"}),
         html.Footer(
             [html.Img(
                             src="/assets/uni-logo-for-web.png",  # Adjust the path based on your directory structure
                             style={"width": "25px"},  # Adjust the width and height as needed
                         ),
             html.Small(f" University of Augsburg |  Version {os.getenv('PACS2GO_VERSION')}")],
-            style={
-                "margin-top":"1em",
-                "text-align": "right",
+            style={"marginRight": "1%",
+                "marginTop":"1%",
+                "textAlign": "right",
             },
         ),
     ]

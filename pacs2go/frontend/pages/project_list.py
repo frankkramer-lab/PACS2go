@@ -56,7 +56,7 @@ def modal_create():
                 dbc.ModalBody([
                     html.Div(id='create-project-content'),
                     dbc.Label(
-                        "Please enter a unique name for your project. (Don't use ä,ö,ü or ß)"),
+                        "Please enter a unique name for your project. (Avoid ä,ö,ü and ß)"),
                     # Input Text Field for project name
                     dbc.Input(id="project_name",
                               placeholder="Project Name...", required=True),
@@ -81,7 +81,7 @@ def modal_create():
                     dbc.Button("Create Project",
                                id="create_and_close", color="success"),
                     # Button which causes modal to close/disappear
-                    dbc.Button("Close", id="close_modal_create")
+                    dbc.Button("Close", id="close_modal_create", outline=True, color="success",)
                 ]),
             ],
             id="modal_create",
@@ -129,7 +129,7 @@ def modal_and_project_creation(open, close, create_and_close, is_open, project_n
             # Try to create project
             project = connection.create_project(
                 name=project_name, description=description, keywords=keywords, parameters=parameters)
-            projects = json.dumps([p.to_dict() for p in connection.get_all_projects()])
+            projects = json.dumps([p.to_dict() for p in connection.get_all_projects(only_accessible=True)])
             return is_open, dbc.Alert([html.Span("A new project has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new project {project.name}.",
                                                           href=f"/project/{project.name}",
@@ -155,7 +155,21 @@ def filter_projects_table(btn, filter, projects):
         return get_projects_table(projects, filter)
     else:
         raise PreventUpdate
+    
+@callback(
+    Output("dymanic_search_projects", "options"),
+    Input("dymanic_search_projects", "search_value"),
+    State("no_access_project_names_store","data"),
+)
+def update_project_search_options(search_value, projects_json):
 
+    if not search_value:
+        raise PreventUpdate
+    
+    projects = json.loads(projects_json)
+    return [{'label': dcc.Link(project['name'] + ", Owner(s) of this project: " + ', '.join(project['owners']), href=f"/project/{project['name']}",
+                                className="text-decoration-none",style={'color': colors['links']}),'value': project['name']} 
+                                for project in projects if search_value.lower() in project['name'].lower()]
 
 #################
 #  Page Layout  #
@@ -166,11 +180,20 @@ def layout():
         return login_required_interface()
     else:
         connection = get_connection()
-        initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects()])
+        # Retrieve all projects to which the user has any rights
+        if current_user.id != 'admin':
+            initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects(only_accessible=True)])
+        else:
+            initial_projects_data = json.dumps([p.to_dict() for p in connection.get_all_projects()])
         
+
+        # Retrieve all projects to which the user has no rights
+        no_access_projects = json.dumps([p.to_dict() for p in connection.get_all_projects() if p.your_user_role == ''])
+
         return html.Div(
             children=[
                 dcc.Store(id='projects_list_store', data=initial_projects_data),
+                dcc.Store(id='no_access_project_names_store', data=no_access_projects),
                 # Breadcrumbs
                 html.Div(
                     [
@@ -195,11 +218,16 @@ def layout():
                             dbc.Col(dbc.Input(id="filter_project_keywords",
                                             placeholder="Search keywords.. (e.g. 'CT')")),
                             dbc.Col(dbc.Button(
-                                "Filter", id="filter_project_keywords_btn"))
+                                "Filter", id="filter_project_keywords_btn", outline=True, color="secondary"))
                         ], class_name="mb-3"),
 
                         dcc.Loading(
                             html.Div(get_projects_table(initial_projects_data), id='projects_table'), color=colors['sage']),
                     ])], class_name="custom-card mb-3"),
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H5("Discover New Projects"),
+                        dcc.Dropdown(id="dymanic_search_projects", placeholder="Type to search available projects..."),
+                ])], class_name="custom-card mb-3"),
 
             ])

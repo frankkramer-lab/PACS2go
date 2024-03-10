@@ -327,6 +327,7 @@ class PACS_DB():
             query = f"""
                 SELECT name, keywords, description, parameters, timestamp_creation, timestamp_last_updated
                 FROM {self.PROJECT_TABLE}
+                ORDER BY timestamp_last_updated DESC
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
@@ -347,6 +348,7 @@ class PACS_DB():
             query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM {self.DIRECTORY_TABLE}
+                ORDER BY timestamp_last_updated DESC
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
@@ -427,6 +429,7 @@ class PACS_DB():
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM {self.DIRECTORY_TABLE}
                 WHERE parent_project = %s
+                ORDER BY timestamp_last_updated DESC
             """
             self.cursor.execute(query, (project_name,))
             results = self.cursor.fetchall()
@@ -705,7 +708,21 @@ class PACS_DB():
             logger.exception(msg)
             raise Exception(msg)
 
-            
+    def update_multiple_files(self, file_names:list, modality:str, tags:str, directory_name:str) -> None:
+        try:
+            time = datetime.now(timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+            placeholders = ', '.join(['%s'] * len(file_names))
+
+            query = f"""
+                UPDATE {self.FILE_TABLE} SET modality=%s, tags=%s, timestamp_last_updated=%s WHERE parent_directory=%s AND file_name IN ({placeholders})
+            """
+            self.cursor.execute(query, (modality, tags, time, directory_name) + tuple(file_names))
+            self.conn.commit()
+        except Exception as err:
+            msg = "Error deleting file by name"
+            logger.exception(msg)
+            raise Exception(msg)
+    
     def update_user_activity(self, username: str, directory: str):
         current_time = datetime.now(timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -756,6 +773,19 @@ class PACS_DB():
                 DELETE FROM {self.FILE_TABLE} WHERE file_name = %s
             """
             self.cursor.execute(query, (file_name,))
+            self.conn.commit()
+        except Exception as err:
+            msg = "Error deleting file by name"
+            logger.exception(msg)
+            raise Exception(msg)
+        
+    def delete_multiple_files_by_name(self, file_names: list, directory_name:str) -> None:
+        try:
+            placeholders = ', '.join(['%s'] * len(file_names))
+            query = f"""
+                DELETE FROM {self.FILE_TABLE} WHERE parent_directory=%s AND file_name IN ({placeholders})
+            """
+            self.cursor.execute(query, (directory_name,) + tuple(file_names))
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting file by name"
