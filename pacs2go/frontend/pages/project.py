@@ -230,6 +230,7 @@ def modal_edit_project(project: Project):
         ])
     
 def modal_add_user_to_project(project: Project, users:list):
+    users.remove(current_user.id)
     requestees = project.get_requests()
     if project.your_user_role == 'Owners':
         # Modal view for project editing
