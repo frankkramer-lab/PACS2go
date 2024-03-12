@@ -767,12 +767,12 @@ class PACS_DB():
             logger.exception(msg)
             raise Exception(msg)
 
-    def delete_file_by_name(self, file_name: str) -> None:
+    def delete_file_by_name(self, file_name: str, directory_name:str) -> None:
         try:
             query = f"""
-                DELETE FROM {self.FILE_TABLE} WHERE file_name = %s
+                DELETE FROM {self.FILE_TABLE} WHERE file_name = %s and parent_directory=%s
             """
-            self.cursor.execute(query, (file_name,))
+            self.cursor.execute(query, (file_name, directory_name))
             self.conn.commit()
         except Exception as err:
             msg = "Error deleting file by name"
