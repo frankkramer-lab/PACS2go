@@ -434,9 +434,6 @@ class Project:
 
                     # Use the first directory inside the zip as the root directory
                     first_level_dirs = [d for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d))]
-                    if len(first_level_dirs) != 1:
-                        raise ValueError("Zip file should contain exactly one root directory")
-
                     root_dir_name = first_level_dirs[0]
                     
                     # If directory was choosen, work there else directly under project (parent_dir=none)
@@ -464,10 +461,11 @@ class Project:
                                 
                             
                             if len(files) > 0:
+                                print(files)
                                 # Handle files of current directory
                                 for file_name in files:
 
-                                    if Path(file_name).suffix == '':
+                                    if Path(file_name).suffix == '' or file_name.startswith("._"):
                                         # Skip files that do not have a file extension
                                         logger.info(
                                             f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
