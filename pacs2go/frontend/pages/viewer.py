@@ -86,6 +86,17 @@ def show_file(file: File):
                         
         initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
         
+        p1, p2, p3 = 0, 0, 0
+        for i, ras in enumerate(initial_orientation):
+            if ras == 'R' or ras == 'L':
+                p1 = i
+            if ras == 'A' or ras == 'P':
+                p2 = i
+            if ras == 'S' or ras == 'I':
+                p3 = i
+                
+        volume_data = np.transpose(volume_data, (p1,p2,p3))
+        
         content = html.Div([
             html.Hr(),
             dcc.Loading(dcc.Graph(id='nifti-slice-viewer-z',style={'height': '60vh'}), color=colors['sage']),
@@ -130,7 +141,7 @@ def show_file(file: File):
                     ),
                 ], class_name="mt-3 mb-4"),
             ]),
-            dbc.FormText(f"Note: The volume data has undergone adjustment to conform to the Right-Anterior-Superior (RAS) orientation from its original {initial_orientation} configuration, as determined via nibabel. However, please verify this orientation against recognized anatomical landmarks to ensure its accuracy."),
+            dbc.FormText(f"Note: The volume data has undergone adjustment to conform to the Right-Anterior-Superior (RAS) orientation from its original {initial_orientation} configuration, as determined via nibabel. However, please verify this orientation against recognized anatomical landmarks to ensure its accuracy. Images may seem distorted or squashed if voxels are not isotrophic."),
         ])
 
     elif file.format == 'DICOM':
@@ -410,7 +421,18 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
                     
             # Transfrom to RAS orientation (see nibabel orientations documentation)
             initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
+            p1, p2, p3 = 0, 0, 0
+            for i, ras in enumerate(initial_orientation):
+                if ras == 'R' or ras == 'L':
+                    p1 = i
+                if ras == 'A' or ras == 'P':
+                    p2 = i
+                if ras == 'S' or ras == 'I':
+                    p3 = i
+                    
+            volume_data = np.transpose(volume_data, (p1,p2,p3))
             
+            # Flip axis
             if initial_orientation[0] != 'R':
                 #index_x = volume_data.shape[0] - 1 - selected_slice_x
                 volume_data = np.flip(volume_data, axis=0)
