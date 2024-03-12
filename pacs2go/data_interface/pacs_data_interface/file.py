@@ -173,7 +173,7 @@ class File:
             self._file_store_file.delete_file()
 
             with PACS_DB() as db:
-                db.delete_file_by_name(self.name)
+                db.delete_file_by_name(self.name, self.directory.unique_name)
 
             self.directory.set_last_updated(datetime.now(self.this_timezone))
             logger.info(f"User {self.directory.project.connection.user} deleted File '{self.name}' from {self.directory.unique_name}.")

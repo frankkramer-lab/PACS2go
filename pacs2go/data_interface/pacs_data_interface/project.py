@@ -446,29 +446,36 @@ class Project:
                         directory = Directory(self, root_dir_name, parent_dir=parent_dir)
                         root_dir = directory
 
+                    # Keep track of current depth
+                    depth = 0
+                    
                     # Walk through the unzipped directory
                     for root, dirs, files in os.walk(temp_dir):  
                         try:
-                            if root == temp_dir:
-                                # Skip tempdir name and skip top level folder for direct unpack
+                            if root == temp_dir or "__MACOSX" in root:
+                                # Skip tempdir name and skip top level folder for direct unpack, skip mac specific 
                                 continue
                             if os.path.basename(root) == root_dir.display_name or (unpack_directly and os.path.basename(root)==root_dir_name):
                                 # First level directory is already created or unpacking is directory to chosen directory
                                 current_dir = root_dir
                             else:
+                                # Only increase nesting level if root path implies that you should
+                                if root.count(os.sep) != depth:
+                                    directory = current_dir
+                                    depth = root.count(os.sep)
+                              
                                 # Create sub-directory according to zipfile
                                 current_dir = Directory(self, os.path.basename(root), parent_dir=directory)
                                 
                             
                             if len(files) > 0:
-                                print(files)
                                 # Handle files of current directory
                                 for file_name in files:
 
                                     if Path(file_name).suffix == '' or file_name.startswith("._"):
                                         # Skip files that do not have a file extension
                                         logger.info(
-                                            f"User {self.connection.user} tried to insert a file without extension ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
+                                            f"User {self.connection.user} tried to insert a forbidden file ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
                                         continue
 
                                     # Create a FileData object
@@ -497,7 +504,7 @@ class Project:
                         except Exception as e:
                             logger.exception(f"An error occurred while processing files: {e}")
                             continue
-                        directory = current_dir
+                        
   
                     self.set_last_updated(datetime.now(self.this_timezone))
                     logger.info(
