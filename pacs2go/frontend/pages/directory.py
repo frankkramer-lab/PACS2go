@@ -37,7 +37,8 @@ def get_details(directory: dict):
 
     time = html.B("Created on: "), directory['timestamp_creation'], html.B(" | Last updated on: "), directory['last_updated']
     detail_data.append(html.H6(time))
-    detail_data.append(html.B("The unique identifier of this directory is: "), directory['unique_name'])
+    name = html.B("The unique identifier of this directory is: "), directory['unique_name']
+    detail_data.append(html.H6(name))
 
     return detail_data
 
