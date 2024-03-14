@@ -237,11 +237,15 @@ def display_directory_dropdown(project):
     prevent_initial_callback=True
 )
 def keep_session_alive(n):
-    # Heartbeat to keep session alive during upload
-    get_connection()._file_store_connection.heartbeat()
+    try:
+        # Heartbeat to keep session alive during upload
+        get_connection()._file_store_connection.heartbeat()
+    
+        # We don't want to update any component
+        return no_update
+    except Exception:
+        return dbc.Alert("Your session has expired, please try again.", color="danger")
 
-    # We don't want to update any component
-    return no_update
 
 #################
 #  Page Layout  #

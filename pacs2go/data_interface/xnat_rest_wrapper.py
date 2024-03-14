@@ -95,7 +95,11 @@ class XNAT():
     def heartbeat(self):
         response = requests.get(
             self.server + "/data/JSESSION/", cookies=self.cookies)
-        return response     
+        if response.status_code != 200:
+            # If 200 isn't returned this means that the jsessionid has been invalidated (timeout)
+            raise HTTPException("Unauthorized")
+        else:
+            return response     
 
     def __enter__(self) -> 'XNAT':
         return self
