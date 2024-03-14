@@ -37,6 +37,7 @@ def get_details(directory: dict):
 
     time = html.B("Created on: "), directory['timestamp_creation'], html.B(" | Last updated on: "), directory['last_updated']
     detail_data.append(html.H6(time))
+    detail_data.append(html.B("The unique identifier of this directory is: "), directory['unique_name'])
 
     return detail_data
 
@@ -220,7 +221,7 @@ def modal_delete(directory: Directory):
             dbc.Modal(
                 [
                     dbc.ModalHeader(dbc.ModalTitle(
-                        f"Delete Directory {directory.unique_name}")),
+                        f"Delete Directory {directory.display_name}")),
                     dbc.ModalBody([
                         html.Div(id="delete-directory-content"),
                         dbc.Label(
@@ -413,7 +414,7 @@ def cb_modal_and_directory_deletion(open, close, delete_and_close, is_open, dire
             # Delete Directory
             directory.delete_directory()
             # Close Modal View and show message
-            return is_open, dbc.Alert([f"The directory {directory.unique_name} has been successfully deleted! ",
+            return is_open, dbc.Alert([f"The directory {directory.display_name} has been successfully deleted! ",
                                        dcc.Link(f"Click here to go to back to the '{project_name}' project.",
                                                 href=f"/project/{project_name}",
                                                 className="fw-bold text-decoration-none",

@@ -262,7 +262,7 @@ def layout(project_name: Optional[str] = None):
             className='breadcrumb'),
 
         html.H1(
-        children='PACS2go 2.0 - Uploader',
+        children='PACS2go - Uploader',
         style={
             'textAlign': 'left',
         },
