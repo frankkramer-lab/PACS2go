@@ -91,6 +91,11 @@ class XNAT():
             msg = "User list not found."
             logger.error(msg)
             raise HTTPException(msg + str(response.status_code))
+        
+    def heartbeat(self):
+        response = requests.get(
+            self.server + "/data/JSESSION/", cookies=self.cookies)
+        return response     
 
     def __enter__(self) -> 'XNAT':
         return self
