@@ -230,6 +230,19 @@ def display_directory_dropdown(project):
     # When a project is selected, the directory field suggests existing directories to upload to
     return get_directory_names(project)
 
+# Define the callback function
+@callback(
+    Output('keep_alive_output', 'children'),  # Dummy output
+    [Input('keep_alive_interval', 'n_intervals')],
+    prevent_initial_callback=True
+)
+def keep_session_alive(n):
+    # Interact with XNAT API every x seconds to keep session alive during upload
+    get_connection().user
+
+    # We don't want to update any component
+    return no_update
+
 #################
 #  Page Layout  #
 #################
@@ -256,6 +269,13 @@ def layout(project_name: Optional[str] = None):
         className="mb-3"),
 
         uploader(project_name),
+        
+        dcc.Interval(
+            id='keep_alive_interval',
+            interval=15*60*1000,  # in milliseconds, 15 minutes * 60 seconds * 1000 ms
+            n_intervals=0
+        ),
+        html.Div(id='keep_alive_output'),
         
         # Store filename for upload to xnat https://dash.plotly.com/sharing-data-between-callbacks
         dcc.Store(id='filename-storage')

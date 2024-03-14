@@ -446,6 +446,8 @@ class Project:
                         directory = Directory(self, root_dir_name, parent_dir=parent_dir)
                         root_dir = directory
 
+                    # Start with the root directory
+                    current_dir = root_dir
                     # Keep track of current depth
                     depth = 0
                     
@@ -455,11 +457,9 @@ class Project:
                             if root == temp_dir or "__MACOSX" in root:
                                 # Skip tempdir name and skip top level folder for direct unpack, skip mac specific 
                                 continue
-                            if os.path.basename(root) == root_dir.display_name or (unpack_directly and os.path.basename(root)==root_dir_name):
-                                # First level directory is already created or unpacking is directory to chosen directory
-                                current_dir = root_dir
-                            else:
-                                # Only increase nesting level if root path implies that you should
+                        
+                            if not (os.path.basename(root) == root_dir.display_name or (unpack_directly and os.path.basename(root)==root_dir_name)):
+                                # Only increase nesting level if root path implies that you should (This way directories of the same level stay on the same level)
                                 if root.count(os.sep) != depth:
                                     directory = current_dir
                                     depth = root.count(os.sep)
@@ -467,13 +467,12 @@ class Project:
                                 # Create sub-directory according to zipfile
                                 current_dir = Directory(self, os.path.basename(root), parent_dir=directory)
                                 
-                            
                             if len(files) > 0:
                                 # Handle files of current directory
                                 for file_name in files:
 
                                     if Path(file_name).suffix == '' or file_name.startswith("._"):
-                                        # Skip files that do not have a file extension
+                                        # Skip files that do not have a file extension or are zipping artefacts
                                         logger.info(
                                             f"User {self.connection.user} tried to insert a forbidden file ('{file_name}') into Directory '{directory.unique_name}' in Project '{self.name}'.")
                                         continue
@@ -508,7 +507,7 @@ class Project:
   
                     self.set_last_updated(datetime.now(self.this_timezone))
                     logger.info(
-                        f"User {self.connection.user} inserted a zip file into Directory '{directory.unique_name}' in Project '{self.name}'.")
+                        f"User {self.connection.user} inserted a zip file into Directory '{root_dir.unique_name}' in Project '{self.name}'.")
                     
                 return root_dir
 
