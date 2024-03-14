@@ -13,7 +13,7 @@ services:
       XNAT_PASS: ${XNAT_PASS}
       PACS2GO_VERSION: 2.1.4
       PYTHONUNBUFFERED: 1
-    command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload --timeout 120 -k gthread --threads 4
+    command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload --timeout 10800 -k gthread --threads 4
     # command: python pacs2go/frontend/app.py
     depends_on:
       - xnat-web
