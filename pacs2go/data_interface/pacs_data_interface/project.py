@@ -370,10 +370,10 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
-    def get_all_directories(self) -> Sequence['Directory']:
+    def get_all_directories(self, filter:str= None, offset:int = None, quantity:int = None) -> Sequence['Directory']:
         try:
             with PACS_DB() as db:
-                directories_from_db = db.get_directories_by_project(self.name)
+                directories_from_db = db.get_directories_by_project(self.name, filter, offset, quantity)
 
             # Get directory objects
             filtered_directories = [self.get_directory(
