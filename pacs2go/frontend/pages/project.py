@@ -62,7 +62,7 @@ def get_directories_table(directories: List['Directory'], filter: str = '', acti
     
     for d in directories:
         # Directory names represent links to individual directory pages
-        rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{d.project}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+        rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{d.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
             d.number_of_files), html.Td(d.timestamp_creation), html.Td(d.last_updated)]))
 
     table_header = [

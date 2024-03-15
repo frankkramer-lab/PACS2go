@@ -157,7 +157,7 @@ def get_subdirectories_table(subdirectories: List['Directory'], filter: str = ''
     rows = []
     for d in subdirectories:
         # Directory names represent links to individual directory pages
-        rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{d.project}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+        rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{d.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
             d.number_of_files), html.Td(d.timestamp_creation), html.Td(d.last_updated)]))
 
     table_header = [
@@ -474,8 +474,10 @@ def cb_modal_edit_directory_callback(open, close, edit_and_close, is_open, proje
     State("directory_name", "data"),
     State("project_name", "data"),
     State("subdirectories_store", "data"),
+    State('filter_subdirectory_tags', 'value'),
+    State("pagination_subdirs", 'active_page'),
     prevent_initial_call=True)
-def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name, subdirectories):
+def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name, filter, current_page):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
         return not is_open, no_update, no_update
@@ -490,20 +492,16 @@ def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, n
         name = str(name).replace(" ", "_")
 
         try:
-            subdirectories_data = json.loads(subdirectories)
-
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             sd = Directory(directory.project, name, directory, parameters)
-
-            subdirectories_data.append(sd.to_dict())
-            updated_subdirlist_json = json.dumps(subdirectories_data)
+            dirlist = directory.get_subdirectories(filter=filter, quantity=5, offset=(current_page-1)*5)
 
             return not is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
                                                           href=f"/dir/{project_name}/{sd.unique_name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(updated_subdirlist_json)
+                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(dirlist)
 
         except Exception as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
