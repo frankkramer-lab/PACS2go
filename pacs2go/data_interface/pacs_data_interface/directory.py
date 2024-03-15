@@ -57,6 +57,17 @@ class Directory:
                 msg = f"Failed to initialize Directory '{name}' due to unsupported connection type"
                 logger.exception(msg)
                 raise FailedConnectionException
+            
+    @property
+    def number_of_subdirectories(self) -> int:
+        try:
+            with PACS_DB() as db:
+                total = db.get_numberofsubdirectories_under_directory(self.unique_name)
+            return total
+        except Exception:
+            msg = f"Failed to get the number of directories for Directory '{self.unique_name}'"
+            logger.exception(msg)
+            raise UnsuccessfulGetException(msg)
 
     @property
     def number_of_files(self) -> int:
@@ -212,11 +223,11 @@ class Directory:
             logger.exception(msg)
             raise UnsuccessfulCreationException(str(unique_name))
 
-    def get_subdirectories(self) -> List['Directory']:
+    def get_subdirectories(self, filter:str= None, offset:int = None, quantity:int = None) -> List['Directory']:
         try:
             with PACS_DB() as db:
                 subdirectories_from_db = db.get_subdirectories_by_directory(
-                    self.unique_name)
+                    self.unique_name, filter, offset, quantity)
 
             # Only return the directories that are subdirectories of this directory
             filtered_directories = [
