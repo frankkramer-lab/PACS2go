@@ -370,10 +370,10 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
-    def get_all_directories(self) -> Sequence['Directory']:
+    def get_all_directories(self, filter:str= None, offset:int = None, quantity:int = None) -> Sequence['Directory']:
         try:
             with PACS_DB() as db:
-                directories_from_db = db.get_directories_by_project(self.name)
+                directories_from_db = db.get_directories_by_project(self.name, filter, offset, quantity)
 
             # Get directory objects
             filtered_directories = [self.get_directory(
@@ -433,7 +433,14 @@ class Project:
 
 
                     # Use the first directory inside the zip as the root directory
-                    first_level_dirs = [d for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d))]
+                    first_level_dirs = [d for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d)) and d != "__MACOSX"]
+                    if len(first_level_dirs) > 1:
+                        msg = f"Unexpected zip form: '{file_path}' has {len(first_level_dirs)} top level directory, a zip file is expected to have just one."
+                        logger.exception(msg)
+                        raise WrongUploadFormatException(msg, str(file_path.split("/")[-1]))
+                    
+                    logger.info(f"User {self.connection.user} has begun to upload {file_path}, top level directory is: {first_level_dirs}")
+
                     root_dir_name = first_level_dirs[0]
                     
                     # If directory was choosen, work there else directly under project (parent_dir=none)
@@ -450,6 +457,7 @@ class Project:
                     current_dir = root_dir
                     # Keep track of current depth
                     depth = 0
+                    
                     
                     # Walk through the unzipped directory
                     for root, dirs, files in os.walk(temp_dir):  

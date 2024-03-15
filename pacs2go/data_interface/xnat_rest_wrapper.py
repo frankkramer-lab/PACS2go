@@ -91,6 +91,15 @@ class XNAT():
             msg = "User list not found."
             logger.error(msg)
             raise HTTPException(msg + str(response.status_code))
+        
+    def heartbeat(self):
+        response = requests.get(
+            self.server + "/data/JSESSION/", cookies=self.cookies)
+        if response.status_code != 200:
+            # If 200 isn't returned this means that the jsessionid has been invalidated (timeout)
+            raise HTTPException("Unauthorized")
+        else:
+            return response     
 
     def __enter__(self) -> 'XNAT':
         return self

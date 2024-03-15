@@ -59,7 +59,7 @@ server.config["REMEMBER_COOKIE_DURATION"] = timedelta(minutes=60)
 def make_session_permanent():
     session.permanent = True
     # Default permanent_session_lifetime is 31days
-    server.permanent_session_lifetime = timedelta(minutes=30)
+    server.permanent_session_lifetime = timedelta(minutes=180)
 
 
 @server.route('/login', methods=['POST'])

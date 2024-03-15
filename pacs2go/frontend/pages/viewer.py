@@ -83,6 +83,10 @@ def show_file(file: File):
             
         else:
             content = dbc.Alert("This file format can not be displayed yet.", color="danger")
+            
+        if len(volume_data.shape) == 4:
+                    # 4D Nifti
+                    volume_data = volume_data[:,:,:,0]
                         
         initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)
         
@@ -99,46 +103,53 @@ def show_file(file: File):
         
         content = html.Div([
             html.Hr(),
-            dcc.Loading(dcc.Graph(id='nifti-slice-viewer-z',style={'height': '60vh'}), color=colors['sage']),
-            daq.Slider(
-                id='slice-slider-z',
-                min=0,
-                max=volume_data.shape[2] - 1,
-                value=volume_data.shape[2] // 2,
-                handleLabel={"showCurrentValue": True,"label": " "},
-                marks={0: 'I',volume_data.shape[2] - 1: 'S'},
-                step=1,
-                color=colors['sage'],
-                className="mt-3 mb-4 d-flex justify-content-center",
-            ),
+            dbc.Card(dbc.CardBody([
+                dcc.Loading(dcc.Graph(id='nifti-slice-viewer-z',style={'height': '60vh'}), color=colors['sage']),
+                daq.Slider(
+                    id='slice-slider-z',
+                    min=0,
+                    max=volume_data.shape[2] - 1,
+                    value=volume_data.shape[2] // 2,
+                    handleLabel={"showCurrentValue": True,"label": " "},
+                    marks={0: 'I',volume_data.shape[2] - 1: 'S'},
+                    step=1,
+                    color=colors['sage'],
+                    className="mt-3 mb-4 d-flex justify-content-center",
+                ),
+            ]), className="custom-card pb-3"),
+            
             dbc.Row([
                 dbc.Col([
-                    dcc.Loading(dcc.Graph(id='nifti-slice-viewer-x'), color=colors['sage']),
-                    daq.Slider(
-                        id='slice-slider-x',
-                        min=0,
-                        max=volume_data.shape[0] - 1,
-                        value=volume_data.shape[0] // 2,
-                        handleLabel={"showCurrentValue": True,"label": " "},
-                        marks={0: 'L',volume_data.shape[0] - 1: 'R'},
-                        step=1,
-                        color=colors['sage'],
-                        className="d-flex justify-content-center",
-                    ),
+                    dbc.Card(dbc.CardBody([
+                        dcc.Loading(dcc.Graph(id='nifti-slice-viewer-x'), color=colors['sage']),
+                        daq.Slider(
+                            id='slice-slider-x',
+                            min=0,
+                            max=volume_data.shape[0] - 1,
+                            value=volume_data.shape[0] // 2,
+                            handleLabel={"showCurrentValue": True,"label": " "},
+                            marks={0: 'L',volume_data.shape[0] - 1: 'R'},
+                            step=1,
+                            color=colors['sage'],
+                            className="d-flex justify-content-center",
+                        ),
+                    ]), className="custom-card pb-3"),    
                 ], class_name="mt-3 mb-4"),
-                dbc.Col([                
-                    dcc.Loading(dcc.Graph(id='nifti-slice-viewer-y'), color=colors['sage']),
-                    daq.Slider(
-                        id='slice-slider-y',
-                        min=0,
-                        max=volume_data.shape[1] - 1,
-                        value=volume_data.shape[1] // 2,
-                        handleLabel={"showCurrentValue": True,"label": " "},
-                        marks={0: 'P',volume_data.shape[1] - 1: 'A'},
-                        step=1,
-                        color=colors['sage'],
-                        className="d-flex justify-content-center",
-                    ),
+                dbc.Col([     
+                    dbc.Card(dbc.CardBody([           
+                        dcc.Loading(dcc.Graph(id='nifti-slice-viewer-y'), color=colors['sage']),
+                        daq.Slider(
+                            id='slice-slider-y',
+                            min=0,
+                            max=volume_data.shape[1] - 1,
+                            value=volume_data.shape[1] // 2,
+                            handleLabel={"showCurrentValue": True,"label": " "},
+                            marks={0: 'P',volume_data.shape[1] - 1: 'A'},
+                            step=1,
+                            color=colors['sage'],
+                            className="d-flex justify-content-center",
+                        ),
+                    ]), className="custom-card pb-3"),
                 ], class_name="mt-3 mb-4"),
             ]),
             dbc.FormText(f"Note: The volume data has undergone adjustment to conform to the Right-Anterior-Superior (RAS) orientation from its original {initial_orientation} configuration, as determined via nibabel. However, please verify this orientation against recognized anatomical landmarks to ensure its accuracy. Images may seem distorted or squashed if voxels are not isotrophic."),
@@ -413,11 +424,13 @@ def update_nifti_figure(selected_slice_z, selected_slice_x, selected_slice_y, ch
                 nifti_gz_bytes_io = gzip.decompress(file.data) 
                 nifti = nibabel.Nifti1Image.from_bytes(nifti_gz_bytes_io)
                 volume_data = nifti.get_fdata()
-                if len(volume_data.shape) == 4:
-                    # 4D Nifti
-                    volume_data = volume_data[:,:,:,0]
+                
             else:
                 raise PreventUpdate
+                    
+            if len(volume_data.shape) == 4:
+                    # 4D Nifti
+                    volume_data = volume_data[:,:,:,0]
                     
             # Transfrom to RAS orientation (see nibabel orientations documentation)
             initial_orientation = nibabel.orientations.aff2axcodes(nifti.affine)

@@ -5,7 +5,7 @@ import math
 import os
 import shutil
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import List, Optional
 
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -37,6 +37,8 @@ def get_details(directory: dict):
 
     time = html.B("Created on: "), directory['timestamp_creation'], html.B(" | Last updated on: "), directory['last_updated']
     detail_data.append(html.H6(time))
+    name = html.B("The unique identifier of this directory is: "), directory['unique_name']
+    detail_data.append(html.H6(name))
 
     return detail_data
 
@@ -150,16 +152,13 @@ def get_files_table(directory: dict, files: dict = None, filter: str = '', activ
     return [warning_message, table]
 
 
-def get_subdirectories_table(subdirectories: dict, filter: str = ''):
-    subdirectories = json.loads(subdirectories)
+def get_subdirectories_table(subdirectories: List['Directory'], filter: str = '', active_page: int = 1, quantity:int = 20):
     # Get list of all directory names and number of files per directory
     rows = []
     for d in subdirectories:
-        # Only show rows if no filter is applied of if the filter has a match in the directory's name
-        if filter.lower() in d['display_name'].lower() or len(filter) == 0:
-            # Directory names represent links to individual directory pages
-            rows.append(html.Tr([html.Td(dcc.Link(d['display_name'], href=f"/dir/{d['associated_project']}/{d['unique_name']}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
-                d['number_of_files']), html.Td(d['timestamp_creation']), html.Td(d['last_updated'])]))
+        # Directory names represent links to individual directory pages
+        rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{d.project.name}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+            d.number_of_files), html.Td(d.timestamp_creation), html.Td(d.last_updated)]))
 
     table_header = [
         html.Thead(
@@ -220,7 +219,7 @@ def modal_delete(directory: Directory):
             dbc.Modal(
                 [
                     dbc.ModalHeader(dbc.ModalTitle(
-                        f"Delete Directory {directory.unique_name}")),
+                        f"Delete Directory {directory.display_name}")),
                     dbc.ModalBody([
                         html.Div(id="delete-directory-content"),
                         dbc.Label(
@@ -413,7 +412,7 @@ def cb_modal_and_directory_deletion(open, close, delete_and_close, is_open, dire
             # Delete Directory
             directory.delete_directory()
             # Close Modal View and show message
-            return is_open, dbc.Alert([f"The directory {directory.unique_name} has been successfully deleted! ",
+            return is_open, dbc.Alert([f"The directory {directory.display_name} has been successfully deleted! ",
                                        dcc.Link(f"Click here to go to back to the '{project_name}' project.",
                                                 href=f"/project/{project_name}",
                                                 className="fw-bold text-decoration-none",
@@ -475,8 +474,10 @@ def cb_modal_edit_directory_callback(open, close, edit_and_close, is_open, proje
     State("directory_name", "data"),
     State("project_name", "data"),
     State("subdirectories_store", "data"),
+    State('filter_subdirectory_tags', 'value'),
+    State("pagination_subdirs", 'active_page'),
     prevent_initial_call=True)
-def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name, subdirectories):
+def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, name, parameters, directory_name, project_name, filter, current_page):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_subdirectory_btn" or ctx.triggered_id == "close_modal_create_subdir":
         return not is_open, no_update, no_update
@@ -491,47 +492,63 @@ def cb_modal_and_subdirectory_creation(open, close, create_and_close, is_open, n
         name = str(name).replace(" ", "_")
 
         try:
-            subdirectories_data = json.loads(subdirectories)
-
             connection = get_connection()
             directory = connection.get_directory(project_name, directory_name)
             sd = Directory(directory.project, name, directory, parameters)
-
-            subdirectories_data.append(sd.to_dict())
-            updated_subdirlist_json = json.dumps(subdirectories_data)
+            dirlist = directory.get_subdirectories(filter=filter, quantity=5, offset=(current_page-1)*5)
 
             return not is_open, dbc.Alert([html.Span("A new sub-directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {sd.display_name}.",
                                                           href=f"/dir/{project_name}/{sd.unique_name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(updated_subdirlist_json)
+                                                          style={'color': colors['links']}))], color="success"), get_subdirectories_table(dirlist)
 
         except Exception as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
 
     else:
         raise PreventUpdate
-
-
-@callback(
-    Output('subdirectory_table', 'children'),
+    
+@callback( 
+    Output('subdirectory_table', 'children', allow_duplicate=True),
     Input('filter_subdirectory_tags_btn', 'n_clicks'),
     Input('filter_subdirectory_tags', 'value'),
-    State("subdirectories_store", 'data'),
+    State("pagination_subdirs", 'active_page'),
+    State("directory_name", "data"),
+    State("project_name", "data"),
     prevent_initial_call=True)
-def cb_filter_directory_table(btn, filter, subdirectories):
-    # Apply filter to the directories table
-    if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
-        if filter or filter == "":
-            try:
-                return get_subdirectories_table(subdirectories, filter)
-            except (FailedConnectionException, UnsuccessfulGetException) as err:
-                return dbc.Alert(str(err), color="danger")
-        else:
-            raise PreventUpdate
-    else:
+def filter_subdirectories(n_clicks, filter, current_page, directory_name, project_name):
+    if n_clicks is None and not filter:
         raise PreventUpdate
 
+    try:
+        directory = get_connection().get_directory(project_name=project_name,directory_name=directory_name)
+        # Adjust this function call according to your data retrieval implementation
+        filtered_subdirs = directory.get_subdirectories(filter=filter, quantity=5, offset=current_page-1)
+
+        return get_subdirectories_table(filtered_subdirs)
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
+  
+@callback( 
+    Output('subdirectory_table', 'children', allow_duplicate=True),
+    Input("pagination_subdirs", 'active_page'),
+    State('filter_subdirectory_tags', 'value'),
+    State("directory_name", "data"),
+    State("project_name", "data"),
+    prevent_initial_call='initial_duplicate')
+def paginate_subdirectories(current_page, filter, directory_name, project_name):
+    if not ctx.triggered_id == 'pagination_subdirs':
+        raise PreventUpdate
+
+    try:
+        directory = get_connection().get_directory(project_name=project_name,directory_name=directory_name)
+        # Adjust this function call according to your data retrieval implementation
+        filtered_subdirs = directory.get_subdirectories(filter=filter, quantity=5, offset=(current_page-1)*5)
+
+        return get_subdirectories_table(filtered_subdirs)
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")  
 
 @callback(
     Output('files_table', 'children', allow_duplicate=True),
@@ -960,19 +977,21 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             heart_icon = "bi-heart"
 
         # Pagination info
-        current_active_page = 1 # offset
-        items_per_page = 20     # quantity
+        files_current_active_page = 1 # offset
+        files_items_per_page = 20     # quantity
+        
+        subdir_current_active_page = 1 # offset
+        subdir_items_per_page = 5     # quantity
 
         # Initial directory data
         initial_directory_data = json.dumps(directory.to_dict())
-        initial_subdir_data = json.dumps([sd.to_dict() for sd in directory.get_subdirectories()])
+        initial_subdir_data = directory.get_subdirectories(offset=subdir_current_active_page - 1, quantity=subdir_items_per_page)
 
         return html.Div([
             # dcc Store components for project and directory name strings
             dcc.Store(id='directory_name', data=directory.unique_name),
             dcc.Store(id='project_name', data=project_name),
             dcc.Store(id='directory', data=initial_directory_data),
-            dcc.Store(id='subdirectories_store', data=initial_subdir_data),
             dcc.Store(id='file-change'),
             dcc.Store(id='new_file_store', data=new_files),
 
@@ -1041,6 +1060,8 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                     # Directories Table
                     dcc.Loading(html.Div(get_subdirectories_table(
                         initial_subdir_data), id='subdirectory_table'), color=colors['sage']),
+                     dbc.Pagination(id="pagination_subdirs", max_value=math.ceil(
+                                int(directory.number_of_subdirectories)/subdir_items_per_page), first_last=True, previous_next=True, active_page=subdir_current_active_page, fully_expanded=False,),
                 ])], class_name="custom-card mb-3"),
 
             # Files Table
@@ -1068,11 +1089,11 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
 
                     # Display a table of the directory's files
                     dcc.Loading(html.Div(get_files_table(
-                        directory=initial_directory_data, quantity=items_per_page, new=new_files), id='files_table'), color=colors['sage']),
+                        directory=initial_directory_data, quantity=files_items_per_page, new=new_files), id='files_table'), color=colors['sage']),
                     dbc.Row([
                         dbc.Col([
                             dbc.Pagination(id="pagination_files", max_value=math.ceil(
-                                int(directory.number_of_files_on_this_level)/items_per_page), first_last=True, previous_next=True, active_page=current_active_page, fully_expanded=False,),
+                                int(directory.number_of_files_on_this_level)/files_items_per_page), first_last=True, previous_next=True, active_page=files_current_active_page, fully_expanded=False,),
                         ]),
                         dbc.Col([
                             html.Div(
