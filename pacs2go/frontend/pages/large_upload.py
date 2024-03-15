@@ -228,7 +228,8 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
 @callback(Output('directory_name', 'options'),Input('project_name','value'), prevent_initial_call=True)
 def display_directory_dropdown(project):
     # When a project is selected, the directory field suggests existing directories to upload to
-    return get_directory_names(project)
+    if project and project!='None':
+        return get_directory_names(project)
 
 # Define the callback function
 @callback(
