@@ -423,21 +423,37 @@ class PACS_DB():
             logger.exception(msg)
             raise Exception(msg)
 
-    def get_directories_by_project(self, project_name: str) -> List['DirectoryData']:
+    def get_directories_by_project(self, project_name: str, filter: str = None, offset: int = None, quantity: int = None) -> List['DirectoryData']:  
         try:
+            # Start with the base query
             query = f"""
                 SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
                 FROM {self.DIRECTORY_TABLE}
                 WHERE parent_project = %s
-                ORDER BY dir_name
             """
-            self.cursor.execute(query, (project_name,))
+
+            # Prepare the list for parameters of the SQL query
+            params = [project_name]
+
+            # If a filter is provided, add the LIKE clause
+            if filter:
+                query += " AND dir_name LIKE %s"
+                params.append(f"%{filter}%")
+
+            # Add ordering (necessary for limit offset in particular)
+            query += " ORDER BY dir_name"
+
+            # If both offset and quantity are provided, add LIMIT and OFFSET to the query
+            if offset is not None and quantity is not None:
+                query += " LIMIT %s OFFSET %s"
+                params.extend([quantity, offset])
+
+            # Execute the query
+            self.cursor.execute(query, tuple(params))
             results = self.cursor.fetchall()
 
-            directory_list = []
-            for row in results:
-                directory = DirectoryData(*row)
-                directory_list.append(directory)
+            # Build the directory list from the results
+            directory_list = [DirectoryData(*row) for row in results]
 
             return directory_list
         except Exception as err:

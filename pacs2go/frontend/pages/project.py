@@ -1,6 +1,7 @@
 import json
+import math
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import List, Optional
 
 import dash_bootstrap_components as dbc
 from dash import (ALL, Input, Output, State, callback, ctx, dcc, html,
@@ -56,21 +57,13 @@ def get_details(project: dict):
     return detail_data
 
 
-def get_directories_table(directories:dict , filter: str = ''):
-    # Get list of all directory names and number of files per directory
-    directories = json.loads(directories)
+def get_directories_table(directories: List['Directory'], filter: str = '', active_page: int = 1, quantity:int = 20):
     rows = []
+    
     for d in directories:
-        # Only show rows if no filter is applied of if the filter has a match in the directory's name
-        if filter.lower() in d['display_name'].lower() or len(filter) == 0:
-            # Directory names represent links to individual directory pages
-            rows.append(html.Tr([
-                html.Td(dcc.Link(d['display_name'], href=f"/dir/{d['associated_project']}/{d['unique_name']}",
-                        className="text-decoration-none", style={'color': colors['links']})),
-                html.Td(d['number_of_files']),
-                html.Td(d['timestamp_creation']),
-                html.Td(d['last_updated'])
-            ]))
+        # Directory names represent links to individual directory pages
+        rows.append(html.Tr([html.Td(dcc.Link(d.display_name, href=f"/dir/{d.project}/{d.unique_name}", className="text-decoration-none", style={'color': colors['links']})), html.Td(
+            d.number_of_files), html.Td(d.timestamp_creation), html.Td(d.last_updated)]))
 
     table_header = [
         html.Thead(
@@ -427,7 +420,7 @@ def modal_and_project_data_deletion(open, close, delete_data_and_close, is_open,
                 else:
                     for d in dirs:
                         d.delete_directory()
-                    return not is_open, no_update, get_directories_table('{}')
+                    return not is_open, no_update, get_directories_table(directories=[])
 
         except (FailedConnectionException, UnsuccessfulGetException, UnsuccessfulDeletionException) as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
@@ -546,9 +539,10 @@ def modal_add_user_project_callback(open, close, add_and_close, remove_and_close
     State('new_dir_name', 'value'),
     State('new_dir_parameters', 'value'),
     State("project_name", "data"),
-    State("dirlist_store", "data"),
+    State('filter_directory_tags', 'value'),
+    State("pagination_dirs", 'active_page'),
     prevent_initial_call=True)
-def modal_and_directory_creation(open, close, create_and_close, is_open, name, parameters, project_name, directories_data):
+def modal_and_directory_creation(open, close, create_and_close, is_open, name, parameters, project_name, filter, current_page):
     # Open/close modal via button click
     if ctx.triggered_id == "create_new_directory_btn" or ctx.triggered_id == "close_modal_create_dir":
         return not is_open, no_update, no_update
@@ -562,20 +556,16 @@ def modal_and_directory_creation(open, close, create_and_close, is_open, name, p
         # Directory name cannot contain whitespaces
         name = str(name).replace(" ", "_")
         try:
-            directories_data = json.loads(directories_data)
-            
             connection = get_connection()
             project = connection.get_project(project_name)
             directory = Directory(project=project,name=name,parameters=parameters)
-            directories_data.append(directory.to_dict())
-            updated_dirlist_json = json.dumps(directories_data)
-            
+            dirlist = project.get_all_directories(filter=filter, quantity=5, offset=(current_page-1)*5)
             
             return not is_open, dbc.Alert([html.Span("A new directory has been successfully created! "),
                                        html.Span(dcc.Link(f" Click here to go to the new directory {directory.display_name}.",
                                                           href=f"/dir/{project.name}/{directory.unique_name}",
                                                           className="fw-bold text-decoration-none",
-                                                          style={'color': colors['links']}))], color="success"), get_directories_table(updated_dirlist_json)
+                                                          style={'color': colors['links']}))], color="success"), get_directories_table(dirlist)
 
         except Exception as err:
             return is_open, dbc.Alert(str(err), color="danger"), no_update
@@ -639,24 +629,44 @@ def delete_citation(btn, project_name):
         raise PreventUpdate
 
 
-@callback(
-    Output('directory_table', 'children'),
+@callback( 
+    Output('directory_table', 'children', allow_duplicate=True),
     Input('filter_directory_tags_btn', 'n_clicks'),
     Input('filter_directory_tags', 'value'),
-    State('project_store', 'data'),
+    State("pagination_dirs", 'active_page'),
+    State("project_name", "data"),
     prevent_initial_call=True)
-def filter_directory_table(btn, filter, project):
-    # Apply filter to the directories table
-    if ctx.triggered_id == 'filter_directory_tags_btn' or filter:
-        if filter or filter == "":
-            try:
-                return get_directories_table(project, filter)
-            except (FailedConnectionException, UnsuccessfulGetException) as err:
-                return dbc.Alert(str(err), color="danger")
-        else:
-            raise PreventUpdate
-    else:
+def filter_subdirectories(n_clicks, filter, current_page, project_name):
+    if n_clicks is None and not filter:
         raise PreventUpdate
+
+    try:
+        project = get_connection().get_project(project_name)
+        # Adjust this function call according to your data retrieval implementation
+        filtered_dirs = project.get_all_directories(filter=filter, quantity=5, offset=(current_page-1)*5)
+
+        return get_directories_table(filtered_dirs)
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
+  
+@callback( 
+    Output('directory_table', 'children', allow_duplicate=True),
+    Input("pagination_dirs", 'active_page'),
+    State('filter_directory_tags', 'value'),
+    State("project_name", "data"),
+    prevent_initial_call='initial_duplicate')
+def paginate_directories(current_page, filter, project_name):
+    if not ctx.triggered_id == 'pagination_subdirs':
+        raise PreventUpdate
+
+    try:
+        project = get_connection().get_project(project_name)
+        # Adjust this function call according to your data retrieval implementation
+        filtered_dirs = project.get_all_directories(filter=filter, quantity=5, offset=(current_page-1)*5)
+
+        return get_directories_table(filtered_dirs)
+    except Exception as err:
+        return dbc.Alert(str(err), color="danger")
 
 
 @callback(
@@ -715,12 +725,15 @@ def layout(project_name: Optional[str] = None):
         return login_required_interface()
 
     if project_name:
+        dir_current_active_page = 1     # offset
+        dir_items_per_page = 5          # quantity
+        
         try:
             connection = get_connection()
             project = connection.get_project(project_name)
 
             initial_project_data = json.dumps(project.to_dict())
-            initial_directory_list_data = json.dumps([d.to_dict() for d in project.get_all_directories()])
+            initial_directory_list_data = project.get_all_directories(offset=dir_current_active_page - 1, quantity=dir_items_per_page)
         
         except (FailedConnectionException, UnsuccessfulGetException) as err:
             return dbc.Alert(str(err), color="danger")
@@ -729,7 +742,6 @@ def layout(project_name: Optional[str] = None):
         if project.your_user_role in ["Owners","Members", "Collaborators"]:
             return html.Div([
                 dcc.Store(id='project_store', data=initial_project_data),
-                dcc.Store(id='dirlist_store', data=initial_directory_list_data),
                 dcc.Store(id='project_name', data=project_name),
                 # Breadcrumbs
                 html.Div(
@@ -783,6 +795,8 @@ def layout(project_name: Optional[str] = None):
                         # Directories Table
                         dcc.Loading(html.Div(get_directories_table(
                             initial_directory_list_data), id='directory_table'), color=colors['sage']),
+                        dbc.Pagination(id="pagination_dirs", max_value=math.ceil(
+                                int(project.number_of_directories)/dir_items_per_page), first_last=True, previous_next=True, active_page=dir_current_active_page, fully_expanded=False,),
                     ])], class_name="custom-card mb-3"),
                 dbc.Card([
                     dbc.CardHeader([
