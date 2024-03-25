@@ -225,16 +225,17 @@ def upload_tempfile_to_xnat(btn: int, project_name: str, dir_name: str, filename
     else:
         return no_update
 
+
 @callback(Output('directory_name', 'options'),Input('project_name','value'), prevent_initial_call=True)
 def display_directory_dropdown(project):
     # When a project is selected, the directory field suggests existing directories to upload to
     if project and project!='None':
         return get_directory_names(project)
 
-# Define the callback function
+
 @callback(
-    Output('keep_alive_output', 'children'),  # Dummy output
-    [Input('keep_alive_interval', 'n_intervals')],
+    Output('keep_alive_output_upload', 'children'),  # Dummy output
+    [Input('keep_alive_interval_upload', 'n_intervals')],
     prevent_initial_callback=True
 )
 def keep_session_alive(n):
@@ -276,11 +277,11 @@ def layout(project_name: Optional[str] = None):
         uploader(project_name),
         
         dcc.Interval(
-            id='keep_alive_interval',
+            id='keep_alive_interval_upload',
             interval=2*60*1000,  # in milliseconds, 2 minutes * 60 seconds * 1000 ms
             n_intervals=0
         ),
-        html.Div(id='keep_alive_output'),
+        html.Div(id='keep_alive_output_upload'),
         
         # Store filename for upload to xnat https://dash.plotly.com/sharing-data-between-callbacks
         dcc.Store(id='filename-storage')

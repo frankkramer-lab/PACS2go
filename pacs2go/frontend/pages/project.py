@@ -350,7 +350,7 @@ def download_project_data():
     return html.Div([
         dbc.Button([
             html.I(className="bi bi-download me-2"), "Download"], outline=True, color="success", id="btn_download_project", size="md"),
-        dcc.Loading(dcc.Download(id="download_project"))])
+        dcc.Loading(dcc.Download(id="download_project"), color=colors['sage'])])
 
 
 #################
@@ -713,6 +713,21 @@ def request_access_to_project(n_clicks, project_name):
 
     else:
         raise PreventUpdate
+    
+@callback(
+    Output('keep_alive_output_project', 'children'),  # Dummy output
+    [Input('keep_alive_output_project', 'n_intervals')],
+    prevent_initial_callback=True
+)
+def keep_session_alive(n):
+    try:
+        # Heartbeat to keep session alive during download
+        get_connection()._file_store_connection.heartbeat()
+    
+        # We don't want to update any component
+        return no_update
+    except Exception:
+        return dbc.Alert("Your session has expired, please try again.", color="danger")
 
 
 
@@ -812,6 +827,12 @@ def layout(project_name: Optional[str] = None):
                 html.Div([
                     modal_delete(project),
                     modal_delete_data(project)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end")),
+                dcc.Interval(
+                    id='keep_alive_interval_project',
+                    interval=2*60*1000,  # in milliseconds, 2 minutes * 60 seconds * 1000 ms
+                    n_intervals=0
+                ),
+                html.Div(id='keep_alive_output_project'),
             ])
         else:
             return dbc.Alert([
