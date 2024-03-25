@@ -145,7 +145,7 @@ def get_files_table(directory: dict, files: dict = None, filter: str = '', activ
     if not directory['is_consistent']:
         warning_message = dbc.Alert(
             "Warning: The directory's metadata and file storage data are not consistent. The inconsistent files are not shown. Please contact your admin.",
-            color="warning"
+            color="warning", id="warninig_files"
         )
 
     # Return the table and the warning message
@@ -582,7 +582,7 @@ def cb_filter_files_table(btn, filter, active_page, quantity, directory):
 )
 # Callback for the favoriting (directory) feature
 def cb_favorite(n_clicks, directory_name, project_name):
-    # Download button is triggered
+    # Favoriting button is triggered
     if ctx.triggered_id == 'btn_fav_dir':
         try:
             connection = get_connection()
@@ -624,7 +624,7 @@ def cb_download(n_clicks, directory_name, project_name):
 
 
 @callback(
-    Output("download_directory", "data"),
+    Output("download_directory_single", "data"),
     Input({'type': 'btn_download_file', 'index': ALL}, 'n_clicks'),
     State("directory_name", "data"),
     State("project_name", "data"),
@@ -767,7 +767,7 @@ def cb_modal_and_file_edit(close, edit_and_close, directory_name, project_name, 
 
 
 @callback(
-    Output('download_directory', 'data', allow_duplicate=True),  # Assume an element to display action feedback
+    Output('action_feedback', 'children', allow_duplicate=True), Output('download_directory_single', 'data', allow_duplicate=True),  # Assume an element to display action feedback
     Input('download_selected_btn', 'n_clicks'),
     State({'type': 'file_selection', 'index': ALL}, 'value'),
     State("directory_name", 'data'),
@@ -785,6 +785,8 @@ def handle_multiple_file_actions_download(n_clicks, selected_files_values, direc
             dbc.Alert(str(err), color='warning') 
     elif selected_files_values:
         files = [file for sublist in selected_files_values for file in sublist]
+        if len(files) == 0:
+            return dbc.Alert("No files were selected.", color='warning'), no_update
     else:
         raise PreventUpdate
         
@@ -807,10 +809,10 @@ def handle_multiple_file_actions_download(n_clicks, selected_files_values, direc
                 # Create a zip file of the directory
                 shutil.make_archive(zip_path[:-4], 'zip', dir_path)  # Exclude the .zip extension in zip_path
                 
-                return dcc.send_file(zip_path)
+                return no_update, dcc.send_file(zip_path)
                 
             except (FailedConnectionException, UnsuccessfulGetException) as err:
-                dbc.Alert(str(err), color='warning')
+                return dbc.Alert(str(err), color='warning'), no_update
     else:
         raise PreventUpdate
 
@@ -933,6 +935,22 @@ def cb_reload_files_table(files, active_page, quantity, directory, new, filter):
         return get_files_table(directory=directory, filter=filter, active_page=int(active_page), quantity=int(quantity), new=new), pagination_max_value
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return dbc.Alert(str(err), color="danger")
+    
+    
+@callback(
+    Output('keep_alive_output_directory', 'children'),  # Dummy output
+    [Input('keep_alive_output_directory', 'n_intervals')],
+    prevent_initial_callback=True
+)
+def keep_session_alive(n):
+    try:
+        # Heartbeat to keep session alive during download
+        get_connection()._file_store_connection.heartbeat()
+    
+        # We don't want to update any component
+        return no_update
+    except Exception:
+        return dbc.Alert("Your session has expired, please try again.", color="danger")
 
 
 #################
@@ -1032,7 +1050,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                                             id="btn_fav_dir",  n_clicks=0,size="md", outline=True, style={'color': colors['favorite'], 'border-color':colors['favorite']}, title="Add to Favorites",class_name="mx-2"),
                                 # Download Directory button
                                 dbc.Button([html.I(className="bi bi-download me-2"),
-                                            "Download"], id="btn_download_dir", size="md", class_name="me-2", n_clicks=0, outline=True, color="success"),
+                                            "Download", dcc.Loading(dcc.Download(id="download_directory"), color=colors['sage'])], id="btn_download_dir", size="md", class_name="me-2", n_clicks=0, outline=True, color="success"),
                                 ])
                         ], className="d-grid gap-2 d-md-flex justify-content-md-end"),
                     ], className="mb-3"),
@@ -1080,7 +1098,7 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
                             ),
                         dbc.Col([html.Div([
                             modal_edit_selected_files(rights=project.your_user_role),
-                            dbc.Button([html.I(className="bi bi-download"), dcc.Loading(dcc.Download(id="download_directory"))], class_name="me-1",outline=True, color="success",title="Download Selected", id="download_selected_btn"),
+                            dbc.Button([html.I(className="bi bi-download"), dcc.Loading(dcc.Download(id="download_directory_single"), color=colors['sage'])], class_name="me-1",outline=True, color="success",title="Download Selected", id="download_selected_btn"),
                             modal_delete_selected_files(rights=project.your_user_role)
                         ], className="d-flex justify-content-end")]),
 
@@ -1118,6 +1136,12 @@ def layout(project_name: Optional[str] = None, directory_name: Optional[str] = N
             # get_single_file_preview(directory),
             dbc.Row(html.Div([
                 modal_delete(directory)], style={'float': 'right'}, className="mt-3 mb-5 d-grid gap-2 d-md-flex justify-content-md-end")),
+            dcc.Interval(
+                    id='keep_alive_interval_directory',
+                    interval=2*60*1000,  # in milliseconds, 2 minutes * 60 seconds * 1000 ms
+                    n_intervals=0
+                ),
+                html.Div(id='keep_alive_output_directory'),
         ])
 
     else:
