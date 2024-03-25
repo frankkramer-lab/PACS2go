@@ -460,6 +460,28 @@ class PACS_DB():
             msg = "Error retrieving directories by project"
             logger.exception(msg)
             raise Exception(msg)
+        
+    def get_all_directories_including_subdirectories_by_project(self, project_name: str) -> List['DirectoryData']:  
+        try:
+            # Start with the base query
+            query = f"""
+                SELECT unique_name, dir_name, parent_project, parent_directory, timestamp_creation, parameters, timestamp_last_updated
+                FROM {self.DIRECTORY_TABLE}
+                WHERE unique_name LIKE %s
+            """
+
+            # Execute the query
+            self.cursor.execute(query, (f"{project_name}%",))
+            results = self.cursor.fetchall()
+
+            # Build the directory list from the results
+            directory_list = [DirectoryData(*row) for row in results]
+
+            return directory_list
+        except Exception as err:
+            msg = "Error retrieving directories by project"
+            logger.exception(msg)
+            raise Exception(msg)
 
     def get_directory_by_name(self, unique_name: str) -> 'DirectoryData':
         try:

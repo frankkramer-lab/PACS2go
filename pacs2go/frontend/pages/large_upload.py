@@ -39,27 +39,16 @@ def get_project_names() -> List[str]:
 
     except (FailedConnectionException, UnsuccessfulGetException) as err:
         return ["No database connection."]
-
-def get_subdirectory_names_recursive(directory):
-    # Recursively fetch all nested subdirectories using depth-first traversal
-    dir_list = []
-    for d in directory.get_subdirectories():
-        dir_list.append({'label': d.unique_name.replace('::', ' / '), 'value':d.unique_name})
-        dir_list.extend(get_subdirectory_names_recursive(d))
-
-    return dir_list
+    
 
 def get_directory_names(project: Project) -> List[str]:
     # Get List of all project names as html Options
     try:
-        directories = get_connection().get_project(project).get_all_directories()
+        directories = get_connection().get_project(project).get_all_directory_names_including_subdirectories()
         dir_list = []
 
         for d in directories:
-            # html option to create a html datalist
-            dir_list.append({'label': d.unique_name.replace('::', ' / '), 'value':d.unique_name})
-            if len(d.get_subdirectories()) > 0:
-                dir_list.extend(get_subdirectory_names_recursive(d))
+            dir_list.append({'label': d.replace('::', ' / '), 'value':d})
             
         return dir_list
 
@@ -94,7 +83,6 @@ def uploader(passed_project: Optional[str]):
                 dbc.Col(
                     # Input field value equals project name, if user navigates to upload via a specific project
                     [dbc.Label(html.B("Project")),
-                    #html.Datalist(children=get_project_names(),id='project_names'),
                     dcc.Dropdown(options=get_project_names(),id="project_name", placeholder="Project Name...",
                             value=passed_project),
                     dbc.FormText(["Please choose a project. To create a new project go to", dcc.Link(' projects', href='/projects',style={"color":colors['sage']}), "."])], className="mb-3"),
@@ -102,7 +90,7 @@ def uploader(passed_project: Optional[str]):
                     [dbc.Label(html.B("Directory"),),
                     dcc.Dropdown(options=[],id="directory_name", placeholder="Directory Name... (optional)",
                             value=None),
-                    dbc.FormText("Select a directory from the dropdown if desired. For single file uploads, a new directory with the current timestamp will be created if none is selected.")], className="mb-3")
+                    dbc.FormText("Select a directory from the dropdown. For single file uploads, a new directory with the current timestamp will be created if none is selected.")], className="mb-3")
             ]),
             dbc.Row(dbc.Col(
                     [dbc.Label([html.B("Tags")," - If you wish, you may add tags that describe your files' contents. Please separate each tag by comma."]),
