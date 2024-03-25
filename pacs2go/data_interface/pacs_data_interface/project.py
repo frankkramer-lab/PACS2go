@@ -391,6 +391,19 @@ class Project:
             msg = f"Failed to get a list of directories for Project '{self.name}'."
             logger.exception(msg)
             raise UnsuccessfulGetException("Directories")
+    
+    def get_all_directory_names_including_subdirectories(self) -> list:
+        try:
+            with PACS_DB() as db:
+                directories_from_db = db.get_all_directories_including_subdirectories_by_project(self.name)
+            
+            directory_names = [d.unique_name for d in directories_from_db]
+            return directory_names
+
+        except:
+            msg = f"Failed to get a list of all directory names for Project '{self.name}'."
+            logger.exception(msg)
+            raise UnsuccessfulGetException("Directory names")
 
     def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '', unpack_directly:bool = False) -> Union['Directory', 'File']:
         try:

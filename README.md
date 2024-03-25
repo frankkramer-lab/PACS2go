@@ -15,7 +15,7 @@ PACS2go is a portable **Picture Archiving and Communication System** tailored fo
 
 ![](docs/architecture.png)
 
-## Getting Started in Just 3 Steps
+## Getting Started In Just A Few Steps
 
 To kick off with PACS2go, ensure Docker is installed on your system ([Docker Installation Guide](https://docs.docker.com/engine/install/)).
   
@@ -24,10 +24,12 @@ To kick off with PACS2go, ensure Docker is installed on your system ([Docker Ins
 # 1 - Clone this repository
 $ git clone https://git.rz.uni-augsburg.de/misit-bachelor/pacs2go.git
 
-# 2 - Go into the repository
+# 2 - Fill in .env default credentials for XNAT, Postgres and PGAdmin, change SECRET_KEY in frontend/.env
+
+# 3 - Go into the repository
 $ cd pacs2go
 
-# 3 - Start services via docker-compose
+# 4 - Start services via docker-compose
 $ docker-compose up
 ```
   
