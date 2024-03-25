@@ -8,7 +8,7 @@
 /pacs2go/data_interface/__pycache__
 /pacs2go/data_interface/exceptions/__pycache__
 /pacs2go/frontend/__pycache__
-/pacs2go/frontend/.env
+# /pacs2go/frontend/.env
 /pacs2go/frontend/pages/__pycache__
 /pacs2go.egg-info
 .vscode
