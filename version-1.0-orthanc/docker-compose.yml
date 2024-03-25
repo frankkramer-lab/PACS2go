@@ -1,0 +1,55 @@
+# documentation: https://book.orthanc-server.com/users/docker.html
+version: '3.6'
+services:
+
+  viewer:
+    image: ohif/viewer:v4.9.8.14493
+    container_name: viewer
+    depends_on:
+      - orthanc
+    ports:
+      - 80:80
+    volumes:
+      # Nginx as a reversed proxy for orthanc and the viewer
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # OHIF Viewer configuration to reach DICOMWeb endpoints
+      - ./config/viewer.js:/usr/share/nginx/html/app-config.js:ro
+      # university logo
+      - ./config/assets:/usr/share/nginx/html/assets
+
+  orthanc:
+    image: jodogne/orthanc-plugins:1.9.7
+    container_name: orthanc
+    volumes:
+      # persistent data
+      - ./orthanc-db/:/var/lib/orthanc/db
+      # lua scripts
+      - ./script.lua:/etc/orthanc/script.lua
+    secrets:
+      - orthanc.json
+    command: /run/secrets/ # config file (stored as secret)
+    environment:
+      - ORTHANC_NAME=PACS2go
+      
+  web:
+    # https://mdsa3d.github.io/Tutorial-flask_gunicorn_nginx_docker-compose/
+    container_name: web
+    build: ./web-service
+    ports:
+      - 8000:80
+    volumes:
+      - ./web-service:/app
+      - ./tools:/app/tools
+    environment:
+      FLASK_ENV: development
+    depends_on:
+      - orthanc
+    # run the application
+    command: gunicorn --bind 0.0.0.0:8000 --timeout 600 wsgi:app
+
+secrets:
+  orthanc.json:
+    file: ./config/orthanc.json
+
+
+ 

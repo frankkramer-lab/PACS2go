@@ -1,0 +1,105 @@
+version: '3.11'
+services:
+  dash:
+    container_name: dash_web_interface
+    build: ./
+    ports:
+      - 5000:5000
+    volumes:
+      - ./:/app  # necessary for dev
+    env_file: .env
+    environment: # env-variables
+      XNAT_USER: ${XNAT_USER}
+      XNAT_PASS: ${XNAT_PASS}
+      PACS2GO_VERSION: 2.2.1
+      PYTHONUNBUFFERED: 1
+    command: gunicorn pacs2go.frontend.app:server -b :5000 --workers 8 --preload --timeout 180 -k gthread --threads 4
+    #command: python pacs2go/frontend/app.py
+    depends_on:
+      - xnat-web
+      - data-structure-db
+    restart: always
+
+  data-structure-db:
+    container_name: data-structure-db
+    image: postgres:15.1
+    restart: always
+    # save data on local disk
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - 5433:5432
+
+  pgadmin-ds-db:
+    container_name: pgadmin-ds-db
+    image: dpage/pgadmin4:7.8
+    depends_on:
+      - data-structure-db
+    ports:
+      - 5050:80
+    restart: always
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DISABLE_POSTGRES_LOGGING: 1  # Disable PostgreSQL-related logging
+    
+
+  xnat-web:
+    build:
+      context: ./xnat-docker-compose/xnat
+      args:
+        XNAT_VERSION: ${XNAT_VERSION}
+        XNAT_SMTP_ENABLED: ${XNAT_SMTP_ENABLED}
+        XNAT_SMTP_HOSTNAME: ${XNAT_SMTP_HOSTNAME}
+        XNAT_SMTP_PORT: ${XNAT_SMTP_PORT}
+        XNAT_SMTP_AUTH: ${XNAT_SMTP_AUTH}
+        XNAT_SMTP_USERNAME: ${XNAT_SMTP_USERNAME}
+        XNAT_SMTP_PASSWORD: ${XNAT_SMTP_PASSWORD}
+        XNAT_DATASOURCE_DRIVER: ${XNAT_DATASOURCE_DRIVER}
+        XNAT_DATASOURCE_URL: ${XNAT_DATASOURCE_URL}
+        XNAT_DATASOURCE_USERNAME: ${XNAT_DATASOURCE_USERNAME}
+        XNAT_DATASOURCE_PASSWORD: ${XNAT_DATASOURCE_PASSWORD}
+        TOMCAT_XNAT_FOLDER: ${TOMCAT_XNAT_FOLDER}
+        XNAT_ROOT: ${XNAT_ROOT}
+        XNAT_HOME: ${XNAT_HOME}
+        XNAT_EMAIL: ${XNAT_EMAIL}
+    ports:
+      - 8104:8104
+      - 8888:8080
+    volumes:
+      - ./xnat-docker-compose/xnat/plugins:${XNAT_HOME}/plugins
+      - ./xnat-docker-compose/xnat-data/home/logs:${XNAT_HOME}/logs
+      - ./xnat-docker-compose/xnat-data/archive:${XNAT_ROOT}/archive
+      - ./xnat-docker-compose/xnat-data/build:${XNAT_ROOT}/build
+      - ./xnat-docker-compose/xnat-data/cache:${XNAT_ROOT}/cache
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - xnat-db
+    environment:
+      - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP} -Xmx${XNAT_MAX_HEAP} -Dxnat.home=${XNAT_HOME}
+      - XNAT_HOME=${XNAT_HOME}
+
+  xnat-db:
+    image: postgres:${PG_VERSION}
+    expose:
+      - "5432"
+    volumes:
+      - ./xnat-docker-compose/postgres-data:/var/lib/postgresql/data
+      # 
+      - ./xnat-docker-compose/postgres:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=${XNAT_DATASOURCE_ADMIN_PASSWORD}
+      - POSTGRES_DB=${XNAT_DATASOURCE_NAME}
+      # variables for the sql script
+      - XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME}
+      - XNAT_DATASOURCE_PASSWORD=${XNAT_DATASOURCE_PASSWORD}
+
+
+
+

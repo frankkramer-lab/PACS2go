@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <title>pacs2go</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+        <!-- CSS only -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href='/assets/style.css' rel="stylesheet">
+</head>
+
+<body>
+        <nav class="navbar navbar-light navbar-expand-md">
+                <div class="container">
+                        <a class="navbar-brand" href="http://vm204-misit.informatik.uni-augsburg.de/web/"
+                                ><img src="../assets/uni-logo-for-web.png"
+                                        height="40px"></a>
+                        <a class="my-navbar-brand" href="http://vm204-misit.informatik.uni-augsburg.de/web/"> PACS2go </a>
+                        <div class="collapse navbar-collapse" id="navcol-1">
+                                <ul class="navbar-nav ms-auto">
+                                        <li class="nav-item"><a class="my-nav-link"
+                                                        href="http://vm204-misit.informatik.uni-augsburg.de/">Viewer</a></li>
+                                        <li class="nav-item"><a class="my-nav-link"
+                                                        href="http://vm204-misit.informatik.uni-augsburg.de/pacs-admin/"
+                                                        >ORTHANC</a></li>
+                                        <li class="nav-item"><a class="my-nav-link" href="pseudonymizer"
+                                                        >Pseudonymizer</a></li>
+                                        <li class="nav-item"><a class="my-nav-link" href="converter"
+                                                        >Converter</a></li>
+                                </ul>
+                        </div>
+                </div>
+        </nav>
+
+        <div class="container">
+                <div class="row">
+                        <div class="col-md-12">
+                                <h1 class="display-3 page-title"> {{ title }} </h1>
+                        </div>
+                </div>
+        </div>
+
+        <!-- template content -->
+        {% block content %}
+        {% endblock %}
+
+
+        <div class="container" style="padding: 30px;color: var(--bs-danger);">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                {% for message in messages %}
+                {{ message }}
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+        </div>
+
+        <!-- Bootstrap Javascripts -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

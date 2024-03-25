@@ -1,0 +1,21 @@
+# ignore local data
+/version-1.0-orthanc/orthanc-db/
+/version-1.0-orthanc/.vscode/
+/version-1.0-orthanc/tools/__pycache__
+/version-1.0-orthanc/web-service/__pycache__
+/test_data/
+/pacs2go/__pycache__
+/pacs2go/data_interface/__pycache__
+/pacs2go/data_interface/exceptions/__pycache__
+/pacs2go/frontend/__pycache__
+/pacs2go/frontend/.env
+/pacs2go/frontend/pages/__pycache__
+/pacs2go.egg-info
+.vscode
+.env
+/data
+/pacs2go/data_interface/tests/__pycache__
+/pacs2go/data_interface/logs/__pycache__
+/pacs2go/data_interface/logs/log_files/*
+/pacs2go/data_interface/pacs_data_interface/__pycache__/
+!/pacs2go/data_interface/logs/log_files/.gitkeep
