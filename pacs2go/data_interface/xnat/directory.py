@@ -6,7 +6,6 @@ from natsort import natsorted
 from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.xnat.file import XNATFile
 from pacs2go.data_interface.xnat.project import XNATProject
 
 class XNATDirectory():
@@ -77,7 +76,8 @@ class XNATDirectory():
             logger.error(msg)
             raise HTTPException(msg)
 
-    def get_file(self, file_name: str, metadata: dict = None) -> 'XNATFile':
+    def get_file(self, file_name: str, metadata: dict = None) -> 'XNATFile': # type: ignore
+        from pacs2go.data_interface.xnat.file import XNATFile
         """
         Retrieves a file by name from the directory.
 
@@ -90,7 +90,7 @@ class XNATDirectory():
         """
         return XNATFile(self, file_name, metadata)
 
-    def get_all_files(self) -> List['XNATFile']:
+    def get_all_files(self) -> List['XNATFile']: # type: ignore
         """
         Retrieves a list of all files in the directory.
 

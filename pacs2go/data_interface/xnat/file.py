@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.xnat import XNATDirectory
-from pacs2go.data_interface.xnat.utils import file_format, image_file_suffixes
+from pacs2go.data_interface.xnat.utils.constants import file_format, image_file_suffixes
 
 class XNATFile():
     """Represents a file within an XNAT directory."""

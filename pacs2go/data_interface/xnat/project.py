@@ -11,7 +11,7 @@ from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.xnat.utils.constants import allowed_file_suffixes, file_format, image_file_suffixes
-from pacs2go.data_interface.xnat import XNAT, XNATDirectory, XNATFile
+from pacs2go.data_interface.xnat import XNAT
 
 
 # Accepted File formats/suffixes
@@ -353,7 +353,7 @@ class XNATProject():
             logger.error(msg)
             raise HTTPException(msg)
         
-    def create_directory(self, name) -> 'XNATDirectory':
+    def create_directory(self, name) -> 'XNATDirectory': # type: ignore
         """
         Creates a new directory within the project.
 
@@ -377,7 +377,8 @@ class XNATProject():
         os.remove(file_path)
         return dir
 
-    def get_directory(self, name) -> 'XNATDirectory':
+    def get_directory(self, name) -> 'XNATDirectory': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory
         """
         Retrieves a directory by name from the project.
 
@@ -389,7 +390,7 @@ class XNATProject():
         """
         return XNATDirectory(self, name)
 
-    def get_all_directories(self) -> Sequence['XNATDirectory']:
+    def get_all_directories(self) -> Sequence['XNATDirectory']: # type: ignore
         """
         Retrieves a list of all directories in the project.
 
@@ -423,7 +424,7 @@ class XNATProject():
             logger.error(msg)
             raise HTTPException(msg)
 
-    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']: # type: ignore
         """
         Inserts a file or a directory (for zip files) from a file path into the project.
 
@@ -451,7 +452,8 @@ class XNATProject():
             logger.error(msg)
             raise ValueError("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = False) -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = False) -> 'XNATDirectory': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory
         """
         Inserts a zip file into the project.
 
@@ -531,7 +533,8 @@ class XNATProject():
             raise ValueError("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, file_id:str='', directory_name: str = '', tags_string: str = '') -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, file_id:str='', directory_name: str = '', tags_string: str = '') -> 'XNATFile': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory, XNATFile
         """
         Inserts a single file into the project.
 

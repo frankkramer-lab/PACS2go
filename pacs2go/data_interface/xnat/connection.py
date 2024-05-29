@@ -5,21 +5,7 @@ import requests
 from werkzeug.exceptions import HTTPException
 
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.xnat import XNATProject, XNATDirectory, XNATFile
-from pacs2go.data_interface.xnat.file import XNATFile
-from pacs2go.data_interface.xnat.project import XNATProject
 
-# Accepted File formats/suffixes
-allowed_file_suffixes = (
-    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.csv', '.json', '.txt', '.pdf', '.gz', '.json', '.gif', '.md', '.py', '.ipynb', '.svg')
-image_file_suffixes = (
-    '.jpg', '.jpeg', '.png', '.nii', '.dcm', '.tiff', '.gif', '.gz' '.svg')
-
-# File format metadata
-file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI', '.gz' : 'compressed NIFTI',
-               '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT', '.gif':'GIF',
-               '.json': 'JSON', '.pdf': 'PDF', '.md':'Markdown', '.py':'Python File', '.ipynb': 'Interactive Python Notebook',
-               '.svg':'Scalable Vector Graphics'}
 
 
 class XNAT():
@@ -156,7 +142,8 @@ class XNAT():
         else:
             logger.info("XNAT session was successfully invalidated.")
 
-    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'XNATProject':
+    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'XNATProject': # type: ignore
+        from pacs2go.data_interface.xnat import XNATProject
         """
         Creates a new project on the XNAT server.
 
@@ -191,7 +178,8 @@ class XNAT():
             logger.error(msg)
             raise HTTPException(msg)
         
-    def get_project(self, name: str) -> 'XNATProject':
+    def get_project(self, name: str) -> 'XNATProject': # type: ignore
+        from pacs2go.data_interface.xnat import XNATProject
         """
         Retrieves a project by name.
 
@@ -203,7 +191,7 @@ class XNAT():
         """
         return XNATProject(self, name)
 
-    def get_all_projects(self) -> List['XNATProject']:
+    def get_all_projects(self) -> List['XNATProject']: # type: ignore
         """
         Retrieves a list of all projects.
 
@@ -237,7 +225,8 @@ class XNAT():
             logger.error(msg)
             raise HTTPException(msg)
 
-    def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
+    def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory
         """
         Retrieves a directory by name from a project.
 
@@ -250,7 +239,8 @@ class XNAT():
         """
         return XNATDirectory(self.get_project(project_name), directory_name)
 
-    def get_file(self, project_name: str, directory_name: str, file_name: str) -> 'XNATFile':
+    def get_file(self, project_name: str, directory_name: str, file_name: str) -> 'XNATFile': # type: ignore
+        from pacs2go.data_interface.xnat import XNATProject, XNATDirectory, XNATFile
         """
         Retrieves a file by name from a directory in a project.
 
