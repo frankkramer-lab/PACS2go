@@ -18,7 +18,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
 from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.pacs_data_interface.directory import Directory
 from pacs2go.data_interface.pacs_data_interface.file import File
-from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
+from pacs2go.data_interface.xnat import XNATProject
 
 
 class Project:

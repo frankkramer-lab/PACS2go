@@ -13,7 +13,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulDeletionException, UnsuccessfulGetException)
 from pacs2go.data_interface.logs.config_logging import logger
 from pacs2go.data_interface.pacs_data_interface.file import File
-from pacs2go.data_interface.xnat_rest_wrapper import XNATDirectory
+from pacs2go.data_interface.xnat import XNATDirectory
 
 
 class Directory:
