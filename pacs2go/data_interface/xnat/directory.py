@@ -6,7 +6,7 @@ from natsort import natsorted
 from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.xnat.project import XNATProject
+from pacs2go.data_interface.xnat import XNATProject
 
 class XNATDirectory():
     """Represents a directory within an XNAT project."""
