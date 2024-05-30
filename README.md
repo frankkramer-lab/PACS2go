@@ -62,3 +62,10 @@ $ docker-compose up
 - **dash-uploader** (0.6.0): Enhances file upload capabilities within Dash applications. 📤
 - **Postgres**: A powerful, open-source object-relational database system, used here for efficient metadata storage. 🛢️
 - **Dockerized XNAT**: Utilizes the robust XNAT platform within Docker for unparalleled file storage solutions. Check it out [here](https://github.com/NrgXnat/xnat-docker-compose). 🏗️
+
+
+## XNAT REST API Wrapper
+
+We've included a robust XNAT REST API wrapper in Python within this project, enabling seamless interaction with XNAT servers for tasks such as project management, file operations, and user management. This integration simplifies automated workflows and enhances your productivity when working with XNAT.
+
+You can find the XNAT REST API wrapper [here](https://github.com/frankkramer-lab/PACS2go/tree/main/pacs2go/data_interface/xnat).

@@ -22,7 +22,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     DownloadException, FailedConnectionException,
     UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
     UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface.file import File
+from pacs2go.data_interface.pacs_data_interface import File
 from pacs2go.frontend.helpers import (colors, get_connection,
                                       login_required_interface, pil_to_b64)
 

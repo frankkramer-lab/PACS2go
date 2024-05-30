@@ -16,13 +16,12 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulDeletionException, UnsuccessfulGetException,
     UnsuccessfulUploadException, WrongUploadFormatException)
 from pacs2go.data_interface.logs.config_logging import logger
-# from pacs2go.data_interface.pacs_data_interface.connection import Connection # only for typing, but creates circular import
-from pacs2go.data_interface.pacs_data_interface.directory import Directory
-from pacs2go.data_interface.pacs_data_interface.file import File
-from pacs2go.data_interface.xnat_rest_wrapper import XNATProject
+from pacs2go.data_interface.xnat import XNATProject
 
 
 class Project:
+    """Represents a project within the PACS system, providing methods to manage directories, files, and project attributes."""
+
     # File format metadata
     file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI', '.gz' : 'compressed (NIFTI)',
                 '.dcm': 'DICOM', '.tiff': 'TIFF', '.csv': 'CSV', '.json': 'JSON', '.txt': 'TXT', '.gif':'GIF',
@@ -32,6 +31,18 @@ class Project:
     this_timezone = timezone("Europe/Berlin")
 
     def __init__(self, connection, name: str, _project_file_store_object=None) -> None:
+        """
+        Initializes a Project object.
+
+        Args:
+            connection (Connection): The connection to the PACS system. (Not typed due to circular import.)
+            name (str): The name of the project.
+            _project_file_store_object (optional): The project file storage object. Defaults to None and will be retrieved here. Specification leads to optimized performance.
+
+        Raises:
+            UnsuccessfulGetException: If the project cannot be retrieved from the database or file storage.
+            FailedConnectionException: If the connection type is unsupported.
+        """
         self.connection = connection
         self.name = name
 
@@ -64,6 +75,15 @@ class Project:
 
     @property
     def description(self) -> str:
+        """
+        Returns the description of the project.
+
+        Returns:
+            str: The project description.
+
+        Raises:
+            UnsuccessfulGetException: If the description cannot be retrieved.
+        """
         try:
             return self._db_project.description
         except:
@@ -72,6 +92,15 @@ class Project:
             raise UnsuccessfulGetException("Project description")
 
     def set_description(self, description_string: str) -> None:
+        """
+        Sets the description of the project.
+
+        Args:
+            description_string (str): The new description for the project.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the description cannot be updated.
+        """
         try:
             with PACS_DB() as db:
                 db.update_attribute(
@@ -87,6 +116,15 @@ class Project:
 
     @property
     def keywords(self) -> str:
+        """
+        Returns the user-specified keywords associated with the project.
+
+        Returns:
+            str: The project keywords.
+
+        Raises:
+            UnsuccessfulGetException: If the keywords cannot be retrieved.
+        """
         try:
             return self._db_project.keywords
         except:
@@ -95,6 +133,15 @@ class Project:
             raise UnsuccessfulGetException("Project-related keywords")
 
     def set_keywords(self, keywords_string: str) -> None:
+        """
+        Updates/Overwrites the keywords for the project. 
+
+        Args:
+            keywords_string (str): The new keywords for the project.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the keywords cannot be updated.
+        """
         try:
             with PACS_DB() as db:
                 db.update_attribute(
@@ -110,6 +157,15 @@ class Project:
 
     @property
     def parameters(self) -> str:
+        """
+        Returns the user-specified parameters associated with the project.
+
+        Returns:
+            str: The project parameters.
+
+        Raises:
+            UnsuccessfulGetException: If the parameters cannot be retrieved.
+        """
         try:
             return self._db_project.parameters
         except:
@@ -118,6 +174,15 @@ class Project:
             raise UnsuccessfulGetException("Project-related parameters")
 
     def set_parameters(self, parameters_string: str) -> None:
+        """
+        Sets/Overwrites the parameters for the project.
+
+        Args:
+            parameters_string (str): The new parameters for the project.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the parameters cannot be updated.
+        """
         try:
             with PACS_DB() as db:
                 db.update_attribute(
@@ -133,6 +198,15 @@ class Project:
 
     @property
     def last_updated(self) -> datetime:
+        """
+        Returns the last updated timestamp of the project.
+
+        Returns:
+            datetime: The last updated timestamp.
+
+        Raises:
+            UnsuccessfulGetException: If the timestamp cannot be retrieved.
+        """
         try:
             # Convert the timestamp string to a datetime object
             timestamp_datetime = datetime.strptime(
@@ -145,6 +219,15 @@ class Project:
                 "The timestamp of the last project update" + str(err))
 
     def set_last_updated(self, timestamp: datetime) -> None:
+        """
+        Sets the last updated timestamp for the project.
+
+        Args:
+            timestamp (datetime): The new timestamp.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the timestamp cannot be updated.
+        """
         try:
             with PACS_DB() as db:
                 timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
@@ -158,6 +241,15 @@ class Project:
 
     @property
     def timestamp_creation(self) -> datetime:
+        """
+        Returns the timestamp of the intial creation of the project.
+
+        Returns:
+            datetime: The creation timestamp.
+
+        Raises:
+            UnsuccessfulGetException: If the timestamp cannot be retrieved.
+        """
         try:
             # Convert the timestamp string to a datetime object
             timestamp_datetime = datetime.strptime(
@@ -170,6 +262,15 @@ class Project:
 
     @property
     def number_of_directories(self) -> int:
+        """
+        Returns the number of directories in the project. (Direct children.)
+
+        Returns:
+            int: The number of directories.
+
+        Raises:
+            UnsuccessfulGetException: If the number of directories cannot be retrieved.
+        """
         try:
             with PACS_DB() as db:
                 return db.get_numberofdirectories_in_project(self.name)
@@ -181,6 +282,15 @@ class Project:
 
     @property
     def owners(self) -> List[str]:
+        """
+        Returns the list of owners of the project. Types of user roles: Owners, Members, Collaborators. See XNAT documentation for explaination.
+
+        Returns:
+            List[str]: The list of project owners.
+
+        Raises:
+            UnsuccessfulGetException: If the owners cannot be retrieved.
+        """
         try:
             return self._file_store_project.owners
         except:
@@ -191,6 +301,15 @@ class Project:
     
     @property
     def members(self) -> List[str]:
+        """
+        Returns the list of members of the project.
+
+        Returns:
+            List[str]: The list of project members.
+
+        Raises:
+            UnsuccessfulGetException: If the members cannot be retrieved.
+        """
         try:
             return self._file_store_project.members
         except:
@@ -201,6 +320,15 @@ class Project:
         
     @property
     def collaborators(self) -> List[str]:
+        """
+        Returns the list of collaborators of the project.
+
+        Returns:
+            List[str]: The list of project collaborators.
+
+        Raises:
+            UnsuccessfulGetException: If the collaborators cannot be retrieved.
+        """
         try:
             return self._file_store_project.collaborators
         except:
@@ -211,6 +339,15 @@ class Project:
 
     @property
     def your_user_role(self) -> str:
+        """
+        Returns the user role of the current user in the project.
+
+        Returns:
+            str: The user role. Either Owners, Members, Collaborators or an empty string.
+
+        Raises:
+            UnsuccessfulGetException: If the user role cannot be retrieved.
+        """
         try:
             return self._file_store_project.your_user_role
         except:
@@ -219,6 +356,16 @@ class Project:
             raise UnsuccessfulGetException("Your user role")
 
     def grant_rights_to_user(self, user: str, level: str) -> None:
+        """
+        Grants specific rights to a user in the project. Only Owners and admin have rights to perform this action.
+
+        Args:
+            user (str): The username.
+            level (str): The level of rights to grant.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the rights cannot be granted.
+        """
         try:
             self._file_store_project.grant_rights_to_user(user, level)
             self.remove_request(user)
@@ -228,6 +375,15 @@ class Project:
             raise UnsuccessfulAttributeUpdateException("new user" + str(err))
         
     def revoke_rights_from_user(self, user: str) -> None:
+        """
+        Revokes specific rights from a user in the project.
+
+        Args:
+            user (str): The username.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the rights cannot be revoked.
+        """
         try:
             self._file_store_project.revoke_rights_from_user(user)
             self.remove_request(user)
@@ -237,6 +393,15 @@ class Project:
             raise UnsuccessfulAttributeUpdateException("Removing user" + str(err))
         
     def add_request(self, user:str) -> None:
+        """
+        Adds a request from a user to join the project. Owners may resolve these requests.
+
+        Args:
+            user (str): The username.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the request cannot be added.
+        """
         try:
             with PACS_DB() as db:
                 db.insert_request_to_project(self.name, user)
@@ -247,6 +412,15 @@ class Project:
             raise UnsuccessfulAttributeUpdateException("New request")
     
     def remove_request(self, user:str) -> None:
+        """
+        Removes a request from a user to join the project.
+
+        Args:
+            user (str): The username.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the request cannot be removed.
+        """
         try:
             with PACS_DB() as db:
                 db.delete_request(self.name, user)
@@ -257,6 +431,15 @@ class Project:
             raise UnsuccessfulAttributeUpdateException("Removing request")
     
     def get_requests(self) -> list:
+        """
+        Retrieves the list of requests (list of usernames) to join the project.
+
+        Returns:
+            list: The list of usernames that requested access to the project.
+
+        Raises:
+            UnsuccessfulGetException: If the requests cannot be retrieved.
+        """
         try:
             with PACS_DB() as db:
                 return db.get_requests_to_project(self.name)
@@ -268,6 +451,15 @@ class Project:
 
     @property
     def citations(self) -> List['CitationData']:
+        """
+        Returns the list of citations associated with the project.
+
+        Returns:
+            List[CitationData]: The list of citations (containing id, citation string, link).
+
+        Raises:
+            UnsuccessfulGetException: If the citations cannot be retrieved.
+        """
         try:
             with PACS_DB() as db:
                 # Get List of CitationsData objects (containing id, citation string, link)
@@ -280,6 +472,16 @@ class Project:
                 "The project citations")
 
     def add_citation(self, citations_string: str, link: str) -> None:
+        """
+        Adds a citation to the project.
+
+        Args:
+            citations_string (str): The citation string.
+            link (str): The link to the citation.
+
+        Raises:
+            UnsuccessfulAttributeUpdateException: If the citation cannot be added.
+        """
         try:
             with PACS_DB() as db:
                 # Insert new citation (use cit_id 0 as this id will be generated by Postgres during insert)
@@ -294,6 +496,15 @@ class Project:
             raise UnsuccessfulAttributeUpdateException("New citation")
 
     def delete_citation(self, citation_id: int) -> None:
+        """
+        Removes a citation from the project.
+
+        Args:
+            citation_id (int): The ID of the citation.
+
+        Raises:
+            UnsuccessfulDeletionException: If the citation cannot be deleted.
+        """
         try:
             with PACS_DB() as db:
                 db.delete_citation(citation_id)
@@ -306,9 +517,27 @@ class Project:
             raise UnsuccessfulDeletionException("Citation")
 
     def exists(self) -> bool:
+        """
+        Checks if the project exists in the file store.
+
+        Returns:
+            bool: True if the project exists, False otherwise.
+        """
         return self._file_store_project.exists()
 
     def download(self, destination: str) -> str:
+        """
+        Downloads the project data to a specified destination.
+
+        Args:
+            destination (str): The destination path.
+
+        Returns:
+            str: The path to the downloaded project data.
+
+        Raises:
+            DownloadException: If the project data cannot be downloaded.
+        """
         try:
             # Create project filder
             os.makedirs(os.path.join(destination, self.name), exist_ok=True)
@@ -327,6 +556,12 @@ class Project:
             raise DownloadException
 
     def delete_project(self) -> None:
+        """
+        Deletes the project and all related data from the database and file store.
+
+        Raises:
+            UnsuccessfulDeletionException: If the project cannot be deleted.
+        """
         try:
             with PACS_DB() as db:
                 db.delete_project_by_name(self.name)
@@ -339,6 +574,19 @@ class Project:
             raise UnsuccessfulDeletionException(f"Project '{self.name}'")
 
     def create_directory(self, unique_name: str, parameters: str = None):
+        """
+        Creates a new directory within the project. (Only direct children, for subdirectories use create_subdirectory from Directory.)
+
+        Args:
+            unique_name (str): The unique name for the directory.
+            parameters (str, optional): Additional parameters for the directory. Defaults to None.
+
+        Returns:
+            Tuple: A tuple containing the file store directory and the database directory object.
+
+        Raises:
+            UnsuccessfulCreationException: If the directory cannot be created.
+        """
         try:
             with PACS_DB() as db:
                 timestamp_now = datetime.now(
@@ -360,7 +608,21 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulCreationException(str(unique_name.split('::')[-1]))
 
-    def get_directory(self, name) -> 'Directory':
+    def get_directory(self, name) -> 'Directory': # type: ignore
+        """
+        Retrieves a directory by name from the project.
+
+        Args:
+            name (str): The name of the directory.
+
+        Returns:
+            Directory: The retrieved directory instance.
+
+        Raises:
+            UnsuccessfulGetException: If the directory cannot be retrieved.
+        """
+        from pacs2go.data_interface.pacs_data_interface import Directory
+
         try:
             logger.debug(
                 f"User {self.connection.user} retrieved information about directory '{name}' for Project '{self.name}'.")
@@ -370,7 +632,21 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
-    def get_all_directories(self, filter:str= None, offset:int = None, quantity:int = None) -> Sequence['Directory']:
+    def get_all_directories(self, filter:str= None, offset:int = None, quantity:int = None) -> Sequence['Directory']: # type: ignore
+        """
+        Retrieves a list of all directories in the project. Offset and Quantity are utilized for pagination optimization.
+
+        Args:
+            filter (str, optional): Filter for directory retrieval. Defaults to None.
+            offset (int, optional): Offset for directory retrieval. Defaults to None.
+            quantity (int, optional): Quantity of directories to retrieve. Defaults to None.
+
+        Returns:
+            Sequence[Directory]: A list of directory objects.
+
+        Raises:
+            UnsuccessfulGetException: If the directories cannot be retrieved.
+        """
         try:
             with PACS_DB() as db:
                 directories_from_db = db.get_directories_by_project(self.name, filter, offset, quantity)
@@ -393,6 +669,15 @@ class Project:
             raise UnsuccessfulGetException("Directories")
     
     def get_all_directory_names_including_subdirectories(self) -> list:
+        """
+        Retrieves a list of all directory names, including subdirectories, in the project.
+
+        Returns:
+            list: A list of directory names.
+
+        Raises:
+            UnsuccessfulGetException: If the directory names cannot be retrieved.
+        """
         try:
             with PACS_DB() as db:
                 directories_from_db = db.get_all_directories_including_subdirectories_by_project(self.name)
@@ -405,7 +690,28 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException("Directory names")
 
-    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '', unpack_directly:bool = False) -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '', unpack_directly:bool = False) -> Union['Directory', 'File']: # type: ignore
+        """
+        Inserts a file (or a directory folder if zip) from a file path into the project.
+
+        Args:
+            file_path (str): The path to the file or directory.
+            directory_name (str, optional): The name of the directory to insert into. Defaults to ''.
+            tags_string (str, optional): Tags associated with the file(s). Defaults to ''.
+            modality (str, optional): The modality of the file(s). Defaults to ''.
+            unpack_directly (bool, optional): Whether to unpack the directory directly. If true, no new directory will be created but the files will be unpacked to the specified directory. Defaults to False.
+
+        Returns:
+            Union[Directory, File]: The inserted directory or file instance.
+
+        Raises:
+            WrongUploadFormatException: If the file format is not supported.
+            UnsuccessfulUploadException: If the file or directory cannot be uploaded.
+            UnsuccessfulCreationException: If the directory cannot be created.
+        """
+        from pacs2go.data_interface.pacs_data_interface import Directory
+        from pacs2go.data_interface.pacs_data_interface import File
+
         try:
             timestamp = datetime.now(self.this_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -551,7 +857,10 @@ class Project:
 
     def to_dict(self) -> dict:
         """
-        Convert various attributes of the Project object to a dictionary for serialization.
+        Converts various attributes of the Project object to a dictionary for serialization.
+
+        Returns:
+            dict: A dictionary representation of the project.
         """
         return {
             'name': self.name,

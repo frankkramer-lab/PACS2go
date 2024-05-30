@@ -8,13 +8,32 @@ import psycopg2
 import schedule
 from dotenv import load_dotenv
 
-from pacs2go.data_interface.tests.test_config import (DATABASE_HOST,
-                                                      DATABASE_PORT)
+INSIDE_DOCKER = True  # Change this to False if run outside the Docker container
+
+if INSIDE_DOCKER:
+    DATABASE_HOST = 'data-structure-db'
+    DATABASE_PORT = 5432
+else:
+    DATABASE_HOST = 'localhost'
+    DATABASE_PORT = 5433
 
 load_dotenv()
 
 class PostgreSQLHandler(logging.Handler):
+    """
+    A logging handler that writes log records to a PostgreSQL database.
+
+    Attributes:
+        conn (psycopg2.connection): The connection object for the PostgreSQL database.
+        table_name (str): The name of the table where logs will be stored.
+        log_queue (list): A queue of log records to be written to the database.
+        schedule_thread (threading.Thread): The thread that runs the schedule for periodic tasks.
+    """
+
     def __init__(self):
+        """
+        Initializes the PostgreSQLHandler, sets up the database connection, and starts the scheduling thread.
+        """
         super().__init__()
 
         self.conn = psycopg2.connect(
@@ -40,9 +59,18 @@ class PostgreSQLHandler(logging.Handler):
         self.schedule_thread.start()
 
     def emit(self, record):
+        """
+        Adds a log record to the queue.
+
+        Args:
+            record (logging.LogRecord): The log record to be added to the queue.
+        """
         self.log_queue.append(record)
 
     def create_log_table(self):
+        """
+        Creates the log table in the PostgreSQL database if it does not already exist.
+        """
         try:
             cursor = self.conn.cursor()
             cursor.execute(f"""
@@ -60,6 +88,9 @@ class PostgreSQLHandler(logging.Handler):
             raise Exception(msg)
 
     def write_queued_logs(self):
+        """
+        Writes the queued log records to the PostgreSQL database.
+        """
         if self.log_queue:
             try:
                 cursor = self.conn.cursor()
@@ -75,6 +106,9 @@ class PostgreSQLHandler(logging.Handler):
                 print(f"Error in PostgreSQLHandler: {str(e)}")
     
     def cleanup_logs(self):
+        """
+        Cleans up log records that are older than one year from both the PostgreSQL database and the log file.
+        """
         # Calculate the date one year ago 
         one_year_ago = datetime.datetime.now() - datetime.timedelta(days=365)
 
@@ -117,16 +151,28 @@ class PostgreSQLHandler(logging.Handler):
 
     # https://stackoverflow.com/questions/52040070/run-schedule-function-in-new-thread
     def save_db(self):
+        """
+        Saves the queued log records to the database and clears the log queue.
+        """
         self.write_queued_logs()
         self.log_queue = [] 
 
     def run_schedule(self):
+        """
+        Runs the scheduled tasks in a loop.
+        """
         while True:
             schedule.run_pending()
             time.sleep(1)
 
 
 def get_data_interface_logger():
+    """
+    Sets up and returns the logger for the data interface.
+
+    Returns:
+        logging.Logger: The configured logger.
+    """
     # Fixed log file name
     log_file = 'pacs2go/data_interface/logs/log_files/data_interface.log'
     logger = logging.getLogger("PACS_DI_logger")
@@ -153,4 +199,3 @@ def get_data_interface_logger():
 
 # Why is this done here? The answer: https://alexandra-zaharia.github.io/posts/fix-python-logger-printing-same-entry-multiple-times/
 logger = get_data_interface_logger()
-
