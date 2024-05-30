@@ -8,7 +8,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
     UnsuccessfulGetException)
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.pacs_data_interface.directory import Directory
+from pacs2go.data_interface.pacs_data_interface import Directory
 from pacs2go.data_interface.xnat import XNATFile
 
 
