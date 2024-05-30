@@ -18,8 +18,8 @@ from pacs2go.data_interface.exceptions.exceptions import (
     DownloadException, FailedConnectionException,
     UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
     UnsuccessfulGetException)
-from pacs2go.data_interface.pacs_data_interface.directory import Directory
-from pacs2go.data_interface.pacs_data_interface.project import Project
+from pacs2go.data_interface.pacs_data_interface import Directory
+from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.frontend.helpers import (colors, format_linebreaks,
                                       get_connection, login_required_interface)
 

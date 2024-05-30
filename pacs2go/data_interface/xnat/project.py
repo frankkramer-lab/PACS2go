@@ -1,8 +1,6 @@
 import datetime
-import json
 import os
 import pathlib
-import uuid
 import zipfile
 from tempfile import TemporaryDirectory
 from typing import List, Sequence, Union
@@ -12,6 +10,9 @@ from natsort import natsorted
 from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 from pacs2go.data_interface.logs.config_logging import logger
+from pacs2go.data_interface.xnat.utils.constants import allowed_file_suffixes, file_format, image_file_suffixes
+from pacs2go.data_interface.xnat import XNAT
+
 
 # Accepted File formats/suffixes
 allowed_file_suffixes = (
@@ -25,153 +26,20 @@ file_format = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.nii': 'NIFTI', 
                '.json': 'JSON', '.pdf': 'PDF', '.md':'Markdown', '.py':'Python File', '.ipynb': 'Interactive Python Notebook',
                '.svg':'Scalable Vector Graphics'}
 
-
-class XNAT():
-    def __init__(self, server: str, username: str, password: str = '', session_id: str = '', kind: str = '') -> None:
-        self.server = server
-        self.username = username
-
-        # User may either specify password of session_id to authenticate themselves
-        if password:
-            data = {"username": username, "password": password}
-            headers = {"Content-Type": "application/x-www-form-urlencoded"}
-            # Authenticate user via REST API
-            response = requests.post(
-                server + "/data/services/auth", data=data, headers=headers)
-
-            if response.status_code != 200:
-                # Non successful authentication
-                msg = f"No connection to XNAT possible: {response.status_code}"
-                logger.error(msg)
-                raise HTTPException(
-                    "Something went wrong connecting to XNAT. " + str(response.status_code))
-            else:
-                # Return SessionID
-                self.session_id = response.text
-                self.cookies = {"JSESSIONID": self.session_id}
-                # Log successful authentication
-                logger.info(f"User authenticated successfully. {requests.get(self.server + '/xapi/users/username',cookies=self.cookies).text}")
-
-        elif session_id:
-            self.session_id = session_id
-            self.cookies = {"JSESSIONID": self.session_id}
-        else:
-            raise ValueError(
-                "You must eiter specify a password or a session_id to authenticate.")
-
-    @property
-    def _kind(self) -> str:
-        return "XNAT"
-
-    @property
-    def user(self) -> str:
-        response = requests.get(
-            self.server + "/xapi/users/username", cookies=self.cookies)
-
-        if response.status_code == 200:
-            # User was found, return username
-            return response.text
-        else:
-            # User not found
-            msg = "User not found."
-            logger.error(msg)
-            raise HTTPException(msg + str(response.status_code))
-        
-    @property
-    def all_users(self) -> list:
-        response = requests.get(
-            self.server + "/xapi/users", cookies=self.cookies)
-
-        if response.status_code == 200:
-            # users were found, return list of users
-            user_list = json.loads(response.text)
-            return user_list
-        else:
-            # User not found
-            msg = "User list not found."
-            logger.error(msg)
-            raise HTTPException(msg + str(response.status_code))
-        
-    def heartbeat(self):
-        response = requests.get(
-            self.server + "/data/JSESSION/", cookies=self.cookies)
-        if response.status_code != 200:
-            # If 200 isn't returned this means that the jsessionid has been invalidated (timeout)
-            raise HTTPException("Unauthorized")
-        else:
-            return response     
-
-    def __enter__(self) -> 'XNAT':
-        return self
-
-    def __exit__(self, type, value, traceback) -> None:
-        response = requests.post(
-            self.server + "/data/JSESSION/", cookies=self.cookies)
-        if response.status_code != 200:
-            msg = "Unable to invalidate session Id."
-            logger.error(msg)
-            raise HTTPException(msg + str(response.status_code))        
-        else:
-            logger.info("XNAT session was successfully invalidated.")
-
-    def create_project(self, name: str, description: str = '', keywords:str = '') -> 'XNATProject':
-        headers = {'Content-Type': 'application/xml'}
-        # Specify XML metadata
-        project_data = f"""
-            <projectData>
-            <ID>{name}</ID>
-            <name>{name}</name>
-            <description>{description if description else 'This is a new project.'}</description>
-            <keywords>{keywords if keywords else 'Set keywords here.'}</keywords>
-            </projectData>
-            """
-        response = requests.post(self.server + "/data/projects",
-                                 headers=headers, data=project_data, cookies=self.cookies)
-        if response.status_code == 200:
-            # If successful return XNATProject object
-            return XNATProject(self, name)
-        else:
-            msg = "Something went wrong trying to create a new project." + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-        
-    def get_project(self, name: str) -> 'XNATProject':
-        return XNATProject(self, name, only_get_no_create=True)
-
-    def get_all_projects(self) -> List['XNATProject']:
-        response = requests.get(
-            self.server + "/xapi/access/projects", cookies=self.cookies)
-
-        if response.status_code == 200:
-            # Project list retrieval was successfull
-            project_names = response.json()
-            if len(project_names) == 0:
-                # No projects yet
-                return []
-
-            projects = []
-            for p in project_names:
-                # Create List of all Project objectss
-                if 'name' in p:
-                    project = self.get_project(p['name'])
-                    projects.append(project)
-
-            return projects
-        else:
-            # Project list not found
-            msg = "Projects not found." + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-    def get_directory(self, project_name: str, directory_name: str) -> 'XNATDirectory':
-        return XNATDirectory(self.get_project(project_name), directory_name)
-
-    def get_file(self, project_name: str, directory_name: str, file_name: str) -> 'XNATFile':
-        return XNATFile(XNATDirectory(XNATProject(self, project_name), directory_name), file_name)
-
-
 class XNATProject():
-    def __init__(self, connection: XNAT, name: str, only_get_no_create: bool = False) -> None:
+    """Represents a project on the XNAT server."""
+    
+    def __init__(self, connection: XNAT, name: str) -> None:
+        """
+        Initializes an XNAT project.
+
+        Args:
+            connection (XNAT): The XNAT connection.
+            name (str): The name of the project.
+
+        Raises:
+            NotFound: If the project cannot be found.
+        """
         self.connection = connection
         self.name = name
         
@@ -191,9 +59,25 @@ class XNATProject():
 
     @property
     def description(self) -> str:
+        """
+        Returns the description of the project.
+
+        Returns:
+            str: The project description.
+        """
         return self._metadata['data_fields']['description']
 
     def set_description(self, description_string: str) -> None:
+        """
+        Sets the description of the project.
+
+        Args:
+            description_string (str): The new description.
+
+        Raises:
+            Forbidden: If the user does not have permission to change the description.
+            HTTPException: If the description cannot be changed.
+        """
         headers = {'Content-Type': 'application/xml'}
 
         # Specify metadata XML string
@@ -220,9 +104,25 @@ class XNATProject():
 
     @property
     def keywords(self) -> str:
+        """
+        Returns the keywords of the project.
+
+        Returns:
+            str: The project keywords.
+        """
         return self._metadata['data_fields']['keywords']
 
     def set_keywords(self, keywords_string: str) -> None:
+        """
+        Sets the keywords of the project.
+
+        Args:
+            keywords_string (str): The new keywords.
+
+        Raises:
+            Forbidden: If the user does not have permission to change the keywords.
+            HTTPException: If the keywords cannot be changed.
+        """
         headers = {'Content-Type': 'application/xml'}
 
         # Specify project metadata XML string
@@ -249,6 +149,15 @@ class XNATProject():
         
     @property
     def owners(self) -> List[str]:
+        """
+        Returns the list of project owners.
+
+        Returns:
+            List[str]: A list of project owners.
+
+        Raises:
+            HTTPException: If the owners cannot be retrieved.
+        """
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
 
@@ -266,6 +175,15 @@ class XNATProject():
         
     @property
     def members(self) -> List[str]:
+        """
+        Returns the list of project members.
+
+        Returns:
+            List[str]: A list of project members.
+
+        Raises:
+            HTTPException: If the members cannot be retrieved.
+        """
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
 
@@ -283,6 +201,15 @@ class XNATProject():
         
     @property
     def collaborators(self) -> List[str]:
+        """
+        Returns the list of project collaborators.
+
+        Returns:
+            List[str]: A list of project collaborators.
+
+        Raises:
+            HTTPException: If the collaborators cannot be retrieved.
+        """
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
 
@@ -300,6 +227,15 @@ class XNATProject():
         
     @property
     def your_user_role(self) -> str:
+        """
+        Returns the user role of the authenticated user of this session in the project.
+
+        Returns:
+            str: The user role.
+
+        Raises:
+            HTTPException: If the user role cannot be retrieved.
+        """
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}/users", cookies=self.connection.cookies)
 
@@ -316,6 +252,16 @@ class XNATProject():
             raise HTTPException(msg)
         
     def grant_rights_to_user(self, user: str, level: str) -> None:
+        """
+        Grants specific rights to a user in the project.
+
+        Args:
+            user (str): The username.
+            level (str): The level of rights to grant.
+
+        Raises:
+            HTTPException: If the rights cannot be granted.
+        """
         response = requests.put(
             self.connection.server + f"/data/projects/{self.name}/users/{level}/{user}", cookies=self.connection.cookies)
         if not response.status_code == 200:
@@ -325,6 +271,15 @@ class XNATProject():
             raise HTTPException(msg)
         
     def revoke_rights_from_user(self, user: str) -> None:
+        """
+        Revokes specific rights from a user in the project.
+
+        Args:
+            user (str): The username.
+
+        Raises:
+            HTTPException: If the rights cannot be revoked.
+        """
         response = requests.delete(
             self.connection.server + f"/data/projects/{self.name}/users/Members/{user}", cookies=self.connection.cookies)
         response_2 = requests.delete(
@@ -337,6 +292,12 @@ class XNATProject():
 
 
     def exists(self) -> bool:
+        """
+        Checks if the project to this XNATProject object exists on the XNAT server.
+
+        Returns:
+            bool: True if the project exists, False otherwise.
+        """
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}", cookies=self.connection.cookies)
 
@@ -346,6 +307,18 @@ class XNATProject():
             return False
 
     def download(self, destination: str) -> str:
+        """
+        Downloads the project data as a zip file.
+
+        Args:
+            destination (str): The destination path to save the zip file.
+
+        Returns:
+            str: The path to the downloaded zip file.
+
+        Raises:
+            HTTPException: If the project data cannot be downloaded.
+        """
         # Create a zip file for the project
         zip_destination = os.path.join(destination, f'{self.name}.zip')
 
@@ -361,6 +334,13 @@ class XNATProject():
         return zip_destination
 
     def delete_project(self) -> None:
+        """
+        Deletes the project from the XNAT server.
+
+        Raises:
+            Forbidden: If the user does not have permission to delete the project. (Only project "owners" are able to delete their project.)
+            HTTPException: If the project cannot be deleted.
+        """
         response = requests.delete(
             self.connection.server + f"/data/projects/{self.name}", cookies=self.connection.cookies)
 
@@ -373,7 +353,16 @@ class XNATProject():
             logger.error(msg)
             raise HTTPException(msg)
         
-    def create_directory(self, name) -> 'XNATDirectory':
+    def create_directory(self, name) -> 'XNATDirectory': # type: ignore
+        """
+        Creates a new directory within the project.
+
+        Args:
+            name (str): The name of the directory.
+
+        Returns:
+            XNATDirectory: The created directory object.
+        """
         # To create an empty directory in XNAT, it is necessary to temporarily insert a file.
         file_path = 'empty_directory_initialization_file.txt'
         with open(file_path, 'w') as f:
@@ -388,10 +377,29 @@ class XNATProject():
         os.remove(file_path)
         return dir
 
-    def get_directory(self, name) -> 'XNATDirectory':
+    def get_directory(self, name) -> 'XNATDirectory': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory
+        """
+        Retrieves a directory by name from the project.
+
+        Args:
+            name (str): The name of the directory.
+
+        Returns:
+            XNATDirectory: The retrieved directory object.
+        """
         return XNATDirectory(self, name)
 
-    def get_all_directories(self) -> Sequence['XNATDirectory']:
+    def get_all_directories(self) -> Sequence['XNATDirectory']: # type: ignore
+        """
+        Retrieves a list of all directories in the project.
+
+        Returns:
+            Sequence[XNATDirectory]: A list of directory objects.
+
+        Raises:
+            HTTPException: If the directories cannot be retrieved.
+        """
         response = requests.get(
             self.connection.server + f"/data/projects/{self.name}/resources?sortBy=label", cookies=self.connection.cookies)
 
@@ -416,7 +424,21 @@ class XNATProject():
             logger.error(msg)
             raise HTTPException(msg)
 
-    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '') -> Union['XNATDirectory', 'XNATFile']: # type: ignore
+        """
+        Inserts a file or a directory (for zip files) from a file path into the project.
+
+        Args:
+            file_path (str): The path to the (zip) file.
+            directory_name (str, optional): The name of the directory to insert into. Defaults to ''.
+            tags_string (str, optional): Tags associated with the file. Defaults to ''.
+
+        Returns:
+            Union[XNATDirectory, XNATFile]: The inserted directory or file object.
+
+        Raises:
+            ValueError: If the input format is not supported.
+        """
         # File path leads to a single file
         if os.path.isfile(file_path) and not zipfile.is_zipfile(file_path):
             return self.insert_file_into_project(file_path=file_path, directory_name=directory_name, tags_string=tags_string)
@@ -430,7 +452,25 @@ class XNATProject():
             logger.error(msg)
             raise ValueError("The input is neither a file nor a zip.")
 
-    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = False) -> 'XNATDirectory':
+    def insert_zip_into_project(self, file_path: str, directory_name: str = '', tags_string: str = '', zip_extraction: bool = True, xnat_compressed_upload: bool = False) -> 'XNATDirectory': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory
+        """
+        Inserts a zip file into the project.
+
+        Args:
+            file_path (str): The path to the zip file.
+            directory_name (str, optional): The name of the directory to insert into. Defaults to ''.
+            tags_string (str, optional): Tags associated with the file. Defaults to ''.
+            zip_extraction (bool, optional): Flag to extract the zip file. Defaults to True.
+            xnat_compressed_upload (bool, optional): Flag to use compressed upload. Defaults to False.
+
+        Returns:
+            XNATDirectory: The directory object created from the zip file.
+
+        Raises:
+            ValueError: If the input is not a zip file.
+            HTTPException: If the file cannot be uploaded.
+        """
         # Extract zip data and feed it to insert_file_project
         if zipfile.is_zipfile(file_path):
             if directory_name == '':
@@ -493,7 +533,24 @@ class XNATProject():
             raise ValueError("The input is not a zipfile.")
 
     # Single file upload to given project
-    def insert_file_into_project(self, file_path: str, file_id:str='', directory_name: str = '', tags_string: str = '') -> 'XNATFile':
+    def insert_file_into_project(self, file_path: str, file_id:str='', directory_name: str = '', tags_string: str = '') -> 'XNATFile': # type: ignore
+        from pacs2go.data_interface.xnat import XNATDirectory, XNATFile
+        """
+        Inserts a single file into the project.
+
+        Args:
+            file_path (str): The path to the file.
+            file_id (str, optional): The ID of the file. Defaults to ''.
+            directory_name (str, optional): The name of the directory to insert into. Defaults to ''.
+            tags_string (str, optional): Tags associated with the file. Defaults to ''.
+
+        Returns:
+            XNATFile: The inserted file object.
+
+        Raises:
+            ValueError: If the file type is not supported or the input is not a file.
+            HTTPException: If the file cannot be uploaded.
+        """
         if os.path.exists(file_path):
             if directory_name == '':
                 # If no xnat resource directory is given, a new directory with the current timestamp is created
@@ -556,212 +613,3 @@ class XNATProject():
 
         else:
             raise ValueError("The input is not a file.")
-
-
-class XNATDirectory():
-    def __init__(self, project: XNATProject, name: str) -> None:
-        self.name = name
-        self.project = project
-
-        # Get all the projects directories, single GET is only possible for exists() (due to XNAT API behavior)
-        response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources", cookies=self.project.connection.cookies)
-
-        if not response.status_code == 200:
-            msg = "Directories could not be accessed. " + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-        if not self.exists():
-            raise NotFound
-
-    def exists(self) -> bool:
-        response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.project.connection.cookies)
-
-        if response.status_code == 200:
-            return True
-        else:
-            return False
-
-    def delete_directory(self) -> None:
-        response = requests.delete(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}", cookies=self.project.connection.cookies)
-
-        if response.status_code == 403:
-            # Note: In contrast to projects and files, double deleting the same resource still results in a 200 code
-            msg = "Directories could not be accessed. " + str(response.status_code)
-            logger.error(msg)
-            raise Forbidden(
-                "You're not allowed to delete directories of this project. Please contact a project owner. ")
-        
-        elif response.status_code != 200:
-            msg = "Something went wrong trying to delete this directory. " + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-    def get_file(self, file_name: str, metadata: dict = None) -> 'XNATFile':
-        return XNATFile(self, file_name, metadata)
-
-    def get_all_files(self) -> List['XNATFile']:
-        response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=json&sortBy=Name", cookies=self.project.connection.cookies)
-
-        if response.status_code == 200:
-            # Directory list retrieval was successfull
-            file_results = response.json()['ResultSet']['Result']
-            if len(file_results) == 0:
-                # No files yet
-                return []
-
-            files = []
-            for file in file_results:
-                # Create List of all File objects
-                file_object = self.get_file(file_name = file['Name'], metadata = file)
-                files.append(file_object)
-            files = natsorted(files, key=lambda obj: obj.name)
-
-            return files
-
-        else:
-            msg = "No files could be retrieved. " + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-    def download(self, destination: str) -> str:
-        # https://wiki.xnat.org/display/XAPI/How+To+Download+Files+via+the+XNAT+REST+API
-        response = requests.get(
-            self.project.connection.server + f"/data/projects/{self.project.name}/resources/{self.name}/files?format=zip", cookies=self.project.connection.cookies)
-
-        if response.status_code == 200:
-            # Store the retrieved compressed archive (containing all files) in the specified destination
-            path = os.path.join(destination, self.name + ".zip")
-            with open(path, "wb") as binary_file:
-                # Write zip bytes to file
-                binary_file.write(response.content)
-            return path
-
-        else:
-            msg = f"Something went wrong trying to download this directory {self.name}. " + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-
-class XNATFile():
-    def __init__(self, directory: XNATDirectory, name: str, metadata:dict = None) -> None:
-        self.directory = directory
-        self.name = name
-
-        if metadata:
-            # Format etc will be passed in case of the Directory's get_all_files method, this will speed up the metadata extraction process
-            self._metadata = metadata
-        else:
-            # Get all files from this file's directory (retrieving the metadata of a single file via a GET is not possible)
-            response = requests.get(
-                self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files", cookies=self.directory.project.connection.cookies)
-
-            if response.status_code == 200:
-                all_files = response.json()['ResultSet']['Result']
-                try:
-                    # Find correct file and extract metadata
-                    self._metadata = next(
-                        item for item in all_files if item["Name"] == self.name)
-                except:
-                    msg = f"A File with this filename ({self.name}) does not exist. "
-                    logger.error(msg)
-                    raise NotFound(msg)
-            else:
-                msg = "Files could not be accessed. " + str(response.status_code)
-                logger.error(msg)
-                raise HTTPException(msg)
-
-    @property
-    def format(self) -> str:
-        if self._metadata['file_format'] != '':
-            # If file format is either passed or stored in XNAT
-            return self._metadata['file_format']
-        elif "." in self.name:
-            # Retrieve information from file name
-            extension = "." + self.name.split(".")[-1]
-            return file_format.get(extension.lower(), "Unknown")
-        else:
-            return 'N/A'
-
-    @property
-    def content_type(self) -> str:
-        if self._metadata['file_content'] != '':
-            # If content type is either passed or stored in XNAT
-            return self._metadata['file_content']
-        elif "." in self.name:
-            # Retrieve information from file name
-            extension = "." + self.name.split(".")[-1]
-            if extension in image_file_suffixes:
-                return 'Image'
-            else:
-                return 'Metadata'
-        else:
-            return 'N/A'
-
-    @property
-    def tags(self) -> str:
-        if self._metadata['file_tags'] != '':
-            return self._metadata['file_tags']
-        else:
-            return 'No tags'
-
-    @property
-    def size(self) -> int:
-        return int(self._metadata['Size'])
-
-    @property
-    def data(self) -> bytes:
-        # Uses retrieved URI as endpoint
-        # Useful for xnat compressed uploads where endpoint contains more than just filename (folders etc)
-        # Example: '/data/projects/8412ac46-3752-4c3a-a2e1-73d9fa63e9e5_test1/resources/1118/files/jpegs_25/Case-3-A14-39214-1868.jpg'
-        response = requests.get(
-            self.directory.project.connection.server + self._metadata['URI'], cookies=self.directory.project.connection.cookies)
-
-        if response.status_code == 200:
-            # Return bytes
-            return bytes(response.content)
-        else:
-            msg = f"The file data for [{self.name}] could not be retrieved. " + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-    def exists(self) -> bool:
-        response = requests.get(
-            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
-
-        if response.status_code == 200:
-            return True
-        else:
-            return False
-
-    def download(self, destination: str = '') -> str:
-        response = requests.get(
-            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
-
-        if response.status_code == 200:
-            path = os.path.join(destination, self.name)
-            with open(path, "wb") as binary_file:
-                # Write bytes to file
-                binary_file.write(response.content)
-            return path
-        else:
-            msg = "Download was not possible." + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
-
-    def delete_file(self) -> None:
-        response = requests.delete(
-            self.directory.project.connection.server + f"/data/projects/{self.directory.project.name}/resources/{self.directory.name}/files/{self.name}", cookies=self.directory.project.connection.cookies)
-
-        if response.status_code == 403:
-            msg = "You're not allowed to delete files of this project. Please contact a project owner. " + str(response.status_code)
-            logger.error(msg)
-            raise Forbidden(msg)
-        elif response.status_code != 200:
-            msg = "Something went wrong trying to delete this file. " + str(response.status_code)
-            logger.error(msg)
-            raise HTTPException(msg)
