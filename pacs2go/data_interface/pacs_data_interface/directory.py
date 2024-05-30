@@ -12,7 +12,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulAttributeUpdateException, UnsuccessfulCreationException,
     UnsuccessfulDeletionException, UnsuccessfulGetException)
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.pacs_data_interface.file import File
+from pacs2go.data_interface.pacs_data_interface import Project
 from pacs2go.data_interface.xnat import XNATDirectory
 
 
@@ -21,12 +21,12 @@ class Directory:
 
     this_timezone = timezone("Europe/Berlin")
 
-    def __init__(self, project, name: str, parent_dir:'Directory' = None, parameters:str = "") -> None:
+    def __init__(self, project: 'Project', name: str, parent_dir:'Directory' = None, parameters:str = "") -> None:
         """
-        Initializes a Directory object.
+        Initializes a Directory object. 
 
         Args:
-            project (Project): The project to which this directory belongs. (Not typed due to circular import.)
+            project (Project): The project to which this directory belongs.
             name (str): The name of the directory.
             parent_dir (Directory, optional): The parent directory. Defaults to None.
             parameters (str, optional): Additional parameters for the directory. Defaults to "".
@@ -402,7 +402,7 @@ class Directory:
             logger.exception(msg)
             raise UnsuccessfulGetException(msg)
 
-    def get_file(self, file_name: str, _file_filestorage_object=None) -> 'File':
+    def get_file(self, file_name: str, _file_filestorage_object=None) -> 'File': # type: ignore
         """
         Retrieves a file from this directory.
 
@@ -416,6 +416,8 @@ class Directory:
         Raises:
             UnsuccessfulGetException: If the file cannot be retrieved.
         """
+        from pacs2go.data_interface.pacs_data_interface import File
+        
         try:
             file = File(self, name=file_name, _file_filestorage_object=_file_filestorage_object)
             return file
@@ -424,7 +426,7 @@ class Directory:
             logger.exception(msg)
             return None
 
-    def get_all_files(self) -> List['File']:
+    def get_all_files(self) -> List['File']: # type: ignore
         """
         Retrieves all files within this directory.
 

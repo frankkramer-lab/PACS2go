@@ -8,9 +8,6 @@ from pacs2go.data_interface.exceptions.exceptions import (
     FailedConnectionException, FailedDisconnectException,
     UnsuccessfulCreationException, UnsuccessfulGetException)
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.pacs_data_interface.directory import Directory
-from pacs2go.data_interface.pacs_data_interface.file import File
-from pacs2go.data_interface.pacs_data_interface.project import Project
 from pacs2go.data_interface.xnat import XNAT
 
 
@@ -152,7 +149,7 @@ class Connection:
             logger.exception(msg)
             raise FailedDisconnectException
 
-    def create_project(self, name: str, description: str = '', keywords: str = '', parameters: str = '') -> 'Project':
+    def create_project(self, name: str, description: str = '', keywords: str = '', parameters: str = '') -> 'Project': # type: ignore
         """
         Creates a new project in the file store and database.
 
@@ -168,6 +165,7 @@ class Connection:
         Raises:
             UnsuccessfulCreationException: If project creation fails.
         """
+        from pacs2go.data_interface.pacs_data_interface import Project
         
         # Remove unallowed chars
         name = name.replace(".","")
@@ -194,7 +192,7 @@ class Connection:
             logger.exception(msg)
             raise UnsuccessfulCreationException(f"{str(name)}")
 
-    def get_project(self, name: str) -> Optional['Project']:
+    def get_project(self, name: str) -> Optional['Project']: # type: ignore
         """
         Retrieves a project by name.
 
@@ -207,6 +205,8 @@ class Connection:
         Raises:
             UnsuccessfulGetException: If the project cannot be retrieved.
         """
+        from pacs2go.data_interface.pacs_data_interface import Project
+        
         try:
             project = Project(self, name)
             logger.debug(f"User {self.user} retrieved information about project {project.name}.")
@@ -216,7 +216,7 @@ class Connection:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Project '{name}'")
 
-    def get_all_projects(self, only_accessible: bool = False) -> List['Project']:    
+    def get_all_projects(self, only_accessible: bool = False) -> List['Project']:  # type: ignore  
         """
         Retrieves a list of all projects from the database.
 
@@ -243,7 +243,7 @@ class Connection:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Projects")
 
-    def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']:
+    def get_directory(self, project_name: str, directory_name: str) -> Optional['Directory']: # type: ignore
         """
         Retrieves a directory by name from a specified project.
 
@@ -257,6 +257,8 @@ class Connection:
         Raises:
             UnsuccessfulGetException: If the directory cannot be retrieved.
         """
+        from pacs2go.data_interface.pacs_data_interface import Directory
+        
         try:
             d = Directory(self.get_project(project_name), directory_name)
             logger.debug(f"User {self.user} retrieved information about directory {d.unique_name}.")
@@ -267,7 +269,8 @@ class Connection:
             raise UnsuccessfulGetException(
                 f"Directory '{directory_name}'")
 
-    def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']:
+    def get_file(self, project_name: str, directory_name: str, file_name: str) -> Optional['File']: # type: ignore
+        from pacs2go.data_interface.pacs_data_interface import File
         """
         Retrieves a file by name from a specified directory in a project.
 
@@ -291,7 +294,7 @@ class Connection:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"File '{file_name}'")
 
-    def get_favorites(self, username:str) -> List['Directory']:
+    def get_favorites(self, username:str) -> List['Directory']: # type: ignore
         """
         Retrieves the list of favorited directories for a user.
 

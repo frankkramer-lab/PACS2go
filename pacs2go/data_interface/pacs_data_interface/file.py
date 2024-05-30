@@ -8,6 +8,7 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulAttributeUpdateException, UnsuccessfulDeletionException,
     UnsuccessfulGetException)
 from pacs2go.data_interface.logs.config_logging import logger
+from pacs2go.data_interface.pacs_data_interface.directory import Directory
 from pacs2go.data_interface.xnat import XNATFile
 
 
@@ -16,12 +17,12 @@ class File:
 
     this_timezone = timezone("Europe/Berlin")
 
-    def __init__(self, directory, name: str, _file_filestorage_object=None) -> None:
+    def __init__(self, directory: 'Directory', name: str, _file_filestorage_object=None) -> None:
         """
         Initializes a File object.
 
         Args:
-            directory (Directory): The directory to which this file belongs. (Not typed due to circular import.)
+            directory (Directory): The directory to which this file belongs.
             name (str): The name of the file.
             _file_filestorage_object (optional): The file storage object. Defaults to None.
 

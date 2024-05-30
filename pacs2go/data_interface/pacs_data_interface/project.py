@@ -16,8 +16,6 @@ from pacs2go.data_interface.exceptions.exceptions import (
     UnsuccessfulDeletionException, UnsuccessfulGetException,
     UnsuccessfulUploadException, WrongUploadFormatException)
 from pacs2go.data_interface.logs.config_logging import logger
-from pacs2go.data_interface.pacs_data_interface.directory import Directory
-from pacs2go.data_interface.pacs_data_interface.file import File
 from pacs2go.data_interface.xnat import XNATProject
 
 
@@ -610,7 +608,7 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulCreationException(str(unique_name.split('::')[-1]))
 
-    def get_directory(self, name) -> 'Directory':
+    def get_directory(self, name) -> 'Directory': # type: ignore
         """
         Retrieves a directory by name from the project.
 
@@ -623,6 +621,8 @@ class Project:
         Raises:
             UnsuccessfulGetException: If the directory cannot be retrieved.
         """
+        from pacs2go.data_interface.pacs_data_interface import Directory
+
         try:
             logger.debug(
                 f"User {self.connection.user} retrieved information about directory '{name}' for Project '{self.name}'.")
@@ -632,7 +632,7 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException(f"Directory '{name}'")
 
-    def get_all_directories(self, filter:str= None, offset:int = None, quantity:int = None) -> Sequence['Directory']:
+    def get_all_directories(self, filter:str= None, offset:int = None, quantity:int = None) -> Sequence['Directory']: # type: ignore
         """
         Retrieves a list of all directories in the project. Offset and Quantity are utilized for pagination optimization.
 
@@ -690,7 +690,7 @@ class Project:
             logger.exception(msg)
             raise UnsuccessfulGetException("Directory names")
 
-    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '', unpack_directly:bool = False) -> Union['Directory', 'File']:
+    def insert(self, file_path: str, directory_name: str = '', tags_string: str = '', modality: str = '', unpack_directly:bool = False) -> Union['Directory', 'File']: # type: ignore
         """
         Inserts a file (or a directory folder if zip) from a file path into the project.
 
@@ -709,6 +709,9 @@ class Project:
             UnsuccessfulUploadException: If the file or directory cannot be uploaded.
             UnsuccessfulCreationException: If the directory cannot be created.
         """
+        from pacs2go.data_interface.pacs_data_interface import Directory
+        from pacs2go.data_interface.pacs_data_interface import File
+
         try:
             timestamp = datetime.now(self.this_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
